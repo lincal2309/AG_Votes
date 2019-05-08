@@ -1,0 +1,17 @@
+{% extends './base.html' %}
+
+{% load static %}
+
+{% block content %}
+
+    <div class="container">
+        <div class="row">
+        {% for event in next_event_list %}
+        <div class="col-lg-10 align-items-center text-center"
+            <p class="h2_perso"><a href="{% url 'polls:event' event.slug %}"> {{ event.event_name }} </a></p>
+            <p>Prévu le : {{ event.event_date|date:"d/m/Y" }}<p>
+        {% endfor %}
+        </div>
+    </div>
+
+{% endblock %}

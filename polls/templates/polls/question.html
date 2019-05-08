@@ -1,0 +1,70 @@
+{% extends './base.html' %}
+
+{% load static %}
+{%load plotly_dash %}
+
+{% block head %}
+    <head>
+        {% plotly_header %}
+        {% if user.is_staff %}
+            <meta http-equiv="refresh" content="5" />
+        {% endif %}
+        <title>Questions</title>
+    </head>
+{% endblock %}
+
+{% block content %}
+
+    {% if user.is_staff %}
+    <div class="container">
+        <div class="row">
+            <div class="offset-sm-1 col-sm-10">
+                <h1> Staff only </h1>
+                <h2 class="text-center">Résolution n° {{ question_no }} :</h2>
+                <p class="text-justify">{{ question.question_text }}</p>
+                <ul id="chart-data">
+                    <li id="chart-nb" hidden>{{ nb_choices }}</li>
+                    {% for choice_text, choice_votes in result_list.items %}
+                        <li>{{ choice_text }} : {{ choice_votes|floatformat:2 }} {% autoescape off %}%{% endautoescape %} </li>
+                    {% endfor %}
+                </ul>
+                <p class="text-center">Total : {{ total_votes }} vote{{ total_votes|pluralize }}</p>
+                {% plotly_direct name="SimpleExample" %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+        <h1> Utilisateur hors staff </h1>
+        <h2>Résolution n° {{ question_no }} :</h2>
+        <p>{{ question.question_text }}
+        <form action="{% url 'polls:question' event.slug question_no %}" method="post">
+        {% csrf_token %}
+            {% for choice in choice_list %}
+                <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}">
+                <label for="choice{{ forloop.counter }}">{{ choice.choice_text }}</label><br>
+            {% endfor %}
+            {% if user_vote.as_voted %}
+                <input type="submit" value="Voter" disabled>
+            {% else %}
+                <input type="submit" value="Voter">
+            {% endif %}
+        </form>
+    {% endif %}
+
+    <div class="offset-sm-4 col-sm-4 text-center">
+        {% if last_question %}
+            <a class="btn btn-main" type="button" href='{% url 'polls:results' event.slug %}'>Résultats</a>
+        {% elif user_vote.has_voted %}
+            <a class="btn btn-main" type="button" href='{% url 'polls:question' event.slug question_no %}'>Résolution suivante</a>
+        {% else %}
+            <a class="btn btn-main" type="button" href='{% url 'polls:question' event.slug question_no %}' disabled>Résolution suivante</a>
+        {% endif %}
+    </div>
+
+{% endblock %}
+
+
+{% block footer %}
+    {% plotly_footer %}
+{% endblock %}
+

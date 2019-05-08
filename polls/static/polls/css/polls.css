@@ -1,0 +1,20 @@
+.user-menu {
+    list-style: none;
+}
+
+.user-footer {
+    text-align: right;
+}
+
+.mt-10 {
+    margin-top: 10px;
+}
+
+.mt-30 {
+    margin-top: 30px;
+}
+
+.main-content {
+    padding-top: 100px;
+    padding-bottom: 100px;
+}
