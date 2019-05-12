@@ -19,7 +19,6 @@ from django.conf.urls.static import static
 from django.conf import settings
 
 urlpatterns = [
-    path('django_plotly_dash/', include('django_plotly_dash.urls')),
     path('polls/', include('polls.urls')),
     path('admin/', admin.site.urls, name='admin'),
 ]

@@ -1,70 +1,92 @@
 {% extends './base.html' %}
 
 {% load static %}
-{%load plotly_dash %}
 
 {% block head %}
     <head>
-        {% plotly_header %}
-        {% if user.is_staff %}
+        <!-- {% if user.is_staff %}
             <meta http-equiv="refresh" content="5" />
-        {% endif %}
-        <title>Questions</title>
+        {% endif %} -->
     </head>
 {% endblock %}
 
 {% block content %}
 
-    {% if user.is_staff %}
     <div class="container">
         <div class="row">
-            <div class="offset-sm-1 col-sm-10">
-                <h1> Staff only </h1>
-                <h2 class="text-center">Résolution n° {{ question_no }} :</h2>
-                <p class="text-justify">{{ question.question_text }}</p>
-                <ul id="chart-data">
-                    <li id="chart-nb" hidden>{{ nb_choices }}</li>
-                    {% for choice_text, choice_votes in result_list.items %}
-                        <li>{{ choice_text }} : {{ choice_votes|floatformat:2 }} {% autoescape off %}%{% endautoescape %} </li>
-                    {% endfor %}
-                </ul>
-                <p class="text-center">Total : {{ total_votes }} vote{{ total_votes|pluralize }}</p>
-                {% plotly_direct name="SimpleExample" %}
+            <div class="col-sm-12">
+                <h1 class="text-center">{{ event.event_name }} - {{ event.event_date|date:"d/m/Y" }}</h1>
             </div>
         </div>
-    </div>
-    {% else %}
-        <h1> Utilisateur hors staff </h1>
-        <h2>Résolution n° {{ question_no }} :</h2>
-        <p>{{ question.question_text }}
-        <form action="{% url 'polls:question' event.slug question_no %}" method="post">
-        {% csrf_token %}
-            {% for choice in choice_list %}
-                <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}">
-                <label for="choice{{ forloop.counter }}">{{ choice.choice_text }}</label><br>
-            {% endfor %}
-            {% if user_vote.as_voted %}
-                <input type="submit" value="Voter" disabled>
-            {% else %}
-                <input type="submit" value="Voter">
-            {% endif %}
-        </form>
-    {% endif %}
-
-    <div class="offset-sm-4 col-sm-4 text-center">
-        {% if last_question %}
-            <a class="btn btn-main" type="button" href='{% url 'polls:results' event.slug %}'>Résultats</a>
-        {% elif user_vote.has_voted %}
-            <a class="btn btn-main" type="button" href='{% url 'polls:question' event.slug question_no %}'>Résolution suivante</a>
+        <div class="row">
+            <div class="offset-sm-3 col-sm-6">
+                <h2 class="text-center pt-3">Résolution n° {{ question_no }}</h2>
+                <p class="text-justify pt-3">{{ question.question_text }}</p>
+            </div>
+        </div>
+        {% if user.is_staff %}
+            <div class="row align-items-center pt-3">
+                <div class="col-sm-6">
+                    <canvas id="myChart" url-endpoint="{% url 'polls:chart_data' %}" event-slug="{{ event.slug }}" question-no="{{ question_no }}" ></canvas>
+                </div>
+                <div class="offset-sm-1 col-sm-3">
+                    <h4 class="text-center pb-4">Votants</h4>
+                    <div class="progress" style="height: 20px;">
+                        <div id="nb_votes" class="progress-bar bg-warning" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+            </div>
         {% else %}
-            <a class="btn btn-main" type="button" href='{% url 'polls:question' event.slug question_no %}' disabled>Résolution suivante</a>
+            <div class="row align-items-center pt-3">
+                <div class="offset-sm-5 col-sm-2">
+                    <!-- <form id="vote" action='.' data-url='{% url 'polls:vote' event.slug question_no %}' method="post"> -->
+                    <form id="vote" action='.' method="post" data-url='{% url 'polls:vote' event.slug question_no %}' data-event="{{ event.slug }}" data-question="{{ question_no }}">
+                    {% csrf_token %}
+                        {% for choice in choice_list %}
+                            <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}" />
+                            <label for="choice{{ forloop.counter }}">{{ choice.choice_text }}</label><br>
+                        {% endfor %}
+                        <input type="submit" id="submit-btn" class="btn mt-3 {% if user_vote.has_voted %}btn-grey" disabled{% else %}btn-success"{% endif %} value="Voter" />
+                    </form>
+                </div>
+            </div>
         {% endif %}
     </div>
 
-{% endblock %}
+    <div class="offset-sm-4 col-sm-4 text-center page-btn">
+        {% if last_question %}
+            <a class="btn btn-secondary" type="button" href="{% url 'polls:results' event.slug %}">Résultats</a>
+        {% elif user_vote.has_voted or user.is_staff %}
+            <a id="next-btn" class="btn btn-secondary" type="button" href="{% url 'polls:question' event.slug question_no %}">Résolution suivante</a>
+        {% else %}
+            <a id="next-btn" class="btn btn-secondary disabled" type="button" href="{% url 'polls:question' event.slug question_no %}">Résolution suivante</a>
+        {% endif %}
+    </div>
 
+    <!-- Modal for user messages -->
+    <div class="modal fade" id="voteOK" tabindex="-1" role="dialog" aria-labelledby="voteOK" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                <h5 class="modal-title" id="voteOKTitle">Merci !</h5>
+                </div>
+                <div class="modal-body text-center">
+                    <p class="mt-4">Votre vote a bien été pris en compte</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" data-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
 
 {% block footer %}
-    {% plotly_footer %}
+    {% if user.is_staff %}
+    <label id="switch" class="switch tooltip-test unactive" title="Activer / désactiver le rafraichissement automatique des données">
+        <input type="checkbox" class="bidon">
+        <span class="slider round"></span>
+      </label>
+    {% endif %}
 {% endblock %}
-

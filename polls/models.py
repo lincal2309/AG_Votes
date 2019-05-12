@@ -70,7 +70,7 @@ class UserVote(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     proxy_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, related_name='proxy')
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    as_voted = models.BooleanField(default=False)
+    has_voted = models.BooleanField(default=False)
     date_vote = models.DateTimeField(null=True)
 
     class Meta:
@@ -78,8 +78,4 @@ class UserVote(models.Model):
         verbose_name_plural = "Votes utilisateurs et pouvoirs"
 
     def __str__(self):
-        if self.rep_user is None:
-            return "Vote de " + self.user.username + " à la question " + self.question.question_text
-        else:
-            return "Vote de " + self.user.username + " à la question " + self.question.question_text + \
-                " pour le compte de " + self.rep_user.username
+        return "Vote de " + self.user.username + " à la question " + self.question.question_text

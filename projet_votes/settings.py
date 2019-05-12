@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django_plotly_dash.apps.DjangoPlotlyDashConfig',
     'polls.apps.PollsConfig',
 ]
 
@@ -49,7 +48,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'django_plotly_dash.middleware.BaseMiddleware',
 ]
 
 ROOT_URLCONF = 'projet_votes.urls'
@@ -129,16 +127,3 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
 LOGIN_URL = '/polls/login/'
-
-if DEBUG:
-    
-    import importlib
-
-    for dash_module_name in ['dash_core_components',
-                             'dash_html_components',
-                             'dash_renderer',
-                             'dpd_components',
-                            ]:
-
-        module = importlib.import_module(dash_module_name)
-        STATICFILES_DIRS.append(("dash/%s"%dash_module_name, os.path.dirname(module.__file__)))

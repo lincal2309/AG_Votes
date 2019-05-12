@@ -10,6 +10,7 @@ from django.db.models import Count
 from django.contrib.auth.models import User
 
 import datetime
+import json
 
 from .models import Company, Event, Question, Choice, UserVote, EventGroup
 
@@ -142,10 +143,6 @@ class TestEvent(TestCase):
         self.assertNotContains(response, "Accéder à l'événement")
 
 class TestQuestion(TestCase):
-    # Lancement événement (staff only)
-    # Première question, utilisateur n'a pas voté
-    # Première question l'utilisateur a voté
-    # Dernière question
     def setUp(self):
         self.user_staff = create_user('staff', True)
         self.user_lambda = create_user('lambda', False)
@@ -173,64 +170,111 @@ class TestQuestion(TestCase):
         user_list = get_list_or_404(UserVote)
         self.assertEqual(len(user_list), 2)
         self.assertEqual(response.context['question_no'], 1)
+        self.assertEqual(response.context['event'].current, True)
         self.assertContains(response, "Question 1")
-        self.assertContains(response, "Oui : 0,00 %")
         self.assertContains(response, "Résolution suivante")
 
     def test_user_display_first_question(self):
+        UserVote.objects.create(user=self.user_lambda, question=self.question1, has_voted=False)
+        self.event.current = True
+        self.event.save()
         self.client.force_login(self.user_lambda)
         url = reverse('polls:question', args=(self.event.slug, 0))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['question_no'], 1)
+        self.assertEqual(response.context['last_question'], False)
+        self.assertEqual(response.context['user_vote'].has_voted, False)
         self.assertContains(response, "Question 1")
         self.assertContains(response, "Oui")
-        self.assertNotContains(response, "Oui : 0,00 %")
         self.assertContains(response, "Voter")
         self.assertContains(response, "Résolution suivante")
 
-    def test_user_vote_first_question(self):
+    def test_user_display_question_user_has_voted(self):
+        UserVote.objects.create(user=self.user_lambda, question=self.question1, has_voted=True)
+        self.event.current = True
+        self.event.save()
         self.client.force_login(self.user_lambda)
-        url = reverse('polls:question', args=(self.event.slug, 1))
-        response = self.client.post(url, {'choice': 1})
+        url = reverse('polls:question', args=(self.event.slug, 0))
+        response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        my_vote = get_object_or_404(UserVote, user=self.user_lambda, question=self.question1)
-        self.assertEqual(my_vote.as_voted, True)
-        my_choice = get_object_or_404(Choice, choice_text="Oui", question=self.question1)
-        self.assertEqual(my_choice.votes, 1)
         self.assertEqual(response.context['question_no'], 1)
-        self.assertContains(response, "Question 1")
-        self.assertContains(response, "Oui")
-        self.assertNotContains(response, "Oui : 0,00 %")
-        self.assertContains(response, "Voter")
-        self.assertContains(response, "Résolution suivante")
-        
+        self.assertEqual(response.context['event'].current, True)
+        self.assertEqual(response.context['last_question'], False)
+        self.assertEqual(response.context['user_vote'].has_voted, True)
+
     def test_user_display_last_question(self):
+        UserVote.objects.create(user=self.user_lambda, question=self.question2, has_voted=False)
+        self.event.current = True
+        self.event.save()
         self.client.force_login(self.user_lambda)
         url = reverse('polls:question', args=(self.event.slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['question_no'], 2)
+        self.assertEqual(response.context['last_question'], True)
         self.assertContains(response, "Question 2")
         self.assertContains(response, "Oui")
-        self.assertNotContains(response, "Oui : 0,00 %")
         self.assertContains(response, "Voter")
         self.assertNotContains(response, "Résolution suivante")
 
-    def test_results_last_question(self):
-        self.client.force_login(self.user_staff)
-        choice = get_object_or_404(Choice, choice_text="Oui", question=self.question2)
-        choice.votes = 3
-        choice.save()
-        choice = get_object_or_404(Choice, choice_text="Non", question=self.question2)
-        choice.votes = 1
-        choice.save()
-        url = reverse('polls:question', args=(self.event.slug, 1))
-        response = self.client.get(url)
+
+class TestGetChartData(TestCase):
+    def setUp(self):
+        self.user_lambda = create_user('lambda', False)
+        self.company = create_company()
+        event_date = timezone.now() + datetime.timedelta(days=1)
+        self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
+            slug=slugify("Evénement de test" + str(event_date)), current=True, company=self.company)
+        self.question1 = Question.objects.create(question_text="Question 1", event=self.event)
+        self.question2 = Question.objects.create(question_text="Question 2", event=self.event)
+        EventGroup.objects.create(event=self.event, user=self.user_lambda)
+        Choice.objects.create(choice_text="Oui", question=self.question1, votes=3)
+        Choice.objects.create(choice_text="Non", question=self.question1, votes=1)
+        Choice.objects.create(choice_text="NSP", question=self.question1)
+
+    def test_chart_first_question(self):
+        url = reverse('polls:chart_data')
+        response = self.client.get(url, {'event_slug': self.event.slug, 'question_no': 1})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Oui : 75,00 %")
-        self.assertContains(response, "Non : 25,00 %")
-        self.assertNotContains(response, "Résolution suivante")
+        result = json.loads(response.content)
+        self.assertEqual(result['labels'], ['Oui', 'Non', 'NSP'])
+        self.assertEqual(result['values'], [3, 1, 0])
+        self.assertEqual(result['nb_votes'], 4)
+        self.assertEqual(result['total_votes'], 1)
+        bg_colors = [
+            'rgba(124, 252, 0, 0.2)',
+            'rgba(255, 99, 132, 0.2)',
+            'rgba(255, 159, 64, 0.2)']
+        self.assertEqual(result['backgroundColor'], bg_colors)
+
+class TestVote(TestCase):
+    def setUp(self):
+        self.user_lambda = create_user('lambda', False)
+        self.company = create_company()
+        event_date = timezone.now() + datetime.timedelta(days=1)
+        self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
+            slug=slugify("Evénement de test" + str(event_date)), current=True, company=self.company)
+        self.question1 = Question.objects.create(question_text="Question 1", event=self.event)
+        self.question2 = Question.objects.create(question_text="Question 2", event=self.event)
+        EventGroup.objects.create(event=self.event, user=self.user_lambda)
+        Choice.objects.create(choice_text="Oui", question=self.question1)
+        Choice.objects.create(choice_text="Non", question=self.question1)
+        Choice.objects.create(choice_text="NSP", question=self.question1)
+        UserVote.objects.create(user=self.user_lambda, question=self.question1, has_voted=False)
+
+    def test_user_vote_first_question(self):
+        self.client.force_login(self.user_lambda)
+        url = reverse('polls:vote', args=(self.event.slug, 1))
+        response = self.client.post(url, {'choice': 1})
+        result = json.loads(response.content)
+        self.assertEqual(response.status_code, 200)
+        my_vote = get_object_or_404(UserVote, user=self.user_lambda, question=self.question1)
+        self.assertEqual(my_vote.has_voted, True)
+        my_choice = get_object_or_404(Choice, choice_text="Oui", question=self.question1)
+        self.assertEqual(my_choice.votes, 1)
+        data = {'success': 'OK', 'voted': True}
+        self.assertEqual(result, data)
 
 
 class TestResults(TestCase):
