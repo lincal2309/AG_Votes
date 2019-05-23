@@ -111,7 +111,7 @@ def event(request, event_slug):
     """ Event details page page """
 
     # Define event context
-    event = get_object_or_404(Event, slug=event_slug)
+    event = Event.get_event(event_slug)
     question_list = get_list_or_404(Question, event=event)
     nb_questions = len(question_list)
 
@@ -154,8 +154,21 @@ def get_chart_data(request):
     event_slug = request.GET['event_slug']
     question_no = int(request.GET['question_no'])
 
-    event = get_object_or_404(Event, slug=event_slug)
+    # A-t-on vraiment besoin de récupérer l'événement ?
+    #  => passer event_slug en paramètre des requêtes sur les autres tables
+    event = Event.get_event(event_slug)
     question = get_list_or_404(Question, event=event)[question_no - 1]
+
+    # Modifier table Question pour ajouter un n° d'ordre
+    # Prévoir méthodes de lecture :
+    # - liste des choix d'une question, avec les nombres de votes
+    #    => A partir de l'événement en cours + n° de question
+    # - Nombre de personnes dans EventGroup correspondant à l'événement en cours
+    # 
+    # Il ne devrait plus être nécessaire de récupérer la question
+    # 
+    # nb_votes ne sera plus récupéré en base mais dans la boucle de constitution des données du chart
+
     choice_list = get_list_or_404(Choice, question=question)
     nb_votes = Choice.objects.filter(question=question).aggregate(Sum('votes'))['votes__sum']
     total_votes = EventGroup.objects.filter(event=event).aggregate(Count('user'))['user__count']
@@ -168,6 +181,7 @@ def get_chart_data(request):
 
     i = 0
     for choice in choice_list:
+        # Ajouter le calcul du nombre de votes en ajoutant à chaque boucle les votes de chaque choix
         labels.append(choice.choice_text)
         values.append(choice.votes)
         chart_background_colors.append(background_colors[i])
@@ -191,7 +205,7 @@ def question(request, event_slug, question_no):
     """ Questions details page 
         Manage information display """
 
-    event = get_object_or_404(Event, slug=event_slug)
+    event = Event.get_event(event_slug)
     last_question = False
 
     # Start event - staff only used "Launch event" button
@@ -224,7 +238,7 @@ def vote(request, event_slug, question_no):
 
     choice_id = request.POST['choice']
 
-    event = get_object_or_404(Event, slug=event_slug)
+    event = Event.get_event(event_slug)
     question = get_list_or_404(Question, event=event)[question_no - 1]
     choice = get_object_or_404(Choice, id=choice_id)
     choice.votes += 1
@@ -243,6 +257,6 @@ def vote(request, event_slug, question_no):
 def results(request, event_slug):
     """ Results page """
 
-    event = get_object_or_404(Event, slug=event_slug)
+    event = Event.get_event(event_slug)
     return render(request, 'polls/results.html', locals())
 

@@ -1,9 +1,10 @@
 var vote_form = $('#vote')
 
 function create_chart() {
+    // As the template can either show the result or ask user to vote,
+    // we need to check if the results are shown before actually launch the dedicated function
     if ($('#myChart').length) {
         var ctx = $('#myChart');
-        console.log(ctx)
         var prog_bar = $('#nb_votes');
         var total_votes = 0;
         var nb_votes = 0;
@@ -14,19 +15,24 @@ function create_chart() {
         var borderColor = [];
 
         $.ajax({
+            // Ajax request to look for new data
             method: "GET",
             url: ctx.attr("url-endpoint"),
             data: {event_slug: ctx.attr("event-slug"), question_no: ctx.attr("question-no")},
             success: function(data) {
                 total_votes = data.total_votes;
                 nb_votes = data.nb_votes;
+
+                // Sets the max value for progress bar
                 prog_bar.attr("aria-valuemax", total_votes);
 
+                // If nb votes > quorum (min nb votes for the results to be valid)
+                // then displays the progress bar in green (orange by default)
                 if (nb_votes / total_votes > quorum) {
                     prog_bar.removeClass("bg-warning").addClass("bg-success");
                 }
 
-                // change chart and progress bar display only oif changes occurred
+                // change chart and progress bar display only if changes occurred
                 if (prog_bar.attr("aria-valuenow") !== String(nb_votes)) {
                     prog_bar.attr("aria-valuenow", nb_votes);
                     display_prog = `${nb_votes} / ${total_votes}`;
@@ -51,6 +57,7 @@ function create_chart() {
         })
     
         function setChart(){
+            // Design standard chart.js chart
             var myChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -88,11 +95,14 @@ $(document).ready(function(event) {
 // Activate or deactivate auto-refresh
 $('#switch').on("mousedown", function (e) {
     if ($(this).hasClass("unactive")) {
+        // Activate auto-refresh
+        // At regular interval, launch request to get new data
         $(this).removeClass("unactive").addClass("active");
         IntervalID = setInterval(create_chart, 2000);
         $(this).attr('inter-id', IntervalID)
     }
     else {
+        // Unactivate auto-refresh - Stop regular request
         $(this).removeClass("active").addClass("unactive");
         IntervalID = $(this).attr('inter-id');
         clearInterval(IntervalID);

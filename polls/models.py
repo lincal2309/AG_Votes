@@ -2,6 +2,7 @@
 
 from django.db import models
 from django.contrib.auth.models import User, Group
+from django.shortcuts import get_list_or_404, get_object_or_404
 
 
 class Company(models.Model):
@@ -27,6 +28,10 @@ class Event(models.Model):
 
     def __str__(self):
         return self.event_name
+
+    @classmethod
+    def get_event(cls, event_slug):
+        return get_object_or_404(Event, slug=event_slug)
 
 
 class Question(models.Model):
