@@ -83,8 +83,8 @@ class TestEvent(TestCase):
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
             slug=slugify("Evénement de test" + str(event_date)), company=self.company)
-        self.question1 = Question.objects.create(question_text="Question 1", event=self.event)
-        self.question2 = Question.objects.create(question_text="Question 2", event=self.event)
+        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
+        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
     
     def test_user_staff_event_not_started(self):
         self.client.force_login(self.user_staff)
@@ -150,8 +150,8 @@ class TestQuestion(TestCase):
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
             slug=slugify("Evénement de test" + str(event_date)), company=self.company)
-        self.question1 = Question.objects.create(question_text="Question 1", event=self.event)
-        self.question2 = Question.objects.create(question_text="Question 2", event=self.event)
+        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
+        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
         EventGroup.objects.create(event=self.event, user=self.user_lambda)
         Choice.objects.create(choice_text="Oui", question=self.question1)
         Choice.objects.create(choice_text="Non", question=self.question1)
@@ -162,7 +162,7 @@ class TestQuestion(TestCase):
 
     def test_launch_event(self):
         self.client.force_login(self.user_staff)
-        url = reverse('polls:question', args=(self.event.slug, 0))
+        url = reverse('polls:question', args=(self.event.slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         my_event = get_object_or_404(Event, id=self.event.id)
@@ -179,7 +179,7 @@ class TestQuestion(TestCase):
         self.event.current = True
         self.event.save()
         self.client.force_login(self.user_lambda)
-        url = reverse('polls:question', args=(self.event.slug, 0))
+        url = reverse('polls:question', args=(self.event.slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['question_no'], 1)
@@ -195,7 +195,7 @@ class TestQuestion(TestCase):
         self.event.current = True
         self.event.save()
         self.client.force_login(self.user_lambda)
-        url = reverse('polls:question', args=(self.event.slug, 0))
+        url = reverse('polls:question', args=(self.event.slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['question_no'], 1)
@@ -208,7 +208,7 @@ class TestQuestion(TestCase):
         self.event.current = True
         self.event.save()
         self.client.force_login(self.user_lambda)
-        url = reverse('polls:question', args=(self.event.slug, 1))
+        url = reverse('polls:question', args=(self.event.slug, 2))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['question_no'], 2)
@@ -226,8 +226,8 @@ class TestGetChartData(TestCase):
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
             slug=slugify("Evénement de test" + str(event_date)), current=True, company=self.company)
-        self.question1 = Question.objects.create(question_text="Question 1", event=self.event)
-        self.question2 = Question.objects.create(question_text="Question 2", event=self.event)
+        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
+        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
         EventGroup.objects.create(event=self.event, user=self.user_lambda)
         Choice.objects.create(choice_text="Oui", question=self.question1, votes=3)
         Choice.objects.create(choice_text="Non", question=self.question1, votes=1)
@@ -245,7 +245,15 @@ class TestGetChartData(TestCase):
         bg_colors = [
             'rgba(124, 252, 0, 0.2)',
             'rgba(255, 99, 132, 0.2)',
-            'rgba(255, 159, 64, 0.2)']
+            'rgba(255, 159, 64, 0.2)',
+            'rgba(54, 162, 235, 0.2)',
+            'rgba(75, 192, 192, 0.2)',
+            'rgba(153, 102, 255, 0.2)',
+            'rgba(128, 128, 128, 0.2)',
+            'rgba(255, 206, 86, 0.2)',
+            'rgba(222, 184, 135, 0.2)',
+            'rgba(127, 255, 212, 0.2)'
+        ]
         self.assertEqual(result['backgroundColor'], bg_colors)
 
 class TestVote(TestCase):
@@ -255,8 +263,8 @@ class TestVote(TestCase):
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
             slug=slugify("Evénement de test" + str(event_date)), current=True, company=self.company)
-        self.question1 = Question.objects.create(question_text="Question 1", event=self.event)
-        self.question2 = Question.objects.create(question_text="Question 2", event=self.event)
+        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
+        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
         EventGroup.objects.create(event=self.event, user=self.user_lambda)
         Choice.objects.create(choice_text="Oui", question=self.question1)
         Choice.objects.create(choice_text="Non", question=self.question1)

@@ -1,12 +1,12 @@
 # -*-coding:Utf-8 -*
 
 from django.http import JsonResponse
-from django.shortcuts import render, redirect, reverse, get_list_or_404, get_object_or_404
+from django.shortcuts import render, redirect, reverse
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, Count
+from django.db.models import Sum
 from django.conf import settings
 
 from .models import Company, Event, Question, Choice, UserVote, EventGroup
@@ -101,8 +101,8 @@ def logout_user(request):
 def index(request):
     """ Home page """
 
-    company = Company.objects.get(id=1)
-    next_event_list = get_list_or_404(Event, company=company, event_date__gte=timezone.now())
+    company = Company.get_company(1)
+    next_event_list = Event.get_next_events(company)
     return render(request, 'polls/index.html', locals())
 
 
@@ -112,12 +112,12 @@ def event(request, event_slug):
 
     # Define event context
     event = Event.get_event(event_slug)
-    question_list = get_list_or_404(Question, event=event)
+    question_list = Question.get_question_list(event_slug)
     nb_questions = len(question_list)
 
     # Check if connected user is part of the event and is authorized to vote
     user_can_vote = False
-    if request.user.is_staff or len(EventGroup.objects.filter(event=event, user=request.user)) > 0:
+    if request.user.is_staff or EventGroup.user_in_event_group(event_slug, request.user):
         user_can_vote = True
 
     return render(request, 'polls/event.html', locals())
@@ -154,39 +154,19 @@ def get_chart_data(request):
     event_slug = request.GET['event_slug']
     question_no = int(request.GET['question_no'])
 
-    # A-t-on vraiment besoin de récupérer l'événement ?
-    #  => passer event_slug en paramètre des requêtes sur les autres tables
-    event = Event.get_event(event_slug)
-    question = get_list_or_404(Question, event=event)[question_no - 1]
+    choice_list = Choice.get_choice_list(event_slug, question_no).values('choice_text', 'votes')
+    total_votes = EventGroup.count_total_votes(event_slug)
 
-    # Modifier table Question pour ajouter un n° d'ordre
-    # Prévoir méthodes de lecture :
-    # - liste des choix d'une question, avec les nombres de votes
-    #    => A partir de l'événement en cours + n° de question
-    # - Nombre de personnes dans EventGroup correspondant à l'événement en cours
-    # 
-    # Il ne devrait plus être nécessaire de récupérer la question
-    # 
-    # nb_votes ne sera plus récupéré en base mais dans la boucle de constitution des données du chart
+    labels = [choice['choice_text'] for choice in choice_list]
+    values = [choice['votes'] for choice in choice_list]
+    nb_votes = sum(values)
 
-    choice_list = get_list_or_404(Choice, question=question)
-    nb_votes = Choice.objects.filter(question=question).aggregate(Sum('votes'))['votes__sum']
-    total_votes = EventGroup.objects.filter(event=event).aggregate(Count('user'))['user__count']
+    chart_background_colors = background_colors
+    chart_border_colors = border_colors
 
-
-    labels = []
-    values = []
-    chart_background_colors = []
-    chart_border_colors = []
-
-    i = 0
-    for choice in choice_list:
-        # Ajouter le calcul du nombre de votes en ajoutant à chaque boucle les votes de chaque choix
-        labels.append(choice.choice_text)
-        values.append(choice.votes)
-        chart_background_colors.append(background_colors[i])
-        chart_border_colors.append(border_colors[i])
-        i += 1
+    while len(chart_background_colors) < nb_votes:
+        chart_background_colors += background_colors
+        chart_border_colors += border_colors
 
     data = {
         'nb_votes': nb_votes,
@@ -205,30 +185,26 @@ def question(request, event_slug, question_no):
     """ Questions details page 
         Manage information display """
 
+    # Necessary info for the template
     event = Event.get_event(event_slug)
+    question = Question.get_question(event_slug, question_no)
+    choice_list = Choice.get_choice_list(event_slug, question_no)
     last_question = False
 
     # Start event - staff only used "Launch event" button
     if request.user.is_staff and not event.current:
-        event.current = True
-        event.save()
+        event.set_current()
 
-        # Initialize users votge table - includes proxyholders
-        event_user_list = get_list_or_404(EventGroup, event=event)
-        for event_user in event_user_list:
-            question_list = get_list_or_404(Question, event=event)
-            for question in question_list:
-                UserVote.objects.create(user=event_user.user, question=question)
+        # Initialize users vote table - includes proxyholders
+        UserVote.init_uservotes(event_slug)
 
-
-    question = get_list_or_404(Question, event=event)[question_no]
+    # Gather user's info about the current question
     if not request.user.is_staff:
-        user_vote = UserVote.objects.get(user=request.user, question=question)
-    question_no += 1
+        user_vote = UserVote.get_user_vote(request.user, question_no)
 
-    if question_no == len(get_list_or_404(Question, event=event)):
+    # Check if current question is the last one
+    if question_no == len(Question.get_question_list(event_slug)):
         last_question = True
-    choice_list = get_list_or_404(Choice, question=question)
 
     return render(request, 'polls/question.html', locals())
         
@@ -238,14 +214,10 @@ def vote(request, event_slug, question_no):
 
     choice_id = request.POST['choice']
 
-    event = Event.get_event(event_slug)
-    question = get_list_or_404(Question, event=event)[question_no - 1]
-    choice = get_object_or_404(Choice, id=choice_id)
-    choice.votes += 1
-    choice.save()
-    user_vote = get_object_or_404(UserVote, question=question, user=request.user)    # A modifier pour la gestion des pouvoirs
-    user_vote.has_voted = True
-    user_vote.save()
+    # Register user's vote
+    Choice.add_vote(choice_id)
+    # Update user and set has_voted = True
+    user_vote = UserVote.set_vote(question_no, request.user)
 
     data = {'success': 'OK', 'voted': user_vote.has_voted}
 
