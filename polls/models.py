@@ -24,10 +24,16 @@ class Company(models.Model):
 
 
 class Event(models.Model):
+    rules = [
+        ('MAJ', 'Majorité'),
+        ('PROP', 'Proportionnelle')
+    ]
     event_name = models.CharField(max_length=200)
     event_date = models.DateField()
     slug = models.SlugField(unique=True)
     current = models.BooleanField(default=False)
+    quorum = models.IntegerField(default=33)
+    rule = models.CharField(max_length=5, choices=rules, default='MAJ')
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
 
     class Meta:
@@ -93,9 +99,19 @@ class Choice(models.Model):
         choice.save()
 
 
+class UserGroup(models.Model):
+    group = models.OneToOneField(Group, on_delete=models.CASCADE)
+    vote_weight = models.IntegerField(default=0)
+    
+    def __str__(self):
+        return self.group.name
+
+    class Meta:
+        verbose_name = "Groupe"
+
 class EventGroup(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
-    # group = models.ForeignKey(Group, on_delete=models.CASCADE)   # - Prévoir relation  ManyToMany
+    # groups = models.ManyToManyField(UserGroup, on_delete=models.CASCADE)   # - Prévoir relation  ManyToMany
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class Meta:
@@ -105,6 +121,10 @@ class EventGroup(models.Model):
     def __str__(self):
         return "Groupes associés à l'événement " + self.event.event_name
 
+    @classmethod
+    def get_user_list(cls, event_slug):
+        return cls.objects.filter(event__slug=event_slug)
+    
     @classmethod
     def count_total_votes(cls, event_slug):
         # Returns the number of users supposed to vote for the related event
@@ -138,15 +158,14 @@ class UserVote(models.Model):
 
     @classmethod
     def init_uservotes(cls, event_slug):
-        event_user_list = get_list_or_404(EventGroup, event__slug=event_slug)
-        question_list = get_list_or_404(Question, event__slug=event_slug)
+        event_user_list = EventGroup.get_user_list(event_slug)
+        question_list = Question.get_question_list(event_slug)
         for event_user in event_user_list:
             for question in question_list:
                 cls.objects.create(user=event_user.user, question=question)
 
-    
     @classmethod
-    def set_vote(cls, question_no, user):
+    def set_vote(cls, user, question_no):
         # Filter to get a list to be able to use update method
         user_vote = cls.objects.filter(question__question_no=question_no, user=user)
         user_vote.update(has_voted=True, date_vote=timezone.now())

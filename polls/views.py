@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 from django.http import JsonResponse
-from django.shortcuts import render, redirect, reverse
+from django.shortcuts import render, redirect, reverse, get_list_or_404
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
@@ -217,7 +217,7 @@ def vote(request, event_slug, question_no):
     # Register user's vote
     Choice.add_vote(choice_id)
     # Update user and set has_voted = True
-    user_vote = UserVote.set_vote(question_no, request.user)
+    user_vote = UserVote.set_vote(request.user, question_no)
 
     data = {'success': 'OK', 'voted': user_vote.has_voted}
 
