@@ -2,17 +2,11 @@
 
 {% load static %}
 
-{% block head %}
-    <head>
-        <!-- {% if user.is_staff %}
-            <meta http-equiv="refresh" content="5" />
-        {% endif %} -->
-    </head>
-{% endblock %}
 
 {% block content %}
 
     <div class="container">
+        <!-- General information about currect question -->
         <div class="row">
             <div class="col-sm-12">
                 <h1 class="text-center">{{ event.event_name }} - {{ event.event_date|date:"d/m/Y" }}</h1>
@@ -24,22 +18,27 @@
                 <p class="text-justify pt-3">{{ question.question_text }}</p>
             </div>
         </div>
+
         {% if user.is_staff %}
+        <!-- For staff users, display votes' results -->
             <div class="row align-items-center pt-3">
                 <div class="col-sm-6">
+                    <!-- Chart showing votes' results -->
                     <canvas id="myChart" url-endpoint="{% url 'polls:chart_data' %}" event-slug="{{ event.slug }}" question-no="{{ question_no }}" ></canvas>
                 </div>
                 <div class="offset-sm-1 col-sm-3">
+                    <!-- Progress bar showing nb votes vs total expected votes (i.e. nb users who should vote) -->
                     <h4 class="text-center pb-4">Votants</h4>
                     <div class="progress" style="height: 20px;">
                         <div id="nb_votes" class="progress-bar bg-warning" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                 </div>
             </div>
+
         {% else %}
+        <!-- For non-staff users, present votes' options -->
             <div class="row align-items-center pt-3">
                 <div class="offset-sm-5 col-sm-2">
-                    <!-- <form id="vote" action='.' data-url='{% url 'polls:vote' event.slug question_no %}' method="post"> -->
                     <form id="vote" action='.' method="post" data-url='{% url 'polls:vote' event.slug question_no %}' data-event="{{ event.slug }}" data-question="{{ question_no }}">
                     {% csrf_token %}
                         {% for choice in choice_list %}
@@ -51,19 +50,28 @@
                 </div>
             </div>
         {% endif %}
+
     </div>
 
     <div class="offset-sm-4 col-sm-4 text-center page-btn">
+        <!-- *************************************************** -->
+        <!-- TO DO : allow staff to go back to previous question -->
+        <!-- {% if user.is_staff and question_no > 1 %}
+            <a id="next-btn" class="btn btn-secondary" type="button" href="{% url 'polls:question' event.slug question_no %}">Résolution suivante</a>
+        {% endif %} -->
+
+        <!-- Button to go to next question if any others, or go to global results page -->
         {% if last_question %}
             <a class="btn btn-secondary" type="button" href="{% url 'polls:results' event.slug %}">Résultats</a>
         {% elif user_vote.has_voted or user.is_staff %}
-            <a id="next-btn" class="btn btn-secondary" type="button" href="{% url 'polls:question' event.slug question_no %}">Résolution suivante</a>
+            <a id="next-btn" class="btn btn-secondary" type="button" href="{% url 'polls:question' event.slug question_no|add:'1' %}">Résolution suivante</a>
         {% else %}
-            <a id="next-btn" class="btn btn-secondary disabled" type="button" href="{% url 'polls:question' event.slug question_no %}">Résolution suivante</a>
+            <!-- In this case, user is non-staff member and has not voted yet : button disabled -->
+            <a id="next-btn" class="btn btn-secondary disabled" type="button" href="{% url 'polls:question' event.slug question_no|add:'1' %}">Résolution suivante</a>
         {% endif %}
     </div>
 
-    <!-- Modal for user messages -->
+    <!-- Modal for user messages (vote acknowledgement) -->
     <div class="modal fade" id="voteOK" tabindex="-1" role="dialog" aria-labelledby="voteOK" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
