@@ -10,6 +10,7 @@
         <div class="row">
             <div class="col-sm-12">
                 <h1 class="text-center">{{ event.event_name }} - {{ event.event_date|date:"d/m/Y" }}</h1>
+                <p id="quorum" data-quorum="{{ event.quorum }}" hidden></p>
             </div>
         </div>
         <div class="row">
@@ -21,19 +22,38 @@
 
         {% if user.is_staff %}
         <!-- For staff users, display votes' results -->
+            <!-- Global results -->
             <div class="row align-items-center pt-3">
+                <h3> Résultats </h3>
                 <div class="col-sm-6">
                     <!-- Chart showing votes' results -->
-                    <canvas id="myChart" url-endpoint="{% url 'polls:chart_data' %}" event-slug="{{ event.slug }}" question-no="{{ question_no }}" ></canvas>
+                    <canvas id="global_chart" url-endpoint="{% url 'polls:chart_data' %}" event-slug="{{ event.slug }}" question-no="{{ question_no }}" ></canvas>
                 </div>
                 <div class="offset-sm-1 col-sm-3">
                     <!-- Progress bar showing nb votes vs total expected votes (i.e. nb users who should vote) -->
                     <h4 class="text-center pb-4">Votants</h4>
                     <div class="progress" style="height: 20px;">
-                        <div id="nb_votes" class="progress-bar bg-warning" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        <div id="global_nb_votes" class="progress-bar bg-warning" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                 </div>
             </div>
+            <!-- Groups results -->
+            {% for evt_group in evt_group_list %}
+                <div class="row align-items-center pt-3">
+                    <h3> {{ evt_group.evt_group.name }} </h3>
+                    <div class="col-sm-6">
+                        <!-- Chart showing votes' results -->
+                        <canvas id="chart{{ forloop.counter }}"></canvas>
+                    </div>
+                    <div class="offset-sm-1 col-sm-3">
+                        <!-- Progress bar showing nb votes vs total expected votes (i.e. nb users who should vote) -->
+                        <h4 class="text-center pb-4">Votants</h4>
+                        <div class="progress" style="height: 20px;">
+                            <div id="nb_votes{{ forloop.counter }}" class="progress-bar bg-warning" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
 
         {% else %}
         <!-- For non-staff users, present votes' options -->

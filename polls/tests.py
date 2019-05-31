@@ -32,15 +32,6 @@ def create_company(name):
 # Predefined mock for models' methods
 # ===================================
 
-def mock_get_company(id):
-    return Company(id=1, company_name='Société de test', logo="logo.png")
-
-def mock_get_next_events(company):
-    future_date = timezone.now() + datetime.timedelta(days=1)
-    return Event(id=2, event_name="Evénement futur", event_date=future_date, 
-        slug=slugify("Evénement futur" + str(future_date)), company=company)
-
-
 def mock_get_event_user_list(event_slug):
     user1 = create_user('user1', False)
     user2 = create_user('user2', False)
@@ -274,16 +265,10 @@ class TestIndex(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('login', response.url)
 
-    # @mock.patch('polls.models.Event.get_next_events')
-    # @mock.patch('polls.models.Company.get_company')
-    # def test_display_home(self, mock_company, mock_next_events):
     def test_display_home(self):
         # Display only future events
         user = create_user('toto', False)
         self.client.force_login(user)
-
-        # mock_company.return_value = mock_get_company(1)
-        # mock_next_events.return_value = mock_get_next_events(mock_company.return_value)
 
         response = self.client.get(reverse('polls:index'))
         self.assertEqual(response.status_code, 200)

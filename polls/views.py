@@ -3,13 +3,13 @@
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, reverse, get_list_or_404
 from django.utils import timezone
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.conf import settings
 
-from .models import Company, Event, Question, Choice, UserVote, EventGroup
+from .models import Company, Event, Question, Choice, UserVote, EventGroup, GroupVote
 from .forms import UserForm
 
 debug = settings.DEBUG
@@ -31,8 +31,6 @@ def create_user(request):
             else:
                 User.objects.create_user(username=username, 
                     password=password)
-                user = authenticate(username=username, password=password)
-                login(request, user)
                 return redirect(reverse('polls:index'))
     else:
         form = UserForm()
@@ -59,6 +57,7 @@ def reinit(request):
             choice.votes = 0
             choice.save()
 
+    GroupVote.objects.filter(eventgroup__event=event).delete()
     # Reinitialize complete view
     nb_questions = len(question_list)
 
@@ -117,7 +116,7 @@ def event(request, event_slug):
 
     # Check if connected user is part of the event and is authorized to vote
     user_can_vote = False
-    if request.user.is_staff or EventGroup.user_in_event_group(event_slug, request.user):
+    if request.user.is_staff or UserVote.user_in_event(event_slug, request.user):
         user_can_vote = True
 
     return render(request, 'polls/event.html', locals())
@@ -154,25 +153,77 @@ def get_chart_data(request):
     event_slug = request.GET['event_slug']
     question_no = int(request.GET['question_no'])
 
-    choice_list = Choice.get_choice_list(event_slug, question_no).values('choice_text', 'votes')
-    total_votes = EventGroup.count_total_votes(event_slug)
+    event = Event.get_event(event_slug)
+    evt_group_list = EventGroup.get_list(event_slug)
 
-    labels = [choice['choice_text'] for choice in choice_list]
-    values = [choice['votes'] for choice in choice_list]
-    nb_votes = sum(values)
+    # Initialize charts variables
+    group_data = {}
+    nb_groups = 0
 
+    # Initialize global results data
+    global_choice_list = Choice.get_choice_list(event_slug, question_no).values('choice_text', 'votes')
+    group_vote = {}
+    global_total_votes = 0
+    global_nb_votes = 0
+    for choice in global_choice_list:
+        group_vote[choice['choice_text']] = 0
+
+    # Gather votes info for each group
+    for evt_group in evt_group_list:
+        nb_groups += 1
+        total_votes = Group.objects.filter(eventgroup=evt_group).aggregate(Count('user'))['user__count']
+    
+        choice_list = GroupVote.get_vote_list(evt_group, question_no).values('choice__choice_text', 'votes')
+
+        labels = [choice['choice__choice_text'] for choice in choice_list]
+        values = [choice['votes'] for choice in choice_list]
+        nb_votes = sum(values)
+
+        chart_nb = "chart" + str(nb_groups)
+        group_data[chart_nb] = {
+            'nb_votes': nb_votes,
+            'total_votes': total_votes,
+            'labels': labels,
+            'values': values,
+            }
+
+        # Calculate aggregate results
+        # Use if / elif to ease adding future rules
+        global_total_votes += total_votes
+        global_nb_votes += nb_votes
+        if event.rule == 'MAJ':
+            max_val = values.index(max(values))
+            group_vote[labels[max_val]] += evt_group.vote_weight
+        elif event.rule == 'PROP':
+            for i, choice in enumerate(labels):
+                group_vote[choice] += values[i] * evt_group.vote_weight / 100
+
+    # Setup global info for charts
+    global_labels = []
+    global_values = []
+    for label, value in group_vote.items():
+        global_labels.append(label)
+        global_values.append(value)
+
+    group_data['global'] = {
+        'nb_votes': global_nb_votes,
+        'total_votes': global_total_votes,
+        'labels': global_labels,
+        'values': global_values,
+        }
+    
+    
     chart_background_colors = background_colors
     chart_border_colors = border_colors
 
+    # Extends color lists to fit with nb values to display
     while len(chart_background_colors) < nb_votes:
         chart_background_colors += background_colors
         chart_border_colors += border_colors
 
     data = {
-        'nb_votes': nb_votes,
-        'total_votes': total_votes,
-        'labels': labels,
-        'values': values,
+        'chart_data': group_data,
+        'nb_charts': nb_groups,
         'backgroundColor': chart_background_colors,
         'borderColor': chart_border_colors,
         }
@@ -187,20 +238,21 @@ def question(request, event_slug, question_no):
 
     # Necessary info for the template
     event = Event.get_event(event_slug)
+    evt_group_list = EventGroup.get_list(event_slug)
     question = Question.get_question(event_slug, question_no)
     choice_list = Choice.get_choice_list(event_slug, question_no)
     last_question = False
 
-    # Start event - staff only used "Launch event" button
+    # Start event - occur when staff only used "Launch event" button
     if request.user.is_staff and not event.current:
-        event.set_current()
-
         # Initialize users vote table - includes proxyholders
         UserVote.init_uservotes(event_slug)
 
+        event.set_current()
+
     # Gather user's info about the current question
     if not request.user.is_staff:
-        user_vote = UserVote.get_user_vote(request.user, question_no)
+        user_vote = UserVote.get_user_vote(event_slug, request.user, question_no)
 
     # Check if current question is the last one
     if question_no == len(Question.get_question_list(event_slug)):
@@ -213,11 +265,7 @@ def vote(request, event_slug, question_no):
     """ Manage users' votes """
 
     choice_id = request.POST['choice']
-
-    # Register user's vote
-    Choice.add_vote(choice_id)
-    # Update user and set has_voted = True
-    user_vote = UserVote.set_vote(request.user, question_no)
+    user_vote = UserVote.set_vote(event_slug, request.user, question_no, choice_id)
 
     data = {'success': 'OK', 'voted': user_vote.has_voted}
 

@@ -3,12 +3,12 @@ var vote_form = $('#vote')
 function create_chart() {
     // As the template can either show the result or ask user to vote,
     // we need to check if the results are shown before actually launch the dedicated function
-    if ($('#myChart').length) {
-        var ctx = $('#myChart');
-        var prog_bar = $('#nb_votes');
+    if ($('#global_chart').length) {
+        var ctx = $('#global_chart');
+        var prog_bar = $('#global_nb_votes');
         var total_votes = 0;
         var nb_votes = 0;
-        var quorum = 0.5;
+        var quorum = parseInt($('#quorum').attr("data-quorum")) / 100;
         var labels = [];
         var values = [];
         var backgroundColor = [];
@@ -20,8 +20,12 @@ function create_chart() {
             url: ctx.attr("url-endpoint"),
             data: {event_slug: ctx.attr("event-slug"), question_no: ctx.attr("question-no")},
             success: function(data) {
-                total_votes = data.total_votes;
-                nb_votes = data.nb_votes;
+                charts_data = data.chart_data;
+                nb_charts = data.nb_charts;
+
+                // Global results chart
+                total_votes = charts_data['global']['total_votes'];
+                nb_votes = charts_data['global']['nb_votes'];
 
                 // Sets the max value for progress bar
                 prog_bar.attr("aria-valuemax", total_votes);
@@ -41,13 +45,49 @@ function create_chart() {
                     display_width = `width: ${progress}%`;
                     prog_bar.attr("style", display_width);
 
-                    labels = data.labels;
-                    values = data.values;
+                    labels = charts_data['global']['labels'];
+                    values = charts_data['global']['values'];
                     backgroundColor = data.backgroundColor;
                     borderColor = data.borderColor;
             
                     setChart();
+                }
+
+                // Group results charts
+                for (var i = 1; i <= nb_charts; i++) {
+                    ctx = $(`#chart${i}`);
+                    prog_bar = $(`#nb_votes${i}`);
+
+                    total_votes = charts_data[`chart${i}`]['total_votes'];
+                    nb_votes = charts_data[`chart${i}`]['nb_votes'];
+
+                    // Sets the max value for progress bar
+                    prog_bar.attr("aria-valuemax", total_votes);
+
+                    // If nb votes > quorum (min nb votes for the results to be valid)
+                    // then displays the progress bar in green (orange by default)
+                    if (nb_votes / total_votes > quorum) {
+                        prog_bar.removeClass("bg-warning").addClass("bg-success");
+                    }
+
+                    // change chart and progress bar display only if changes occurred
+                    if (prog_bar.attr("aria-valuenow") !== String(nb_votes)) {
+                        prog_bar.attr("aria-valuenow", nb_votes);
+                        display_prog = `${nb_votes} / ${total_votes}`;
+                        prog_bar.text(display_prog);
+                        progress = (nb_votes / total_votes) * 100;
+                        display_width = `width: ${progress}%`;
+                        prog_bar.attr("style", display_width);
+
+                        labels = charts_data[`chart${i}`]['labels'];
+                        values = charts_data[`chart${i}`]['values'];
+                        backgroundColor = data.backgroundColor;
+                        borderColor = data.borderColor;
+                
+                        setChart();
         
+                    }
+
                 }
             },
             error: function(error_data){
@@ -98,7 +138,7 @@ $('#switch').on("mousedown", function (e) {
         // Activate auto-refresh
         // At regular interval, launch request to get new data
         $(this).removeClass("unactive").addClass("active");
-        IntervalID = setInterval(create_chart, 2000);
+        IntervalID = setInterval(create_chart, 5000);
         $(this).attr('inter-id', IntervalID)
     }
     else {
@@ -143,7 +183,7 @@ $.ajaxSetup({
 
 
 
-// Catch user_choice
+// Catch user's choice
 var choices = $('[name="choice"]')
 var user_vote = 0
 for (var i = 0; i < choices.length; i++) {
@@ -152,11 +192,13 @@ for (var i = 0; i < choices.length; i++) {
     })
 }
 
-// Ajax POST request to send data
+// Ajax POST request to send user's vote choice
 vote_form.on("submit", function(event) {
     event.preventDefault();
+    // Data sent only if user actually voted 
     if (user_vote > 0) {
         post_url = vote_form.attr('data-url');
+        console.log(post_url)
         data = {choice: user_vote, event: vote_form.attr('data-event'), question: vote_form.attr('data-question')}
         $.ajax({
             method: "POST",
@@ -168,6 +210,7 @@ vote_form.on("submit", function(event) {
     }
 
     function handleSuccess(data, textStatus, jqXHR){
+        // Reinitialize data and set buttons's status accordingly
         user_vote = 0;
         $('[name="choice"]').attr('disabled', true);
         $('#submit-btn').attr('disabled', true);

@@ -24,6 +24,7 @@ class Company(models.Model):
 
 
 class Event(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
     rules = [
         ('MAJ', 'Majorité'),
         ('PROP', 'Proportionnelle')
@@ -34,7 +35,6 @@ class Event(models.Model):
     current = models.BooleanField(default=False)
     quorum = models.IntegerField(default=33)
     rule = models.CharField(max_length=5, choices=rules, default='MAJ')
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = "Evénement"
@@ -49,16 +49,16 @@ class Event(models.Model):
     @classmethod
     def get_next_events(cls, company):
         return cls.objects.filter(company=company, event_date__gte=timezone.now())
-    
+
     def set_current(self):
         self.current = True
         self.save()
 
 
 class Question(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
     question_text = models.CharField(max_length=200)
     question_no = models.IntegerField()
-    event = models.ForeignKey(Event, on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = "Question"
@@ -68,7 +68,7 @@ class Question(models.Model):
     
     @classmethod
     def get_question_list(cls, event_slug):
-        return cls.objects.filter(event__slug=event_slug)
+        return cls.objects.filter(event__slug=event_slug).order_by('question_no')
 
     @classmethod
     def get_question(cls, event_slug, question_no):
@@ -76,9 +76,10 @@ class Question(models.Model):
 
 
 class Choice(models.Model):
-    choice_text = models.CharField(max_length=200)
-    votes = models.IntegerField(default=0)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    choice_text = models.CharField(max_length=200)
+    choice_no = models.IntegerField()
+    votes = models.IntegerField(default=0)
 
     class Meta:
         verbose_name = "Choix"
@@ -90,52 +91,32 @@ class Choice(models.Model):
     @classmethod
     def get_choice_list(cls, event_slug, question_no):
         return Choice.objects.filter(question__event__slug=event_slug,
-            question__question_no=question_no)
-
-    @classmethod
-    def add_vote(cls, id):
-        choice = cls.objects.get(id=id)
-        choice.votes += 1
-        choice.save()
+            question__question_no=question_no).order_by('choice_no')
 
 
-class UserGroup(models.Model):
-    group = models.OneToOneField(Group, on_delete=models.CASCADE)
+class EventGroup(models.Model):
+    evt_group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True)
     vote_weight = models.IntegerField(default=0)
     
     def __str__(self):
-        return self.group.name
+        return self.evt_group.name
 
     class Meta:
-        verbose_name = "Groupe"
-
-class EventGroup(models.Model):
-    event = models.ForeignKey(Event, on_delete=models.CASCADE)
-    # groups = models.ManyToManyField(UserGroup, on_delete=models.CASCADE)   # - Prévoir relation  ManyToMany
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-
-    class Meta:
-        verbose_name = "Evénements : groupes d'utilisateurs"
-        verbose_name_plural = "Evénements : groupes d'utilisateurs"
-
-    def __str__(self):
-        return "Groupes associés à l'événement " + self.event.event_name
+        verbose_name = "Groupe d'utilisateurs"
+        verbose_name_plural = "Groupes d'utilisateurs"
 
     @classmethod
-    def get_user_list(cls, event_slug):
+    def get_list(cls, event_slug):
         return cls.objects.filter(event__slug=event_slug)
-    
-    @classmethod
-    def count_total_votes(cls, event_slug):
-        # Returns the number of users supposed to vote for the related event
-        return cls.objects.filter(event__slug=event_slug).aggregate(Count('user'))['user__count']
 
-    @classmethod
-    def user_in_event_group(cls, event_slug, user):
-        user_in_group = False
-        if len(cls.objects.filter(event__slug=event_slug, user=user)) > 0:
-            user_in_group = True
-        return user_in_group
+    # @classmethod
+    # def count_total_votes(self):
+        # ===============================================
+        # A MODIFIER POUR PRENDRE EN COMPTE LES GROUPES ?
+        # ===============================================
+        # Returns the number of users supposed to vote for the related event
+        # return self.objects.filter(event__slug=event_slug).aggregate(Count('user'))['user__count']
 
 
 class UserVote(models.Model):
@@ -150,25 +131,60 @@ class UserVote(models.Model):
         verbose_name_plural = "Votes utilisateurs et pouvoirs"
 
     def __str__(self):
-        return "Vote de " + self.user.username + " à la question " + self.question.question_text
+        return "Vote de " + self.user.username
 
     @classmethod
-    def get_user_vote(cls, user, question_no):
-        return cls.objects.get(user=user, question__question_no=question_no)
+    def get_user_vote(cls, event_slug, user, question_no):
+        return cls.objects.get(user=user, question__event__slug=event_slug, question__question_no=question_no)
 
     @classmethod
     def init_uservotes(cls, event_slug):
-        event_user_list = EventGroup.get_user_list(event_slug)
+        event_user_list = [user for user in User.objects.filter(groups__eventgroup__event__slug=event_slug)]
         question_list = Question.get_question_list(event_slug)
-        for event_user in event_user_list:
-            for question in question_list:
-                cls.objects.create(user=event_user.user, question=question)
+        user_group_list = EventGroup.objects.filter(event__slug=event_slug)
+        for question in question_list:
+            for event_user in event_user_list:
+                cls.objects.create(user=event_user, question=question)
+            choice_list = Choice.get_choice_list(event_slug, question.question_no)
+            for choice in choice_list:
+                for usr_group in user_group_list:
+                    GroupVote.objects.create(eventgroup=usr_group, choice=choice)
 
     @classmethod
-    def set_vote(cls, user, question_no):
-        # Filter to get a list to be able to use update method
-        user_vote = cls.objects.filter(question__question_no=question_no, user=user)
-        user_vote.update(has_voted=True, date_vote=timezone.now())
-        # Only one lement is in the list : save the update and return the single element
-        user_vote[0].save()
-        return user_vote[0]
+    def user_in_event(cls, event_slug, user):
+        user_in_group = False
+        if len(cls.objects.filter(user__groups__eventgroup__event__slug=event_slug, user=user)) > 0:
+            user_in_group = True
+        return user_in_group
+
+    @classmethod
+    def set_vote(cls, event_slug, user, question_no, choice_id):
+        user_vote = cls.get_user_vote(event_slug, user, question_no)
+        user_vote.has_voted, user_vote.date_vote = True, timezone.now()
+        user_vote.save()
+        GroupVote.add_vote(user, choice_id)
+        return user_vote
+
+class GroupVote(models.Model):
+    eventgroup = models.ForeignKey(EventGroup, on_delete=models.CASCADE)
+    choice = models.ForeignKey(Choice, on_delete=models.CASCADE)
+    votes = models.IntegerField(default=0)
+    
+    def __str__(self):
+        return "Votes du groupe " + self.eventgroup.evt_group.name + " pour le choix " + str(self.choice.choice_no) + " de la question " + str(self.choice.question.question_no)
+
+    class Meta:
+        verbose_name = 'GroupVote'
+        verbose_name_plural = 'GroupVotes'
+
+    @classmethod
+    def add_vote(cls, user, choice_id):
+        group_choice = cls.objects.get(eventgroup__evt_group__user=user, choice__id=choice_id)
+        group_choice.votes += 1
+        group_choice.save()
+    
+    @classmethod
+    def get_vote_list(cls, evt_group, question_no):
+        return cls.objects.filter(eventgroup=evt_group,
+            choice__question__question_no=question_no).order_by('choice__choice_no')
+
