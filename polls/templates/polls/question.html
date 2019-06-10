@@ -40,7 +40,7 @@
             <!-- Groups results -->
             {% for evt_group in evt_group_list %}
                 <div class="row align-items-center pt-3">
-                    <h3> {{ evt_group.evt_group.name }} </h3>
+                    <h3> {{ evt_group.group_name }} </h3>
                     <div class="col-sm-6">
                         <!-- Chart showing votes' results -->
                         <canvas id="chart{{ forloop.counter }}"></canvas>
@@ -56,16 +56,20 @@
             {% endfor %}
 
         {% else %}
-        <!-- For non-staff users, present votes' options -->
+            <!-- For non-staff users, display votes' options -->
             <div class="row align-items-center pt-3">
-                <div class="offset-sm-5 col-sm-2">
+                <div class="offset-sm-4 col-sm-4">
                     <form id="vote" action='.' method="post" data-url='{% url 'polls:vote' event.slug question_no %}' data-event="{{ event.slug }}" data-question="{{ question_no }}">
                     {% csrf_token %}
                         {% for choice in choice_list %}
                             <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}" />
                             <label for="choice{{ forloop.counter }}">{{ choice.choice_text }}</label><br>
                         {% endfor %}
-                        <input type="submit" id="submit-btn" class="btn mt-3 {% if user_vote.has_voted %}btn-grey" disabled{% else %}btn-success"{% endif %} value="Voter" />
+                        <p id="nb_votes" class="text-center">Vous disposez de {{ user_vote.nb_user_votes }} vote{{ user_vote.nb_user_votes|pluralize }}</p>
+                        {% if user_vote.nb_user_votes > 1 %}
+                            <p id="nb_proc" class="text-center">Vous avez reçu {{ user_vote.nb_user_votes|add:"-1" }} procuration{{ user_vote.nb_user_votes|add:"-1"|pluralize }}</p>
+                        {% endif %}
+                        <input type="submit" id="submit-btn" class="btn mt-3 {% if user_vote.nb_user_votes == 0 %}btn-grey" disabled{% else %}btn-success"{% endif %} value="Voter" />
                     </form>
                 </div>
             </div>

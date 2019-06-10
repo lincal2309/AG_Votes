@@ -17,9 +17,11 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.static import static
 from django.conf import settings
+from polls.admin import admin_site
 
 urlpatterns = [
     path('polls/', include('polls.urls')),
+    path('myadmin/', admin_site.urls, name='polls_admin'),
     path('admin/', admin.site.urls, name='admin'),
 ]
 

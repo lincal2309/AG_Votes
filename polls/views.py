@@ -8,11 +8,29 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count
 from django.conf import settings
+from django.core.mail import EmailMessage, send_mail
+import json
 
-from .models import Company, Event, Question, Choice, UserVote, EventGroup, GroupVote
+from .models import Company, Event, Question, Choice, UserVote, EventGroup, Result, Procuration
 from .forms import UserForm
 
 debug = settings.DEBUG
+
+
+# Global functions
+def init_event(event):
+    UserVote.init_uservotes(event)
+    event.set_current()
+
+def send_email_info(recipient_address):
+    """ Send email to a recipient """
+    subject = "Test envoi mail"
+    message = "Corps du message de test"
+    sender = "gressinc@gmail.com"
+    cc_dest = "lincal1@free.fr"
+    # email = (subject, message, sender, [recipient_address])
+    send_mail(subject=subject, message=message, from_email=sender, recipient_list=[recipient_address])
+    
 
 #  User management views
 def create_user(request):
@@ -31,7 +49,7 @@ def create_user(request):
             else:
                 User.objects.create_user(username=username, 
                     password=password)
-                return redirect(reverse('polls:index'))
+                # return redirect(reverse('polls:index'))
     else:
         form = UserForm()
 
@@ -48,21 +66,20 @@ def reinit(request):
     event.current = False
     event.save()
 
+    Procuration.objects.filter(event=event).delete()
     question_list = get_list_or_404(Question, event=event)
+
 
     # Resets users vote status
     for question in question_list:
         UserVote.objects.filter(question=question).delete()
-        for choice in get_list_or_404(Choice, question=question):
-            choice.votes = 0
-            choice.save()
+        Result.objects.filter(question=question).delete()
 
-    GroupVote.objects.filter(eventgroup__event=event).delete()
     # Reinitialize complete view
     nb_questions = len(question_list)
 
     user_can_vote = False
-    if request.user.is_staff or len(get_list_or_404(EventGroup, event=event, user=request.user)) > 0:
+    if EventGroup.user_in_event(event.slug, request.user):
         user_can_vote = True
 
     return render(request, 'polls/event.html', locals())
@@ -116,10 +133,50 @@ def event(request, event_slug):
 
     # Check if connected user is part of the event and is authorized to vote
     user_can_vote = False
-    if request.user.is_staff or UserVote.user_in_event(event_slug, request.user):
+    if EventGroup.user_in_event(event_slug, request.user):
         user_can_vote = True
 
+        # Get user's proxy status
+        proxy_list, user_proxy, user_proxy_list = Procuration.get_proxy_status(event_slug, request.user)
+
     return render(request, 'polls/event.html', locals())
+
+
+@login_required
+def question(request, event_slug, question_no):
+    """ Questions details page 
+        Manage information display """
+
+    # Necessary info for the template
+    event = Event.get_event(event_slug)
+    evt_group_list = EventGroup.get_list(event_slug)
+    question = Question.get_question(event_slug, question_no)
+    choice_list = Choice.get_choice_list(event_slug)
+    last_question = False
+
+    # Start event - occur when staff only used "Launch event" button
+    if request.user.is_staff and not event.current:
+        # Initialize users vote & results table
+        init_event(event)
+
+    # Gather user's info about the current question
+    if not request.user.is_staff:
+        user_vote = UserVote.get_user_vote(event_slug, request.user, question_no)
+
+    # Check if current question is the last one
+    if question_no == len(Question.get_question_list(event_slug)):
+        last_question = True
+
+    return render(request, 'polls/question.html', locals())
+        
+
+@login_required
+def results(request, event_slug):
+    """ Results page """
+
+    event = Event.get_event(event_slug)
+    return render(request, 'polls/results.html', locals())
+
 
 def get_chart_data(request):
     """ Gather and send information to build charts via ajax get request """
@@ -161,7 +218,7 @@ def get_chart_data(request):
     nb_groups = 0
 
     # Initialize global results data
-    global_choice_list = Choice.get_choice_list(event_slug, question_no).values('choice_text', 'votes')
+    global_choice_list = Choice.get_choice_list(event_slug).values('choice_text', 'votes')
     group_vote = {}
     global_total_votes = 0
     global_nb_votes = 0
@@ -171,9 +228,9 @@ def get_chart_data(request):
     # Gather votes info for each group
     for evt_group in evt_group_list:
         nb_groups += 1
-        total_votes = Group.objects.filter(eventgroup=evt_group).aggregate(Count('user'))['user__count']
+        total_votes = EventGroup.objects.filter(id=evt_group.id).aggregate(Count('users'))['users__count']
     
-        choice_list = GroupVote.get_vote_list(evt_group, question_no).values('choice__choice_text', 'votes')
+        choice_list = Result.get_vote_list(evt_group, question_no).values('choice__choice_text', 'votes', 'group_weight')
 
         labels = [choice['choice__choice_text'] for choice in choice_list]
         values = [choice['votes'] for choice in choice_list]
@@ -191,12 +248,13 @@ def get_chart_data(request):
         # Use if / elif to ease adding future rules
         global_total_votes += total_votes
         global_nb_votes += nb_votes
+        weight = choice_list[0]['group_weight']
         if event.rule == 'MAJ':
             max_val = values.index(max(values))
-            group_vote[labels[max_val]] += evt_group.vote_weight
+            group_vote[labels[max_val]] += weight
         elif event.rule == 'PROP':
             for i, choice in enumerate(labels):
-                group_vote[choice] += values[i] * evt_group.vote_weight / 100
+                group_vote[choice] += values[i] * weight / 100
 
     # Setup global info for charts
     global_labels = []
@@ -231,52 +289,60 @@ def get_chart_data(request):
     return JsonResponse(data)
 
 
-@login_required
-def question(request, event_slug, question_no):
-    """ Questions details page 
-        Manage information display """
-
-    # Necessary info for the template
-    event = Event.get_event(event_slug)
-    evt_group_list = EventGroup.get_list(event_slug)
-    question = Question.get_question(event_slug, question_no)
-    choice_list = Choice.get_choice_list(event_slug, question_no)
-    last_question = False
-
-    # Start event - occur when staff only used "Launch event" button
-    if request.user.is_staff and not event.current:
-        # Initialize users vote table - includes proxyholders
-        UserVote.init_uservotes(event_slug)
-
-        event.set_current()
-
-    # Gather user's info about the current question
-    if not request.user.is_staff:
-        user_vote = UserVote.get_user_vote(event_slug, request.user, question_no)
-
-    # Check if current question is the last one
-    if question_no == len(Question.get_question_list(event_slug)):
-        last_question = True
-
-    return render(request, 'polls/question.html', locals())
-        
-
 def vote(request, event_slug, question_no):
     """ Manage users' votes """
 
     choice_id = request.POST['choice']
+    print("Prise en compte vote utilisateur")
     user_vote = UserVote.set_vote(event_slug, request.user, question_no, choice_id)
 
-    data = {'success': 'OK', 'voted': user_vote.has_voted}
+    # A MODIFIER POUR GERER LES PROCURATIONS
+    print("======================================")
+    print("Nb votes restant : " + str(user_vote.nb_user_votes))
+    data = {'success': 'OK', 'nb_votes': user_vote.nb_user_votes}
 
     return JsonResponse(data)
 
 
+def set_proxy(request):
+    """ Set proxyholder """
 
-@login_required
-def results(request, event_slug):
-    """ Results page """
+    user = User.objects.get(id=request.POST['user'])
+    proxy = User.objects.get(id=request.POST['proxy'])
+    event = Event.get_event(request.POST['event_slug'])
 
-    event = Event.get_event(event_slug)
-    return render(request, 'polls/results.html', locals())
+    Procuration.set_user_proxy(event, user, proxy)
 
+    data = {'proxy_f_name': proxy.first_name, 'proxy_l_name': proxy.last_name, 'proxy': request.POST['proxy']}
+
+    send_email_info("christophe.gressin@tofographies.com")
+    
+    return JsonResponse(data)
+
+def accept_proxy(request):
+    """ Accept proxy request """
+
+    user = User.objects.get(id=request.POST['user'])
+    proxy_list = json.loads(request.POST['cancel_list'])   # decode list sent in JSON format
+    event = Event.get_event(request.POST['event_slug'])
+
+    for proxy_id in proxy_list:
+        Procuration.confirm_proxy(event, user, int(proxy_id))
+
+    data = {'status': 'Success'}
+
+    return JsonResponse(data)
+
+def cancel_proxy(request):
+
+    event_slug = request.POST['event']
+
+    if request.POST['Action'] == 'Refuse':
+        proxy_list = request.POST.getlist('user_proxy')
+        for proxy in proxy_list:
+            Procuration.cancel_proxy(event_slug, int(proxy), request.user)
+    else:
+        Procuration.cancel_proxy(event_slug, request.user)
+
+
+    return redirect('polls:event', event_slug=event_slug)

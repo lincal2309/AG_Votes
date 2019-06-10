@@ -43,8 +43,6 @@ a .btn-secondary.disabled, a .btn-secondary:disabled {
     border-color: lightgrey;
   }
   
-
-
 .bg-modal {
     background-color: rgba(102, 185, 102, 0.8);
 }
@@ -113,3 +111,43 @@ a .btn-secondary.disabled, a .btn-secondary:disabled {
   .slider.round:before {
     border-radius: 50%;
   } 
+
+
+/* Checkmark for confirmed proxies */
+.checkmark {
+    font-size: 16px;
+    /* list-style-type: none; */
+    margin-bottom: 1em;
+    /* padding: 0.25em 0 0 2.5em; */
+    position: relative;
+}
+
+.checkmark:before {
+  content: " ";
+  display: block;
+  border: solid 0.8em green;
+  border-radius: .8em;
+  height: 0;
+  width: 0;
+  position: absolute;
+  right: -3.5em;
+  top: 40%; 
+  margin-top: -0.6em;
+}
+
+.checkmark:after {
+  content: " ";
+  display: block;
+  width: 0.5em;
+  height: 0.8em;
+  border: solid white;
+  border-width: 0 0.2em 0.2em 0;
+  position: absolute;
+  right: -3em;
+  top: 40%;
+  margin-top: -0.3em;
+  -webkit-transform: rotate(45deg);
+  -moz-transform: rotate(45deg);
+  -o-transform: rotate(45deg);
+  transform: rotate(45deg);
+}
