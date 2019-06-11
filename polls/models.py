@@ -7,10 +7,16 @@ from django.utils import timezone
 from django.db.models import Count, UniqueConstraint
 
 
-
 class Company(models.Model):
+    # A COMPLETER : AJOUT INFOS LEGALES (adresse, SIRET, etc.)
     company_name = models.CharField("nom", max_length=200)
     logo = models.ImageField(upload_to="img/", null=True)
+    host = models.CharField(max_length=50, null=True)
+    port = models.IntegerField(null=True)
+    host_user = models.EmailField(max_length=100, null=True)
+    host_password = models.CharField(max_length=50, null=True)      # A MODIFIER : Gestion mot de passe crypté
+    use_tls = models.BooleanField(default=True)
+    
 
     class Meta:
         verbose_name = "Société"
@@ -237,12 +243,8 @@ class Procuration(models.Model):
         else:
             # Case user has no proxy and is not proxyholder => get list of users that could receive his proxy
             # Get list of users from the same group, except the user hiself and those who already gave proxy
-            # Select distinct users from UserVote (there is 1 line per question)
-            global_proxy_list = cls.objects.all().values('user__id')
-            # Transform the list of dict in usable queryset
-            id_list = []
-            for proxy in global_proxy_list:
-                id_list.append(int(proxy['user__id']))
+            # As values are restricted to user_id, we need to transform them into a list usable in the next request
+            id_list = [int(proxy['user__id']) for proxy in cls.objects.all().values('user__id')]
             proxy_list = User.objects.filter(eventgroup__users=user).exclude(id=user.id).exclude(id__in=id_list).order_by('last_name')
         return proxy_list, user_proxy, user_proxy_list
 
@@ -250,12 +252,14 @@ class Procuration(models.Model):
     def set_user_proxy(cls, event, user, proxy):
         cls.objects.create(event=event, user=user, proxy=proxy, proxy_date=timezone.now())
 
+
     @classmethod
     def confirm_proxy(cls, event, user, proxy_id):
         proc = cls.objects.get(user__id=proxy_id, proxy=user, event=event)
         if not proc.proxy_confirmed:
             proc.proxy_confirmed, proc.confirm_date = True, timezone.now()
             proc.save()
+
 
     @classmethod
     def cancel_proxy(cls, event_slug, user, *args):

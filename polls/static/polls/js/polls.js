@@ -251,6 +251,8 @@ proxy_form.on("submit", function(event) {
         $('.proxy_list').remove();
 
         $('#Pouvoirs').append('<div class="text-center" id="pwr"></div>');
+        $('#pwr').append('<input type="text" name="Action" value="Cancel" hidden>')
+        $('#pwr').append('<input type="text" name="event" value="{{ event.slug }}" hidden>')
         $('#pwr').append("<button id='cancel_proxy'></button>")
         $('#cancel_proxy').addClass("btn btn-secondary mt-4").attr("type", "submit").attr("data-user", proxy_id).html('Annuler le pouvoir');
 

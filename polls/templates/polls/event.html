@@ -30,7 +30,13 @@
                         <input id="text" type="text" name="event_to_reinit" value="{{ event.slug }}" hidden>
                         <button class="btn btn-main" type="submit">Réinitialiser l'événement</button>
                         </form>
-                    {% endif %}
+
+                        <form action='{% url 'polls:invite' %}' method="post">
+                            {% csrf_token %}
+                            <input id="text" type="text" name="event_to_invite" value="{{ event.slug }}" hidden>
+                            <button class="btn btn-main" type="submit">Inviter les participants</button>
+                            </form>
+                        {% endif %}
                 </div>
             </div>
             {% if not user.is_staff %}

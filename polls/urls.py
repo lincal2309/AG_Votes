@@ -14,6 +14,7 @@ urlpatterns = [
     path('sign_up/', views.create_user, name='sign_up'),
     path('login/', views.login_user, name='login'),
     path('logout/', views.logout_user, name='logout'),
+    path('invite/', views.invite_users, name='invite'),
     path('reinit/', views.reinit, name='reinit'),
     path('<slug:event_slug>/', views.event, name='event'),
     path('<slug:event_slug>/<int:question_no>', views.question, name='question'),

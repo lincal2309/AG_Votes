@@ -1,6 +1,6 @@
 # -*-coding:Utf-8 -*
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect, reverse, get_list_or_404
 from django.utils import timezone
 from django.contrib.auth.models import User, Group
@@ -8,11 +8,17 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count
 from django.conf import settings
-from django.core.mail import EmailMessage, send_mail
+from django.core.mail import EmailMessage, get_connection
+from django.core.files.storage import FileSystemStorage
+from django.template.loader import render_to_string
 import json
+
+from weasyprint import HTML
+
 
 from .models import Company, Event, Question, Choice, UserVote, EventGroup, Result, Procuration
 from .forms import UserForm
+from .utils import PollsMail
 
 debug = settings.DEBUG
 
@@ -22,17 +28,11 @@ def init_event(event):
     UserVote.init_uservotes(event)
     event.set_current()
 
-def send_email_info(recipient_address):
-    """ Send email to a recipient """
-    subject = "Test envoi mail"
-    message = "Corps du message de test"
-    sender = "gressinc@gmail.com"
-    cc_dest = "lincal1@free.fr"
-    # email = (subject, message, sender, [recipient_address])
-    send_mail(subject=subject, message=message, from_email=sender, recipient_list=[recipient_address])
     
-
+# =======================
 #  User management views
+# =======================
+
 def create_user(request):
     # ================================================
     # For development purposes only
@@ -112,6 +112,9 @@ def logout_user(request):
     return redirect(reverse('polls:index'))
 
 
+# =======================
+#     Template views
+# =======================
 
 @login_required
 def index(request):
@@ -177,6 +180,11 @@ def results(request, event_slug):
     event = Event.get_event(event_slug)
     return render(request, 'polls/results.html', locals())
 
+
+
+# =======================
+#      Action views
+# =======================
 
 def get_chart_data(request):
     """ Gather and send information to build charts via ajax get request """
@@ -293,12 +301,8 @@ def vote(request, event_slug, question_no):
     """ Manage users' votes """
 
     choice_id = request.POST['choice']
-    print("Prise en compte vote utilisateur")
     user_vote = UserVote.set_vote(event_slug, request.user, question_no, choice_id)
 
-    # A MODIFIER POUR GERER LES PROCURATIONS
-    print("======================================")
-    print("Nb votes restant : " + str(user_vote.nb_user_votes))
     data = {'success': 'OK', 'nb_votes': user_vote.nb_user_votes}
 
     return JsonResponse(data)
@@ -312,11 +316,10 @@ def set_proxy(request):
     event = Event.get_event(request.POST['event_slug'])
 
     Procuration.set_user_proxy(event, user, proxy)
+    PollsMail('ask_proxy', event, sender=[user.email], recipient_list=[proxy.email], user=user, proxy=proxy)
 
     data = {'proxy_f_name': proxy.first_name, 'proxy_l_name': proxy.last_name, 'proxy': request.POST['proxy']}
 
-    send_email_info("christophe.gressin@tofographies.com")
-    
     return JsonResponse(data)
 
 def accept_proxy(request):
@@ -328,6 +331,7 @@ def accept_proxy(request):
 
     for proxy_id in proxy_list:
         Procuration.confirm_proxy(event, user, int(proxy_id))
+        PollsMail('confirm_proxy', event, sender=[user.email], user=user, proxy_id=proxy_id)
 
     data = {'status': 'Success'}
 
@@ -346,3 +350,13 @@ def cancel_proxy(request):
 
 
     return redirect('polls:event', event_slug=event_slug)
+
+
+def invite_users(request):
+    event_slug = request.POST['event_to_reinit']
+    event = Event.get_event(event_slug)
+    company = Company.objects.get(event=event)
+    question_list = Question.get_question_list(event_slug)
+    context_data = {'company': company, 'event': event, 'question_list': question_list}
+
+
