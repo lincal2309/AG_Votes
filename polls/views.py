@@ -2,6 +2,7 @@
 
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect, reverse, get_list_or_404
+from django.views.generic.base import TemplateView
 from django.utils import timezone
 from django.contrib.auth.models import User, Group
 from django.contrib.auth import authenticate, login, logout
@@ -11,16 +12,20 @@ from django.conf import settings
 from django.core.mail import EmailMessage, get_connection
 from django.core.files.storage import FileSystemStorage
 from django.template.loader import render_to_string
+
 import json
+import tempfile
 
-from weasyprint import HTML
-
+from weasyprint import HTML, CSS
+from django_weasyprint import WeasyTemplateResponseMixin, WeasyTemplateResponse
 
 from .models import Company, Event, Question, Choice, UserVote, EventGroup, Result, Procuration
 from .forms import UserForm
 from .utils import PollsMail
 
 debug = settings.DEBUG
+background_colors = settings.BACKGROUND_COLORS
+border_colors = settings.BORDER_COLORS
 
 
 # Global functions
@@ -28,7 +33,84 @@ def init_event(event):
     UserVote.init_uservotes(event)
     event.set_current()
 
+def set_chart_data(event, evt_group_list, question_no):
+
+    # Initialize charts variables
+    group_data = {}
+    nb_groups = 0
+
+    # Initialize global results data
+    global_choice_list = Choice.get_choice_list(event.slug).values('choice_text', 'votes')
+    group_vote = {}
+    global_total_votes = 0
+    global_nb_votes = 0
+    for choice in global_choice_list:
+        group_vote[choice['choice_text']] = 0
+
+    # Gather votes info for each group
+    for evt_group in evt_group_list:
+        nb_groups += 1
+        total_votes = EventGroup.objects.filter(id=evt_group.id).aggregate(Count('users'))['users__count']
     
+        choice_list = Result.get_vote_list(evt_group, question_no).values('choice__choice_text', 'votes', 'group_weight')
+
+        labels = [choice['choice__choice_text'] for choice in choice_list]
+        values = [choice['votes'] for choice in choice_list]
+        nb_votes = sum(values)
+
+        chart_nb = "chart" + str(nb_groups)
+        group_data[chart_nb] = {
+            'nb_votes': nb_votes,
+            'total_votes': total_votes,
+            'labels': labels,
+            'values': values,
+            }
+
+        # Calculate aggregate results
+        # Use if / elif to ease adding future rules
+        global_total_votes += total_votes
+        global_nb_votes += nb_votes
+        weight = choice_list[0]['group_weight']
+        if event.rule == 'MAJ':
+            max_val = values.index(max(values))
+            group_vote[labels[max_val]] += weight           # A MODIFIER : cas d'égalité, cas où pas de valeur
+        elif event.rule == 'PROP':
+            for i, choice in enumerate(labels):
+                group_vote[choice] += values[i] * weight / 100
+
+    # Setup global info for charts
+    global_labels = []
+    global_values = []
+    for label, value in group_vote.items():
+        global_labels.append(label)
+        global_values.append(value)
+
+    group_data['global'] = {
+        'nb_votes': global_nb_votes,
+        'total_votes': global_total_votes,
+        'labels': global_labels,
+        'values': global_values,
+        }
+    
+    
+    chart_background_colors = background_colors
+    chart_border_colors = border_colors
+
+    # Extends color lists to fit with nb values to display
+    while len(chart_background_colors) < nb_votes:
+        chart_background_colors += background_colors
+        chart_border_colors += border_colors
+
+    data = {
+        'chart_data': group_data,
+        'nb_charts': nb_groups,
+        'backgroundColor': chart_background_colors,
+        'borderColor': chart_border_colors,
+        }
+
+    return data
+
+
 # =======================
 #  User management views
 # =======================
@@ -178,6 +260,9 @@ def results(request, event_slug):
     """ Results page """
 
     event = Event.get_event(event_slug)
+    question_list = Question.get_question_list(event_slug)
+    nb_questions = len(question_list)
+    
     return render(request, 'polls/results.html', locals())
 
 
@@ -189,110 +274,13 @@ def results(request, event_slug):
 def get_chart_data(request):
     """ Gather and send information to build charts via ajax get request """
 
-    # List of colors
-    background_colors = [
-        'rgba(124, 252, 0, 0.2)',
-        'rgba(255, 99, 132, 0.2)',
-        'rgba(255, 159, 64, 0.2)',
-        'rgba(54, 162, 235, 0.2)',
-        'rgba(75, 192, 192, 0.2)',
-        'rgba(153, 102, 255, 0.2)',
-        'rgba(128, 128, 128, 0.2)',
-        'rgba(255, 206, 86, 0.2)',
-        'rgba(222, 184, 135, 0.2)',
-        'rgba(127, 255, 212, 0.2)'
-    ]
-    border_colors = [
-        'rgba(124, 252, 0, 1)',
-        'rgba(255, 99, 132, 1)',
-        'rgba(255, 159, 64, 1)',
-        'rgba(54, 162, 235, 1)',
-        'rgba(75, 192, 192, 1)',
-        'rgba(153, 102, 255, 1)',
-        'rgba(128, 128, 128, 1)',
-        'rgba(255, 206, 86, 1)',
-        'rgba(222, 184, 135, 1)',
-        'rgba(127, 255, 212, 1)'
-    ]
-
     event_slug = request.GET['event_slug']
     question_no = int(request.GET['question_no'])
 
     event = Event.get_event(event_slug)
     evt_group_list = EventGroup.get_list(event_slug)
 
-    # Initialize charts variables
-    group_data = {}
-    nb_groups = 0
-
-    # Initialize global results data
-    global_choice_list = Choice.get_choice_list(event_slug).values('choice_text', 'votes')
-    group_vote = {}
-    global_total_votes = 0
-    global_nb_votes = 0
-    for choice in global_choice_list:
-        group_vote[choice['choice_text']] = 0
-
-    # Gather votes info for each group
-    for evt_group in evt_group_list:
-        nb_groups += 1
-        total_votes = EventGroup.objects.filter(id=evt_group.id).aggregate(Count('users'))['users__count']
-    
-        choice_list = Result.get_vote_list(evt_group, question_no).values('choice__choice_text', 'votes', 'group_weight')
-
-        labels = [choice['choice__choice_text'] for choice in choice_list]
-        values = [choice['votes'] for choice in choice_list]
-        nb_votes = sum(values)
-
-        chart_nb = "chart" + str(nb_groups)
-        group_data[chart_nb] = {
-            'nb_votes': nb_votes,
-            'total_votes': total_votes,
-            'labels': labels,
-            'values': values,
-            }
-
-        # Calculate aggregate results
-        # Use if / elif to ease adding future rules
-        global_total_votes += total_votes
-        global_nb_votes += nb_votes
-        weight = choice_list[0]['group_weight']
-        if event.rule == 'MAJ':
-            max_val = values.index(max(values))
-            group_vote[labels[max_val]] += weight
-        elif event.rule == 'PROP':
-            for i, choice in enumerate(labels):
-                group_vote[choice] += values[i] * weight / 100
-
-    # Setup global info for charts
-    global_labels = []
-    global_values = []
-    for label, value in group_vote.items():
-        global_labels.append(label)
-        global_values.append(value)
-
-    group_data['global'] = {
-        'nb_votes': global_nb_votes,
-        'total_votes': global_total_votes,
-        'labels': global_labels,
-        'values': global_values,
-        }
-    
-    
-    chart_background_colors = background_colors
-    chart_border_colors = border_colors
-
-    # Extends color lists to fit with nb values to display
-    while len(chart_background_colors) < nb_votes:
-        chart_background_colors += background_colors
-        chart_border_colors += border_colors
-
-    data = {
-        'chart_data': group_data,
-        'nb_charts': nb_groups,
-        'backgroundColor': chart_background_colors,
-        'borderColor': chart_border_colors,
-        }
+    data = set_chart_data(event, evt_group_list, question_no)
 
     return JsonResponse(data)
 
@@ -353,10 +341,106 @@ def cancel_proxy(request):
 
 
 def invite_users(request):
-    event_slug = request.POST['event_to_reinit']
+    event_slug = request.POST['event_to_invite']
     event = Event.get_event(event_slug)
     company = Company.objects.get(event=event)
     question_list = Question.get_question_list(event_slug)
     context_data = {'company': company, 'event': event, 'question_list': question_list}
 
+    html_string = render_to_string('polls/resolutions.html', context_data)
+    html = HTML(string=html_string, base_url=request.build_absolute_uri())
+    # html = HTML(url=reverse('polls:invite', kwargs=context_data))
+    result = html.write_pdf('./media/pdf/resolutions.pdf', stylesheets=[
+        CSS("./polls/static/polls/css/polls.css"),
+        CSS("./polls/static/polls/css/bootstrap.css")
+        ])
 
+    # response = HttpResponse(content_type='application/pdf;')
+    # response['Content-Disposition'] = 'inline; filename="resolutions.pdf"'
+    # response['Content-Transfer-Encoding'] = 'binary'
+    # with tempfile.NamedTemporaryFile(delete=True) as output:
+    #     output.write(result)
+    #     output.flush()
+    #     output = open(output.name, 'r')
+    #     response.write(output.read())
+
+
+    return redirect('polls:event', event_slug=event_slug)
+
+
+class PDFTemplate(TemplateView):
+    template_name = 'polls/resolutions.html'
+
+    def get_context_data(self, **kwargs):
+        print("=============================")
+        print("========= CONTEXT ===========")
+        print(kwargs)
+        context = super().get_context_data(**kwargs)
+        event_slug = context['event_slug']
+        event = Event.get_event(event_slug)
+        company = Company.objects.get(event=event)
+        question_list = Question.get_question_list(event_slug)
+        context['company'] = company
+        context['event'] = event
+        context['question_list'] = question_list
+        return context
+        
+
+class PersoWeasyTemplateResponse(WeasyTemplateResponse):
+    @property
+    def rendered_content(self):
+        """
+        Returns rendered PDF pages.
+        """
+        print("=============================")
+        print("========== RENDER ===========")
+        document = self.get_document()
+        result = document.write_pdf('./media/pdf/resolutions_dj.pdf')
+        print("========== PDF OK ===========")
+        event_slug = self.context_data['event_slug']
+        print(self.context_data)
+        return redirect('polls:event', event_slug=event_slug)
+
+
+class GeneratePDF(WeasyTemplateResponseMixin, PDFTemplate):
+    response_class = PersoWeasyTemplateResponse
+    pdf_attachement = False
+
+
+    # def get(self, request, *args, **kwargs):
+    #     print("=======================================")
+    #     print("============= GET ================")
+    #     context = self.get_context_data(**kwargs)
+    #     print(context)
+    #     return self.render_to_response(context)
+
+
+    # def get_context_data(self, **kwargs):
+    #     print("=======================================")
+    #     print("============= CONTEXTE ================")
+    #     context = super().get_context_data(**kwargs)
+    #     event_slug = context['event_slug']
+    #     event = Event.get_event(event_slug)
+    #     company = Company.objects.get(event=event)
+    #     question_list = Question.get_question_list(event_slug)
+    #     context['company'] = company
+    #     context['event'] = event
+    #     context['question_list'] = question_list
+    #     return context
+
+    # def dispatch(self, request, *args, **kwargs):
+    #     temp = super().dispatch(request, *args, **kwargs)
+    #     print("=============================")
+    #     print("============= DISPATCH ================")
+    #     print(kwargs)
+    #     event_slug = kwargs['event_slug']
+    #     return redirect('polls:event', event_slug=event_slug)
+
+
+def test_pdf(request):
+    event_slug = request.POST['event_to_test']
+    event = Event.get_event(event_slug)
+    company = Company.objects.get(event=event)
+    question_list = Question.get_question_list(event_slug)
+    
+    return render(request, 'polls/resolutions.html', locals())

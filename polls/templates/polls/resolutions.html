@@ -20,10 +20,8 @@
 
     <body class="d-flex flex-column vh-100">
 
-        <header class="main-header">
+        <header class="main-header text-center">
             <!-- Header - Company info -->
-            {{ company.logo }}
-            {{ company.name }}
         </header>
 
 
@@ -31,9 +29,13 @@
         <main class="flex-shrink-0 main-content" role="main">
             <div class="container">
                 <div class="row">
+                    <div class="col-sm-12 text-center">
+                        <img src="{{ company.logo.url }}" style="height: 10em">
+                        <h1>{{ company.company_name }}</h1>
+                        <h1 style="color: #663399">Texte du projet des résolutions soumises</h1>
+                        <h1 class="event_title">{{ event.event_name }} - {{ event.event_date|date:"d/m/Y" }}</h1>
+                    </div>
                     <div class="col-sm-12">
-                        <h1>Texte du projet des résolutions soumises</h1>
-                        <h1 class="text-center">{{ event.event_name }} - {{ event.event_date|date:"d/m/Y" }}</h1>
                         <ol class="mt-30">
                             {% for question in question_list %}
                                 <li class="mt-10">{{ question.question_text }}</li>

@@ -10,6 +10,15 @@ class PollsAdminSite(admin.AdminSite):
 admin_site = PollsAdminSite(name='polls_admin')
 
 
+
+class CompanyAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (None, {'fields': ['company_name', 'logo']}),
+        ('Informations administratives', {'fields': ['statut', 'siret', 'street_num', 'street_cplt', 'address1', 'address2', 'zip_code', 'city']}),
+        ('Configuration de la messagerie', {'fields': ['host', 'port', 'hname', 'fax', 'use_tls'], 'classes': ['collapse']}),
+    ]
+
+
 class ChoiceInLine(admin.TabularInline):
     model = Choice
     fields = ['choice_text', 'choice_no']
@@ -32,7 +41,7 @@ class EventAdmin(admin.ModelAdmin):
     inlines = [QuestionInLine, ChoiceInLine]
 
 class EventGroupAdmin(admin.ModelAdmin):
-    fields = ['group_name', 'vote_weight', 'users']
+    fields = ['group_name', 'weight', 'users']
     filter_horizontal = ('users',)
     
 
@@ -62,7 +71,7 @@ class ProcurationAdmin(admin.ModelAdmin):
 
 
 
-admin.site.register(Company)
+admin.site.register(Company, CompanyAdmin)
 admin.site.register(Event, EventAdmin)
 admin.site.register(Question)
 admin.site.register(Choice)

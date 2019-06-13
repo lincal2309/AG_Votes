@@ -28,7 +28,7 @@ class PollsMail():
 
     def send_email_info(self):
         # Send email method
-        with get_connection(host=self.company.host, port=self.company.port, username=self.company.host_user, password=self.company.host_password, use_tls=self.company.use_tls) as connection:
+        with get_connection(host=self.company.host, port=self.company.port, username=self.company.hname, password=self.company.fax, use_tls=self.company.use_tls) as connection:
             EmailMessage(self.subject, self.message, self.company.host_user, self.recipient_list, cc=self.cc_list, bcc=self.bcc_list, connection=connection).send()
 
     

@@ -151,3 +151,7 @@ a .btn-secondary.disabled, a .btn-secondary:disabled {
   -o-transform: rotate(45deg);
   transform: rotate(45deg);
 }
+
+.event_title {
+  color: aqua;
+}

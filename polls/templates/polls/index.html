@@ -6,11 +6,14 @@
 
     <div class="container">
         <div class="row">
-        {% for event in next_event_list %}
-        <div class="col-lg-10 align-items-center text-center"
-            <p class="h2_perso"><a href="{% url 'polls:event' event.slug %}"> {{ event.event_name }} </a></p>
-            <p>Prévu le : {{ event.event_date|date:"d/m/Y" }}<p>
-        {% endfor %}
+            <div class="col-lg-10 align-items-center text-center">
+            {% for event in next_event_list %}
+                <h2><a href="{% url 'polls:event' event.slug %}"> {{ event.event_name }} </a></h2>
+                <p>Prévu le : {{ event.event_date|date:"d/m/Y" }}<p>
+            {% empty %}
+                <h2 class="h2_perso">Aucun événement prévu</h2>
+            </div>
+            {% endfor %}
         </div>
     </div>
 

@@ -27,16 +27,23 @@
                     {% if user.is_staff %}
                         <form action='{% url 'polls:reinit' %}' method="post">
                         {% csrf_token %}
-                        <input id="text" type="text" name="event_to_reinit" value="{{ event.slug }}" hidden>
-                        <button class="btn btn-main" type="submit">Réinitialiser l'événement</button>
+                            <input id="text" type="text" name="event_to_reinit" value="{{ event.slug }}" hidden>
+                            <button class="btn btn-main" type="submit">Réinitialiser l'événement</button>
                         </form>
 
-                        <form action='{% url 'polls:invite' %}' method="post">
-                            {% csrf_token %}
-                            <input id="text" type="text" name="event_to_invite" value="{{ event.slug }}" hidden>
+                        <form action='{% url 'polls:invite' event.slug %}' method="get">
+                            <!-- {% csrf_token %} -->
+                            <!-- <input id="text" type="text" name="event_to_invite" value="{{ event.slug }}" hidden> -->
                             <button class="btn btn-main" type="submit">Inviter les participants</button>
-                            </form>
-                        {% endif %}
+                        </form>
+
+                        <form action='{% url 'polls:test' %}' method="post">
+                            {% csrf_token %}
+                            <input id="text" type="text" name="event_to_test" value="{{ event.slug }}" hidden>
+                            <button class="btn btn-main" type="submit">Test PDF</button>
+                        </form>
+
+                    {% endif %}
                 </div>
             </div>
             {% if not user.is_staff %}

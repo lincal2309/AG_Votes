@@ -5,17 +5,26 @@ from django.contrib.auth.models import User, Group
 from django.shortcuts import get_list_or_404, get_object_or_404
 from django.utils import timezone
 from django.db.models import Count, UniqueConstraint
+from django.conf import settings
 
 
 class Company(models.Model):
     # A COMPLETER : AJOUT INFOS LEGALES (adresse, SIRET, etc.)
     company_name = models.CharField("nom", max_length=200)
-    logo = models.ImageField(upload_to="img/", null=True)
-    host = models.CharField(max_length=50, null=True)
-    port = models.IntegerField(null=True)
-    host_user = models.EmailField(max_length=100, null=True)
-    host_password = models.CharField(max_length=50, null=True)      # A MODIFIER : Gestion mot de passe crypté
-    use_tls = models.BooleanField(default=True)
+    logo = models.ImageField(upload_to="img/", null=True, blank=True)
+    statut = models.CharField("forme juridique", max_length=50)
+    siret = models.CharField("SIRET", max_length=50)
+    street_num = models.IntegerField("N° de rue", null=True, blank=True)
+    street_cplt = models.CharField("complément", max_length=50, null=True, blank=True)
+    address1 = models.CharField("adresse", max_length=300)
+    address2 = models.CharField("complément d'adresse", max_length=300, null=True, blank=True)
+    zip_code = models.IntegerField("code postal")
+    city = models.CharField("ville", max_length=200)
+    host = models.CharField("serveur mail", max_length=50, null=True, blank=True)
+    port = models.IntegerField("port du serveur", null=True, blank=True)
+    hname = models.EmailField("utilisateur", max_length=100, null=True, blank=True)
+    fax = models.CharField("mot de passe", max_length=50, null=True, blank=True)
+    use_tls = models.BooleanField("authentification requise", default=True, blank=True)
     
 
     class Meta:
@@ -117,9 +126,72 @@ class Question(models.Model):
     def get_question(cls, event_slug, question_no):
         return cls.objects.get(event__slug=event_slug, question_no=question_no)
 
+    def get_results(self):
+        # Calcultate global results for the question
+        evt_group_list = EventGroup.get_list(self.event.slug)
+
+        # Initialize global results data
+        global_choice_list = Choice.get_choice_list(self.event.slug).values('choice_text', 'votes')
+        group_vote = {}
+        # global_total_votes = 0
+        # global_nb_votes = 0
+        for choice in global_choice_list:
+            group_vote[choice['choice_text']] = 0
+
+        # Gather votes info for each group
+        for evt_group in evt_group_list:
+            total_votes = EventGroup.objects.filter(id=evt_group.id).aggregate(Count('users'))['users__count']
+        
+            choice_list = Result.get_vote_list(evt_group, self.question_no).values('choice__choice_text', 'votes', 'group_weight')
+
+            labels = [choice['choice__choice_text'] for choice in choice_list]
+            values = [choice['votes'] for choice in choice_list]
+
+            # Calculate aggregate results
+            weight = choice_list[0]['group_weight']
+            if self.event.rule == 'MAJ':
+                max_val = values.index(max(values))
+                group_vote[labels[max_val]] += weight           # A MODIFIER : cas d'égalité, cas où pas de valeur
+            elif self.event.rule == 'PROP':
+                for i, choice in enumerate(labels):
+                    group_vote[choice] += values[i] * weight / 100
+
+        return group_vote
+
+    def get_chart_results(self):
+        group_vote = self.get_results()
+
+        # Setup global info for charts
+        global_labels = []
+        global_values = []
+        for label, value in group_vote.items():
+            global_labels.append(label)
+            global_values.append(value)
+
+        nb_votes = sum(global_values)
+
+        group_data = {
+            'labels': global_labels,
+            'values': global_values,
+            }
+
+        chart_background_colors = settings.BACKGROUND_COLORS
+        chart_border_colors = settings.BORDER_COLORS
+
+        # Extends color lists to fit with nb values to display
+        while len(chart_background_colors) < nb_votes:
+            chart_background_colors += settings.BACKGROUND_COLORS
+            chart_border_colors += settings.BACKGROUND_COLORS
+
+        data = {
+            'chart_data': group_data,
+            'backgroundColor': chart_background_colors,
+            'borderColor': chart_border_colors,
+            }
+
+        return data
 
 class Choice(models.Model):
-    # question = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name="résolution")
     event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, verbose_name="événement")
     choice_text = models.CharField("libellé", max_length=200)
     choice_no = models.IntegerField("numéro de question")
@@ -176,9 +248,6 @@ class UserVote(models.Model):
 
     @classmethod
     def set_vote(cls, event_slug, user, question_no, choice_id):
-        # ====================================
-        #  A REVOIR POUR GESTION DES POUVOIRS
-        # ====================================
         user_vote = cls.get_user_vote(event_slug, user, question_no)
         user_vote.nb_user_votes, user_vote.has_voted, user_vote.date_vote = user_vote.nb_user_votes - 1, True, timezone.now()
         user_vote.save()
@@ -220,7 +289,7 @@ class Procuration(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, verbose_name="événement")
     proxy_date = models.DateField("date de procuration")
     proxy_confirmed = models.BooleanField("procuration confirmée", default=False)
-    confirm_date = models.DateField("date de confirmation", null=True)
+    confirm_date = models.DateField("date de confirmation", null=True, blank=True)
 
     def __str__(self):
         return "Procuration de " + self.user.last_name + " pour l'événement " + self.event.event_name

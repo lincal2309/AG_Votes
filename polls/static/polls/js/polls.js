@@ -109,9 +109,56 @@ function create_chart() {
 }
 
 // Create chart at first page display if data available
-// $(document).ready(function(event) {
-//     create_chart();
-// })
+$(document).ready(function(event) {
+    console.log("Doc ready")
+    if ($('#results').length > 0) {
+        console.log("Création chart")
+        let nb_charts = $('#nb_questions').attr('data-nb');
+        console.log(`Nb charts : ${nb_charts}`)
+        for (let chart_num = 1; chart_num <= nb_charts; chart_num++) {
+            console.log(`Chart #${chart_num}`)
+            let data = JSON.parse(document.getElementById(`${chart_num}`).textContent);
+            console.log(data)
+            let ctx = $(`#chart${chart_num}`);
+            let charts_data = data.chart_data;
+
+            backgroundColor = data.backgroundColor;
+            borderColor = data.borderColor;
+
+            labels = charts_data['labels'];
+            values = charts_data['values'];
+
+            // Design standard chart.js chart
+            var myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '# of Votes',
+                        data: values,
+                        backgroundColor: backgroundColor,
+                        borderColor: borderColor,
+                        hoverBackgroundColor: borderColor,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    },
+                    title: {
+                        display: false,
+                        text: 'Nombre de votes'
+                    }
+                }
+            });
+
+
+        }
+        
+    }
+})
 
 
 // Toggle button management
