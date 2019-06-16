@@ -2,7 +2,7 @@
 
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect, reverse, get_list_or_404
-from django.views.generic.base import TemplateView
+from django.views.generic.base import TemplateView, ContextMixin, TemplateResponseMixin, View
 from django.utils import timezone
 from django.contrib.auth.models import User, Group
 from django.contrib.auth import authenticate, login, logout
@@ -13,11 +13,12 @@ from django.core.mail import EmailMessage, get_connection
 from django.core.files.storage import FileSystemStorage
 from django.template.loader import render_to_string
 
+import os
 import json
 import tempfile
 
 from weasyprint import HTML, CSS
-from django_weasyprint import WeasyTemplateResponseMixin, WeasyTemplateResponse
+from django_weasyprint import WeasyTemplateResponseMixin, WeasyTemplateResponse, WeasyTemplateView
 
 from .models import Company, Event, Question, Choice, UserVote, EventGroup, Result, Procuration
 from .forms import UserForm
@@ -351,8 +352,8 @@ def invite_users(request):
     html = HTML(string=html_string, base_url=request.build_absolute_uri())
     # html = HTML(url=reverse('polls:invite', kwargs=context_data))
     result = html.write_pdf('./media/pdf/resolutions.pdf', stylesheets=[
-        CSS("./polls/static/polls/css/polls.css"),
-        CSS("./polls/static/polls/css/bootstrap.css")
+        CSS('./polls/static/polls/css/polls.css'),
+        CSS('./polls/static/polls/css/bootstrap.css')
         ])
 
     # response = HttpResponse(content_type='application/pdf;')
@@ -380,9 +381,7 @@ class PDFTemplate(TemplateView):
         event = Event.get_event(event_slug)
         company = Company.objects.get(event=event)
         question_list = Question.get_question_list(event_slug)
-        context['company'] = company
-        context['event'] = event
-        context['question_list'] = question_list
+        context['company'], context['event'], context['question_list'] = company, event, question_list
         return context
         
 
@@ -395,45 +394,51 @@ class PersoWeasyTemplateResponse(WeasyTemplateResponse):
         print("=============================")
         print("========== RENDER ===========")
         document = self.get_document()
-        result = document.write_pdf('./media/pdf/resolutions_dj.pdf')
-        print("========== PDF OK ===========")
-        event_slug = self.context_data['event_slug']
-        print(self.context_data)
-        return redirect('polls:event', event_slug=event_slug)
+        doc = document.write_pdf('./media/pdf/resolutions_dj.pdf')
+        # print("========== PDF OK ===========")
+        # event_slug = self.context_data['event_slug']
+        # print(self.context_data)
+        # return redirect('polls:event', event_slug=event_slug)
 
 
-class GeneratePDF(WeasyTemplateResponseMixin, PDFTemplate):
+class GeneratePDF(WeasyTemplateView):
     response_class = PersoWeasyTemplateResponse
-    pdf_attachement = False
+    pdf_attachement = True
+    # pdf_filename = 'resolutions_dj.pdf'
+    template_name = 'polls/resolutions.html'
 
 
-    # def get(self, request, *args, **kwargs):
-    #     print("=======================================")
-    #     print("============= GET ================")
-    #     context = self.get_context_data(**kwargs)
-    #     print(context)
-    #     return self.render_to_response(context)
+    def get(self, request, *args, **kwargs):
+        print("=======================================")
+        print("============= GET ================")
+        context = self.get_context_data(**kwargs)
+        response = self.render_to_response(context)
+        # print(response)
+        return self.render_to_response(context)
+        return redirect('polls:event', event_slug=context['event'].slug)
 
 
-    # def get_context_data(self, **kwargs):
-    #     print("=======================================")
-    #     print("============= CONTEXTE ================")
-    #     context = super().get_context_data(**kwargs)
-    #     event_slug = context['event_slug']
-    #     event = Event.get_event(event_slug)
-    #     company = Company.objects.get(event=event)
-    #     question_list = Question.get_question_list(event_slug)
-    #     context['company'] = company
-    #     context['event'] = event
-    #     context['question_list'] = question_list
-    #     return context
+    def get_context_data(self, **kwargs):
+        print("=======================================")
+        print("============= CONTEXTE ================")
+        context = super().get_context_data(**kwargs)
+        event_slug = context['event_slug']
+        event = Event.get_event(event_slug)
+        company = Company.objects.get(event=event)
+        question_list = Question.get_question_list(event_slug)
+        context['company'] = company
+        context['event'] = event
+        context['question_list'] = question_list
+        return context
 
     # def dispatch(self, request, *args, **kwargs):
-    #     temp = super().dispatch(request, *args, **kwargs)
+    #     # temp = super().dispatch(request, *args, **kwargs)
     #     print("=============================")
     #     print("============= DISPATCH ================")
     #     print(kwargs)
     #     event_slug = kwargs['event_slug']
+    #     context = self.get_context_data(**kwargs)
+    #     response = self.render_to_response(context)
     #     return redirect('polls:event', event_slug=event_slug)
 
 

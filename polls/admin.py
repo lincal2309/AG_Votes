@@ -1,6 +1,7 @@
 # -*-coding:Utf-8 -*
 
 from django.contrib import admin
+from django.shortcuts import render, redirect
 
 from .models import Company, Event, Question, Choice, UserVote, EventGroup, Result, Procuration
 
@@ -39,6 +40,15 @@ class EventAdmin(admin.ModelAdmin):
     ordering = ('event_date', 'event_name')
     filter_horizontal = ('groups',)
     inlines = [QuestionInLine, ChoiceInLine]
+    actions = ['invite_users']
+
+    def invite_users(self, request, queryset):
+        for evt in queryset:
+            message_usr = "Les participants à l'événement {} ont été invités".format(evt.event_name)
+            self.message_user(request, message_usr)
+            return redirect('polls:invite', event_slug=evt.slug)
+    invite_users.short_description = "Inviter les participants"
+
 
 class EventGroupAdmin(admin.ModelAdmin):
     fields = ['group_name', 'weight', 'users']

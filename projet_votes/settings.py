@@ -1,3 +1,5 @@
+# -*-coding:Utf-8 -*
+
 """
 Django settings for projet_votes project.
 
@@ -120,7 +122,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
 
 STATICFILES_DIRS = []
 
@@ -132,6 +134,7 @@ LOGIN_URL = '/polls/login/'
 if DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
 
 # List of colors used in charts
 BACKGROUND_COLORS = [

@@ -31,9 +31,9 @@
                             <button class="btn btn-main" type="submit">Réinitialiser l'événement</button>
                         </form>
 
-                        <form action='{% url 'polls:invite' event.slug %}' method="get">
-                            <!-- {% csrf_token %} -->
-                            <!-- <input id="text" type="text" name="event_to_invite" value="{{ event.slug }}" hidden> -->
+                        <form action='{% url 'polls:invite' %}' method="post">
+                            {% csrf_token %}
+                            <input id="text" type="text" name="event_to_invite" value="{{ event.slug }}" hidden>
                             <button class="btn btn-main" type="submit">Inviter les participants</button>
                         </form>
 

@@ -9,7 +9,6 @@ from django.conf import settings
 
 
 class Company(models.Model):
-    # A COMPLETER : AJOUT INFOS LEGALES (adresse, SIRET, etc.)
     company_name = models.CharField("nom", max_length=200)
     logo = models.ImageField(upload_to="img/", null=True, blank=True)
     statut = models.CharField("forme juridique", max_length=50)
@@ -133,8 +132,6 @@ class Question(models.Model):
         # Initialize global results data
         global_choice_list = Choice.get_choice_list(self.event.slug).values('choice_text', 'votes')
         group_vote = {}
-        # global_total_votes = 0
-        # global_nb_votes = 0
         for choice in global_choice_list:
             group_vote[choice['choice_text']] = 0
 
