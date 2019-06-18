@@ -1,0 +1,157 @@
+.user-menu {
+    list-style: none;
+}
+
+.user-footer {
+    text-align: right;
+}
+
+.mt-10 {
+    margin-top: 10px;
+}
+
+.mt-30 {
+    margin-top: 30px;
+}
+
+.main-content {
+    padding-top: 100px;
+    padding-bottom: 100px;
+}
+
+.page-btn {
+    padding-top: 50px;
+}
+
+.bg-light {
+    background-color: lightgrey !important;
+  }
+
+.btn {
+    border-radius: 20px;
+}
+
+.btn-grey {
+    color: #212529;
+    background-color: lightgrey;
+    border-color: lightgray;
+}
+
+a .btn-secondary.disabled, a .btn-secondary:disabled {
+    color: #fff;
+    background-color: lightgrey;
+    border-color: lightgrey;
+  }
+  
+.bg-modal {
+    background-color: rgba(102, 185, 102, 0.8);
+}
+
+
+/* Switch button */
+ /* The switch - the box around the slider */
+ .switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+  }
+  
+  /* Hide default HTML checkbox */
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  /* The slider */
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
+  }
+  
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+  }
+  
+  input:checked + .slider {
+    background-color: lightgreen;
+  }
+  
+  input:focus + .slider {
+    box-shadow: 0 0 1px lightgreen;
+  }
+  
+  input:checked + .slider:before {
+    -webkit-transform: translateX(26px);
+    -ms-transform: translateX(26px);
+    transform: translateX(26px);
+  }
+  
+  /* Rounded sliders */
+  .slider.round {
+    border-radius: 34px;
+  }
+  
+  .slider.round:before {
+    border-radius: 50%;
+  } 
+
+
+/* Checkmark for confirmed proxies */
+.checkmark {
+    font-size: 16px;
+    /* list-style-type: none; */
+    margin-bottom: 1em;
+    /* padding: 0.25em 0 0 2.5em; */
+    position: relative;
+}
+
+.checkmark:before {
+  content: " ";
+  display: block;
+  border: solid 0.8em green;
+  border-radius: .8em;
+  height: 0;
+  width: 0;
+  position: absolute;
+  right: -3.5em;
+  top: 40%; 
+  margin-top: -0.6em;
+}
+
+.checkmark:after {
+  content: " ";
+  display: block;
+  width: 0.5em;
+  height: 0.8em;
+  border: solid white;
+  border-width: 0 0.2em 0.2em 0;
+  position: absolute;
+  right: -3em;
+  top: 40%;
+  margin-top: -0.3em;
+  -webkit-transform: rotate(45deg);
+  -moz-transform: rotate(45deg);
+  -o-transform: rotate(45deg);
+  transform: rotate(45deg);
+}
+
+.event_title {
+  color: aqua;
+}

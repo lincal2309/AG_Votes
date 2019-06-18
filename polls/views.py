@@ -2,27 +2,19 @@
 
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect, reverse, get_list_or_404
-from django.views.generic.base import TemplateView, ContextMixin, TemplateResponseMixin, View
 from django.utils import timezone
 from django.contrib.auth.models import User, Group
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count
 from django.conf import settings
-from django.core.mail import EmailMessage, get_connection
-from django.core.files.storage import FileSystemStorage
-from django.template.loader import render_to_string
 
 import os
 import json
-import tempfile
-
-from weasyprint import HTML, CSS
-from django_weasyprint import WeasyTemplateResponseMixin, WeasyTemplateResponse, WeasyTemplateView
 
 from .models import Company, Event, Question, Choice, UserVote, EventGroup, Result, Procuration
 from .forms import UserForm
-from .utils import PollsMail
+from .pollsmail import PollsMail
 
 debug = settings.DEBUG
 background_colors = settings.BACKGROUND_COLORS
@@ -137,36 +129,6 @@ def create_user(request):
         form = UserForm()
 
     return render(request, 'polls/sign_up.html', locals())
-
-def reinit(request):
-    # ==========================================================================
-    # DEVELOPMENT ONLY : allows to set event to "not started" for tests purposes
-    # Should be removed before pushing to production
-    # ==========================================================================
-    event = Event.objects.get(slug=request.POST['event_to_reinit'])
-
-    # Set event to "not started"
-    event.current = False
-    event.save()
-
-    Procuration.objects.filter(event=event).delete()
-    question_list = get_list_or_404(Question, event=event)
-
-
-    # Resets users vote status
-    for question in question_list:
-        UserVote.objects.filter(question=question).delete()
-        Result.objects.filter(question=question).delete()
-
-    # Reinitialize complete view
-    nb_questions = len(question_list)
-
-    user_can_vote = False
-    if EventGroup.user_in_event(event.slug, request.user):
-        user_can_vote = True
-
-    return render(request, 'polls/event.html', locals())
-
 
 
 
@@ -339,113 +301,3 @@ def cancel_proxy(request):
 
 
     return redirect('polls:event', event_slug=event_slug)
-
-
-def invite_users(request):
-    event_slug = request.POST['event_to_invite']
-    event = Event.get_event(event_slug)
-    company = Company.objects.get(event=event)
-    question_list = Question.get_question_list(event_slug)
-    context_data = {'company': company, 'event': event, 'question_list': question_list}
-
-    html_string = render_to_string('polls/resolutions.html', context_data)
-    html = HTML(string=html_string, base_url=request.build_absolute_uri())
-    # html = HTML(url=reverse('polls:invite', kwargs=context_data))
-    result = html.write_pdf('./media/pdf/resolutions.pdf', stylesheets=[
-        CSS('./polls/static/polls/css/polls.css'),
-        CSS('./polls/static/polls/css/bootstrap.css')
-        ])
-
-    # response = HttpResponse(content_type='application/pdf;')
-    # response['Content-Disposition'] = 'inline; filename="resolutions.pdf"'
-    # response['Content-Transfer-Encoding'] = 'binary'
-    # with tempfile.NamedTemporaryFile(delete=True) as output:
-    #     output.write(result)
-    #     output.flush()
-    #     output = open(output.name, 'r')
-    #     response.write(output.read())
-
-
-    return redirect('polls:event', event_slug=event_slug)
-
-
-class PDFTemplate(TemplateView):
-    template_name = 'polls/resolutions.html'
-
-    def get_context_data(self, **kwargs):
-        print("=============================")
-        print("========= CONTEXT ===========")
-        print(kwargs)
-        context = super().get_context_data(**kwargs)
-        event_slug = context['event_slug']
-        event = Event.get_event(event_slug)
-        company = Company.objects.get(event=event)
-        question_list = Question.get_question_list(event_slug)
-        context['company'], context['event'], context['question_list'] = company, event, question_list
-        return context
-        
-
-class PersoWeasyTemplateResponse(WeasyTemplateResponse):
-    @property
-    def rendered_content(self):
-        """
-        Returns rendered PDF pages.
-        """
-        print("=============================")
-        print("========== RENDER ===========")
-        document = self.get_document()
-        doc = document.write_pdf('./media/pdf/resolutions_dj.pdf')
-        # print("========== PDF OK ===========")
-        # event_slug = self.context_data['event_slug']
-        # print(self.context_data)
-        # return redirect('polls:event', event_slug=event_slug)
-
-
-class GeneratePDF(WeasyTemplateView):
-    response_class = PersoWeasyTemplateResponse
-    pdf_attachement = True
-    # pdf_filename = 'resolutions_dj.pdf'
-    template_name = 'polls/resolutions.html'
-
-
-    def get(self, request, *args, **kwargs):
-        print("=======================================")
-        print("============= GET ================")
-        context = self.get_context_data(**kwargs)
-        response = self.render_to_response(context)
-        # print(response)
-        return self.render_to_response(context)
-        return redirect('polls:event', event_slug=context['event'].slug)
-
-
-    def get_context_data(self, **kwargs):
-        print("=======================================")
-        print("============= CONTEXTE ================")
-        context = super().get_context_data(**kwargs)
-        event_slug = context['event_slug']
-        event = Event.get_event(event_slug)
-        company = Company.objects.get(event=event)
-        question_list = Question.get_question_list(event_slug)
-        context['company'] = company
-        context['event'] = event
-        context['question_list'] = question_list
-        return context
-
-    # def dispatch(self, request, *args, **kwargs):
-    #     # temp = super().dispatch(request, *args, **kwargs)
-    #     print("=============================")
-    #     print("============= DISPATCH ================")
-    #     print(kwargs)
-    #     event_slug = kwargs['event_slug']
-    #     context = self.get_context_data(**kwargs)
-    #     response = self.render_to_response(context)
-    #     return redirect('polls:event', event_slug=event_slug)
-
-
-def test_pdf(request):
-    event_slug = request.POST['event_to_test']
-    event = Event.get_event(event_slug)
-    company = Company.objects.get(event=event)
-    question_list = Question.get_question_list(event_slug)
-    
-    return render(request, 'polls/resolutions.html', locals())

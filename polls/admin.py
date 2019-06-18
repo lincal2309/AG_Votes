@@ -2,14 +2,23 @@
 
 from django.contrib import admin
 from django.shortcuts import render, redirect
+from django.contrib.contenttypes.models import ContentType
+from django.conf import settings
+from django.template.loader import render_to_string
+from django.contrib.auth.decorators import permission_required
+from django.core.exceptions import PermissionDenied
+
+from weasyprint import HTML, CSS
+
+import os
 
 from .models import Company, Event, Question, Choice, UserVote, EventGroup, Result, Procuration
+from .pollsmail import PollsMail
 
 class PollsAdminSite(admin.AdminSite):
     site_header = 'Administration de l\'application Votes'
 
 admin_site = PollsAdminSite(name='polls_admin')
-
 
 
 class CompanyAdmin(admin.ModelAdmin):
@@ -40,14 +49,57 @@ class EventAdmin(admin.ModelAdmin):
     ordering = ('event_date', 'event_name')
     filter_horizontal = ('groups',)
     inlines = [QuestionInLine, ChoiceInLine]
-    actions = ['invite_users']
+    actions = ['invite_users', 'reinit_event']
 
     def invite_users(self, request, queryset):
         for evt in queryset:
+            event = Event.get_event(evt.slug)
+
+            # Generate list of questions
+            company = Company.objects.get(event=event)
+            question_list = Question.get_question_list(evt.slug)
+            context_data = {'company': company, 'event': event, 'question_list': question_list}
+
+            html_string = render_to_string('polls/resolutions.html', context_data)
+            html = HTML(string=html_string, base_url=request.build_absolute_uri())
+            document = html.write_pdf(os.path.join(settings.MEDIA_ROOT, 'pdf/resolutions.pdf'), stylesheets=[
+                CSS(os.path.join(settings.STATIC_ROOT, 'polls/css/polls.css')),
+                CSS(os.path.join(settings.STATIC_ROOT, 'polls/css/bootstrap.css'))
+                ])
+
+            # Send email to users
+            PollsMail('invite', evt, attach='pdf/resolutions.pdf')
+
+            # Message acknowledgement
             message_usr = "Les participants à l'événement {} ont été invités".format(evt.event_name)
             self.message_user(request, message_usr)
-            return redirect('polls:invite', event_slug=evt.slug)
     invite_users.short_description = "Inviter les participants"
+
+    def reinit_event(self, request, queryset):
+        # ==========================================================================
+        # DEVELOPMENT ONLY : allows to set event to "not started" for tests purposes
+        # Should be removed before pushing to production
+        # ==========================================================================
+        for event in queryset:
+            # Set event to "not started"
+            event.current = False
+            event.save()
+
+            Procuration.objects.filter(event=event).delete()
+            question_list = Question.objects.filter(event=event)
+
+            # Resets users vote status
+            for question in question_list:
+                UserVote.objects.filter(question=question).delete()
+                Result.objects.filter(question=question).delete()
+
+            # Reinitialize complete view
+            nb_questions = len(question_list)
+
+            user_can_vote = False
+            if EventGroup.user_in_event(event.slug, request.user):
+                user_can_vote = True
+    reinit_event.short_description = "Réinitialiser l'événement"
 
 
 class EventGroupAdmin(admin.ModelAdmin):

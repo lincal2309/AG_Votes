@@ -2,8 +2,11 @@
 
 from django.core.mail import EmailMessage, get_connection
 from django.contrib.auth.models import User
+from django.conf import settings
+
 from .models import Company, Event, Question, Choice, UserVote, EventGroup, Result, Procuration
 
+invite_text = "Bonjour {} {}, \n\nVeuillez trouver ci-joint l'ordre du jour pour l'événement suivant : \n\n       {} qui se tiendra le {}.\n\nEn vous remerciant par avance."
 ask_proxy = "Bonjour {}, \n\nNe pouvant me rendre disponible, accepteriez-vous de prendre procuration pour moi, pour l'événement suivant : \n{} qui se tiendra le {} ? \n\nEn vous remerciant par avance.\n\n{} {}"
 confirm_proxy = "Bonjour {}, \n\nJe vous confirme accepter votre procuration.\n\nBien à vous.\n\n{} {}"
 refuse_proxy = "Bonjour {}, \n\nJe suis au regret de ne pas pouvoir accepter votre procuration.\n\nBien à vous.\n\n{} {}"
@@ -23,15 +26,26 @@ class PollsMail():
         for attr_name, attr_value in kwargs.items():
             setattr(self, attr_name, attr_value)
 
-        self.actions = {'ask_proxy': self.ask_proxy_message, 'confirm_proxy': self.confirm_proxy_message}
+        self.actions = {'invite':self.invite_users, 'ask_proxy': self.ask_proxy_message, 'confirm_proxy': self.confirm_proxy_message}
         self.actions[action]()
 
     def send_email_info(self):
         # Send email method
         with get_connection(host=self.company.host, port=self.company.port, username=self.company.hname, password=self.company.fax, use_tls=self.company.use_tls) as connection:
-            EmailMessage(self.subject, self.message, self.company.host_user, self.recipient_list, cc=self.cc_list, bcc=self.bcc_list, connection=connection).send()
+            msg = EmailMessage(self.subject, self.message, self.company.hname, self.recipient_list, cc=self.cc_list, bcc=self.bcc_list, connection=connection)
+            if hasattr(self, 'attach'):
+                msg.attach_file(settings.MEDIA_ROOT + self.attach)
+            msg.send()
 
-    
+    def invite_users(self):
+        self.subject = "Invitation et ordre du jour"
+        for user in User.objects.filter(eventgroup__event=self.event):
+            if user.email:
+                self.message = invite_text.format(user.first_name, user.last_name, self.event.event_name, str(self.event.event_date))
+                self.recipient_list = [user.email]
+                self.send_email_info()
+
+
     def ask_proxy_message(self):
         self.subject = "Pouvoir"
         self.message = ask_proxy.format(self.proxy.first_name, self.event.event_name, str(self.event.event_date), self.user.first_name, self.user.last_name)
