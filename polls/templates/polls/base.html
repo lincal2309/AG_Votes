@@ -65,6 +65,8 @@
                                 <li class="user-footer">
                                         <a href="/admin/" class="btn btn-default btn-flat">Administration</a>
                                 </li>
+                            {% endif %}
+                            {% if user.is_superuser %}
                                 <li class="user-footer">
                                     <a href="sign_up/" class="btn btn-default btn-flat">Création user</a>
                                 </li>

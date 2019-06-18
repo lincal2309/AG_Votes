@@ -4,7 +4,7 @@ from django.db import models
 from django.contrib.auth.models import User, Group
 from django.shortcuts import get_list_or_404, get_object_or_404
 from django.utils import timezone
-from django.db.models import Count, UniqueConstraint
+from django.db.models import Count, Q
 from django.conf import settings
 
 
@@ -61,15 +61,6 @@ class EventGroup(models.Model):
             user_in_group = True
         return user_in_group
 
-    @classmethod
-    def get_proxy_list(cls, event_slug, user):
-        # A REVOIR ET CORRIGER
-        group = user.eventgroup_set.all()
-        proxy_users = Procuration.objects.all()
-        user_list = group.users.exclude(user=user)
-        group_list = cls.objects.filter(event__slug=event_slug)
-        # cls.objects.filter(user__groups__eventgroup__evt_group__user=user, proxy_user__isnull=True).exclude(user=user).values('user').distinct()
-
 
 
 class Event(models.Model):
@@ -88,7 +79,7 @@ class Event(models.Model):
 
     class Meta:
         verbose_name = "Evénement"
-        UniqueConstraint(fields=['company__id', 'slug'], name='unique_slug')
+        constraints = [models.UniqueConstraint(fields=['company_id', 'slug'], name='unique_slug')]
 
     def __str__(self):
         return self.event_name
@@ -113,6 +104,8 @@ class Question(models.Model):
 
     class Meta:
         verbose_name = "Résolution"
+        constraints = [models.UniqueConstraint(fields=['event', 'question_no'], name='unique_question_no_per_event'),
+            models.CheckConstraint(check=Q(question_no__gt=0), name='question_no_gt_0')]
 
     def __str__(self):
         return self.question_text
@@ -132,6 +125,7 @@ class Question(models.Model):
         # Initialize global results data
         global_choice_list = Choice.get_choice_list(self.event.slug).values('choice_text', 'votes')
         group_vote = {}
+        group_vote = {}
         for choice in global_choice_list:
             group_vote[choice['choice_text']] = 0
 
@@ -148,10 +142,20 @@ class Question(models.Model):
             weight = choice_list[0]['group_weight']
             if self.event.rule == 'MAJ':
                 max_val = values.index(max(values))
-                group_vote[labels[max_val]] += weight           # A MODIFIER : cas d'égalité, cas où pas de valeur
+                group_vote[labels[max_val]] += weight           # A MODIFIER : cas d'égalité, cas où pas de valeur (règles à définir)
             elif self.event.rule == 'PROP':
+                # Calculate totals per choice, including group's weight
+                # Addition of each group's result
                 for i, choice in enumerate(labels):
                     group_vote[choice] += values[i] * weight / 100
+
+        if self.event.rule == 'PROP':
+            # Calculate percentage for eache choice
+            total_votes = 0
+            for val in group_vote.values():
+                total_votes += val
+            for choice, value in group_vote.items():
+                group_vote[choice] = round((value / total_votes) * 100, 2)
 
         return group_vote
 
@@ -192,11 +196,11 @@ class Choice(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, verbose_name="événement")
     choice_text = models.CharField("libellé", max_length=200)
     choice_no = models.IntegerField("numéro de question")
-    votes = models.IntegerField("nombre de votes", default=0)
 
     class Meta:
         verbose_name = "Choix"
         verbose_name_plural = "Choix"
+        constraints = [models.UniqueConstraint(fields=['event', 'choice_no'], name='unique_choice_no_per_event')]
 
     def __str__(self):
         return self.choice_text
@@ -248,12 +252,11 @@ class UserVote(models.Model):
         user_vote = cls.get_user_vote(event_slug, user, question_no)
         user_vote.nb_user_votes, user_vote.has_voted, user_vote.date_vote = user_vote.nb_user_votes - 1, True, timezone.now()
         user_vote.save()
-        Result.add_vote(user, question_no, choice_id)
+        Result.add_vote(user, event_slug, question_no, choice_id)
         return user_vote
 
 
 class Result(models.Model):
-    # ENVISAGER CHANGEMENT DE NOM ( => Results ?)
     eventgroup = models.ForeignKey(EventGroup, on_delete=models.CASCADE, verbose_name="groupe d'utilisateurs")
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     choice = models.ForeignKey(Choice, on_delete=models.CASCADE, verbose_name="choix")
@@ -268,10 +271,10 @@ class Result(models.Model):
         verbose_name_plural = "Résultats des votes"
 
     @classmethod
-    def add_vote(cls, user, question_no, choice_id):
-        group_choice = cls.objects.get(eventgroup__users=user, question__question_no=question_no, choice__id=choice_id)
-        group_choice.votes += 1
-        group_choice.save()
+    def add_vote(cls, user, event_slug, question_no, choice_id):
+        res = cls.objects.get(eventgroup__users=user, eventgroup__event__slug=event_slug, question__question_no=question_no, choice__id=choice_id)
+        res.votes += 1
+        res.save()
 
     
     @classmethod
@@ -330,6 +333,8 @@ class Procuration(models.Model):
     @classmethod
     def cancel_proxy(cls, event_slug, user, *args):
         if len(args) == 1:
+            # Case a proxyholder refuse a proxy request
             cls.objects.filter(event__slug=event_slug, user__id=user, proxy=args[0]).delete()
         else:
+            # Case a user cancels his proxy's request
             cls.objects.filter(event__slug=event_slug, user=user).delete()

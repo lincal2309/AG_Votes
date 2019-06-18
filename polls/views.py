@@ -5,8 +5,8 @@ from django.shortcuts import render, redirect, reverse, get_list_or_404
 from django.utils import timezone
 from django.contrib.auth.models import User, Group
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, Count
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db.models import Count
 from django.conf import settings
 
 import os
@@ -21,7 +21,10 @@ background_colors = settings.BACKGROUND_COLORS
 border_colors = settings.BORDER_COLORS
 
 
-# Global functions
+# =======================
+#    Global functions
+# =======================
+
 def init_event(event):
     UserVote.init_uservotes(event)
     event.set_current()
@@ -66,10 +69,21 @@ def set_chart_data(event, evt_group_list, question_no):
         weight = choice_list[0]['group_weight']
         if event.rule == 'MAJ':
             max_val = values.index(max(values))
-            group_vote[labels[max_val]] += weight           # A MODIFIER : cas d'égalité, cas où pas de valeur
+            group_vote[labels[max_val]] += weight           # A MODIFIER : cas d'égalité, cas où pas de valeur (règles à définir)
         elif event.rule == 'PROP':
+            # Calculate totals per choice, including group's weight
+            # Addition of each group's result
             for i, choice in enumerate(labels):
                 group_vote[choice] += values[i] * weight / 100
+
+    if event.rule == 'PROP':
+        # Calculate percentage for eache choice
+        total_votes = 0
+        for val in group_vote.values():
+            total_votes += val
+        for choice, value in group_vote.items():
+            group_vote[choice] = round((value / total_votes) * 100, 2)
+
 
     # Setup global info for charts
     global_labels = []
@@ -107,10 +121,10 @@ def set_chart_data(event, evt_group_list, question_no):
 # =======================
 #  User management views
 # =======================
-
+@user_passes_test(lambda u: u.is_superuser)
 def create_user(request):
     # ================================================
-    # For development purposes only
+    # For development purposes only - superuser only
     # ================================================
     error = False
 
@@ -124,7 +138,6 @@ def create_user(request):
             else:
                 User.objects.create_user(username=username, 
                     password=password)
-                # return redirect(reverse('polls:index'))
     else:
         form = UserForm()
 
@@ -289,6 +302,7 @@ def accept_proxy(request):
     return JsonResponse(data)
 
 def cancel_proxy(request):
+    """ Cancel or refuse proxy """
 
     event_slug = request.POST['event']
 

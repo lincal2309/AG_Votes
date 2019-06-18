@@ -1,12 +1,10 @@
 # -*-coding:Utf-8 -*
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.shortcuts import render, redirect
-from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
 from django.template.loader import render_to_string
-from django.contrib.auth.decorators import permission_required
-from django.core.exceptions import PermissionDenied
+from django.db.models import Sum
 
 from weasyprint import HTML, CSS
 
@@ -49,36 +47,42 @@ class EventAdmin(admin.ModelAdmin):
     ordering = ('event_date', 'event_name')
     filter_horizontal = ('groups',)
     inlines = [QuestionInLine, ChoiceInLine]
-    actions = ['invite_users', 'reinit_event']
+
+    if settings.DEBUG:
+        actions = ['invite_users', 'reinit_event']
+    else:
+        actions = ['invite_users']
 
     def invite_users(self, request, queryset):
-        for evt in queryset:
-            event = Event.get_event(evt.slug)
+        for event in queryset:
+            # Check total groups' weight is 100
+            if EventGroup.objects.filter(event=event).aggregate(Sum('weight'))['weight__sum'] != 100:
+                self.message_user(request, 'Le total des poids des groupes doit être égal à 100', level=messages.ERROR)
+            else:
+                # Generate list of questions
+                company = Company.objects.get(event=event)
+                question_list = Question.get_question_list(event.slug)
+                context_data = {'company': company, 'event': event, 'question_list': question_list}
 
-            # Generate list of questions
-            company = Company.objects.get(event=event)
-            question_list = Question.get_question_list(evt.slug)
-            context_data = {'company': company, 'event': event, 'question_list': question_list}
+                html_string = render_to_string('polls/resolutions.html', context_data)
+                html = HTML(string=html_string, base_url=request.build_absolute_uri())
+                document = html.write_pdf(os.path.join(settings.MEDIA_ROOT, 'pdf/resolutions.pdf'), stylesheets=[
+                    CSS(os.path.join(settings.STATIC_ROOT, 'polls/css/polls.css')),
+                    CSS(os.path.join(settings.STATIC_ROOT, 'polls/css/bootstrap.min.css'))
+                    ])
 
-            html_string = render_to_string('polls/resolutions.html', context_data)
-            html = HTML(string=html_string, base_url=request.build_absolute_uri())
-            document = html.write_pdf(os.path.join(settings.MEDIA_ROOT, 'pdf/resolutions.pdf'), stylesheets=[
-                CSS(os.path.join(settings.STATIC_ROOT, 'polls/css/polls.css')),
-                CSS(os.path.join(settings.STATIC_ROOT, 'polls/css/bootstrap.css'))
-                ])
+                # Send email to users
+                PollsMail('invite', event, attach='pdf/resolutions.pdf')
 
-            # Send email to users
-            PollsMail('invite', evt, attach='pdf/resolutions.pdf')
-
-            # Message acknowledgement
-            message_usr = "Les participants à l'événement {} ont été invités".format(evt.event_name)
-            self.message_user(request, message_usr)
+                # Message acknowledgement
+                message_usr = "Les participants à l'événement {} ont été invités".format(event.event_name)
+                self.message_user(request, message_usr)
     invite_users.short_description = "Inviter les participants"
 
     def reinit_event(self, request, queryset):
         # ==========================================================================
         # DEVELOPMENT ONLY : allows to set event to "not started" for tests purposes
-        # Should be removed before pushing to production
+        # Should not be activated in production
         # ==========================================================================
         for event in queryset:
             # Set event to "not started"

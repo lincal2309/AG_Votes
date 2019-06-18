@@ -14,7 +14,19 @@ cancel_proxy = "Bonjour {}, \n\nSuite à un changement de programme me concernan
 
 
 class PollsMail():
+    """
+        Class dedicated to emails management 
+
+        Email configuration info come from Company model (managed in admin panel only)
+        Requered info to send email come as attributes
+        An "action dict" allows to launch action according to the keyword given as first parameter
+    
+    """
     def __init__(self, action, event, sender=[], recipient_list=[], cc_list=[], bcc_list=[], **kwargs):
+        """ At class instanciation, all parameters are converted into attributes 
+            In some few cases, kwargs are defined and also converted into attributes, 
+            to ease future evolutions
+        """
         self.event = event
         self.company = Company.objects.get(event=self.event)
         self.sender = sender

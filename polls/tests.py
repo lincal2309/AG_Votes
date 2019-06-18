@@ -13,46 +13,107 @@ from unittest import mock
 import datetime
 import json
 
-from .models import Company, Event, Question, Choice, UserVote, EventGroup
+from .models import Company, Event, Question, Choice, UserVote, EventGroup, Result, Procuration
+from .views import set_chart_data
+from .pollsmail import PollsMail
 
 
 # ===================================
 #  Global functions used for testing
 # ===================================
 
-def create_user(username, staff=False):
-    return User.objects.create_user(username, password=username, is_staff=staff)
+def create_user(username, group=None, staff=False):
+    email = username + "@toto.com"
+    last_name = "nom_" + username
+    usr = User.objects.create_user(username, password=username, is_staff=staff, email=email, last_name=last_name)
+    if group:
+        group.users.add(usr)
+    return usr
 
 def create_company(name):
-    return Company.objects.create(company_name=name, logo="logo.png")
-
+    return Company.objects.create(company_name=name, logo="logo.png", statut="SARL", siret="0123456789", address1="Rue des fauvettes", zip_code="99456")
 
 # ===================================
 #          Mock functions
-# Predefined mock for models' methods
 # ===================================
 
-def mock_get_event_user_list(event_slug):
-    user1 = create_user('user1', False)
-    user2 = create_user('user2', False)
-    company = create_company('Une société de test')
-    event_date = datetime.date(2150, 5, 12)
-    event = Event.objects.create(event_name="Un événement de test", event_date=event_date, 
-            slug=slugify('dummy-event-slug'), company=company)
-    user_vote1 = EventGroup.objects.create(event=event, user=user1)
-    user_vote2 = EventGroup.objects.create(event=event, user=user2)
-    event_user_list = (user_vote1, user_vote2)
-    return event_user_list
 
-def mock_get_question_list(event_slug):
-    company = create_company('Une société de test')
-    event_date = datetime.date(2150, 5, 12)
-    event, created = Event.objects.get_or_create(event_name="Un événement de test", event_date=event_date, 
-            slug=slugify('dummy-event-slug'), company=company)
-    question1 = Question.objects.create(question_text="Dummy question 1", question_no=1, event=event)
-    question2 = Question.objects.create(question_text="Dummy question 2", question_no=2, event=event)
-    question_list = (question1, question2)
-    return question_list
+
+# ===================================
+#  Test global functions & utilities
+# ===================================
+
+class TestSetChartData(TestCase):
+    def setUp(self):
+        self.company = create_company('Société de test')
+        event_date = timezone.now() + datetime.timedelta(days=1)
+        self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
+            slug=slugify("Evénement de test" + str(event_date)), company=self.company)
+        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
+        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
+        self.choice1 = Choice.objects.create(event=self.event, choice_text="Choix 1", choice_no=1)
+        self.choice2 = Choice.objects.create(event=self.event, choice_text="Choix 2", choice_no=2)
+        self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
+        self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
+        self.event.groups.add(self.group1, self.group2)
+        Result.objects.create(eventgroup=self.group1, question=self.question1, choice=self.choice1, votes=3, group_weight=30)
+        Result.objects.create(eventgroup=self.group1, question=self.question1, choice=self.choice2, votes=1, group_weight=30)
+        Result.objects.create(eventgroup=self.group1, question=self.question2, choice=self.choice1, votes=1, group_weight=30)
+        Result.objects.create(eventgroup=self.group1, question=self.question2, choice=self.choice2, votes=3, group_weight=30)
+        Result.objects.create(eventgroup=self.group2, question=self.question1, choice=self.choice1, votes=0, group_weight=70)
+        Result.objects.create(eventgroup=self.group2, question=self.question1, choice=self.choice2, votes=2, group_weight=70)
+        Result.objects.create(eventgroup=self.group2, question=self.question2, choice=self.choice1, votes=0, group_weight=70)
+        Result.objects.create(eventgroup=self.group2, question=self.question2, choice=self.choice2, votes=2, group_weight=70)
+        self.usr11 = create_user('user11', self.group1)
+        self.usr12 = create_user('user12', self.group1)
+        self.usr13 = create_user('user13', self.group1)
+        self.usr14 = create_user('user14', self.group1)
+        self.usr21 = create_user('user21', self.group2)
+        self.usr22 = create_user('user22', self.group2)
+
+    def test_chart_first_question_maj(self):
+        evt_group_list = EventGroup.get_list(self.event.slug)
+        data = set_chart_data(self.event, evt_group_list, 1)
+
+        # Global variables
+        self.assertEqual(data['nb_charts'], 2)
+
+        # Global data
+        global_data = data['chart_data']['global']
+        self.assertEqual(global_data['labels'], ['Choix 1', 'Choix 2'])
+        self.assertEqual(global_data['values'], [30, 70])
+        self.assertEqual(global_data['nb_votes'], 6)
+        self.assertEqual(global_data['total_votes'], 6)
+
+        # Group 1 data
+        group_data = data['chart_data']['chart1']
+        self.assertEqual(group_data['values'], [3, 1])
+        self.assertEqual(group_data['nb_votes'], 4)
+        self.assertEqual(group_data['total_votes'], 4)
+
+
+class TestPollsMail(TestCase):
+    def setUp(self):
+        self.company = create_company('Société de test')
+        event_date = timezone.now() + datetime.timedelta(days=1)
+        self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
+            slug=slugify("Evénement de test" + str(event_date)), company=self.company)
+        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
+        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
+        self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
+        self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
+        self.event.groups.add(self.group1, self.group2)
+        self.usr11 = create_user('user11', self.group1)
+        self.usr12 = create_user('user12', self.group1)
+        self.usr13 = create_user('user13', self.group1)
+        self.usr14 = create_user('user14', self.group1)
+        self.usr21 = create_user('user21', self.group2)
+        self.usr22 = create_user('user22', self.group2)
+
+    def test_ask_proxy_message(self):
+        mail = PollsMail('ask_proxy', self.event, sender=[self.usr11.email], recipient_list=[self.usr13.email], user=self.usr11, proxy=self.usr13)
+        self.assertEqual(len(mail.msg.outbox), 1)
+        self.assertEqual(mail.msg.outbox[0].subject, 'Pouvoir')
 
 
 # ===================================
@@ -105,6 +166,19 @@ class TestModelQuestion(TestCase):
             slug=slugify("Evénement de test" + str(event_date)), company=self.company)
         self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
         self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
+        self.choice1 = Choice.objects.create(event=self.event, choice_text="Choix 1", choice_no=1)
+        self.choice2 = Choice.objects.create(event=self.event, choice_text="Choix 2", choice_no=2)
+        self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
+        self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
+        self.event.groups.add(self.group1, self.group2)
+        Result.objects.create(eventgroup=self.group1, question=self.question1, choice=self.choice1, votes=3, group_weight=30)
+        Result.objects.create(eventgroup=self.group1, question=self.question1, choice=self.choice2, votes=1, group_weight=30)
+        Result.objects.create(eventgroup=self.group1, question=self.question2, choice=self.choice1, votes=1, group_weight=30)
+        Result.objects.create(eventgroup=self.group1, question=self.question2, choice=self.choice2, votes=3, group_weight=30)
+        Result.objects.create(eventgroup=self.group2, question=self.question1, choice=self.choice1, votes=0, group_weight=70)
+        Result.objects.create(eventgroup=self.group2, question=self.question1, choice=self.choice2, votes=2, group_weight=70)
+        Result.objects.create(eventgroup=self.group2, question=self.question2, choice=self.choice1, votes=0, group_weight=70)
+        Result.objects.create(eventgroup=self.group2, question=self.question2, choice=self.choice2, votes=2, group_weight=70)
 
     def test_get_question_list(self):
         question_list = Question.get_question_list(self.event.slug)
@@ -116,107 +190,174 @@ class TestModelQuestion(TestCase):
         my_question = Question.get_question(self.event.slug, 1)
         self.assertEqual(my_question, self.question1)
 
-class TestModelChoice(TestCase):
+    def test_get_results_maj(self):
+        group_vote = self.question1.get_results()
+        self.assertEqual(group_vote['Choix 1'], 30)
+        self.assertEqual(group_vote['Choix 2'], 70)
+        group_vote = self.question2.get_results()
+        self.assertEqual(group_vote['Choix 1'], 0)
+        self.assertEqual(group_vote['Choix 2'], 100)
+
+    def test_get_results_prop(self):
+        Event.objects.filter(id=self.event.id).update(rule='PROP')
+        self.event.refresh_from_db()
+        group_vote = self.question1.get_results()
+        self.assertEqual(group_vote['Choix 1'], 34.62)
+        self.assertEqual(group_vote['Choix 2'], 65.38)
+        group_vote = self.question2.get_results()
+        self.assertEqual(group_vote['Choix 1'], 11.54)
+        self.assertEqual(group_vote['Choix 2'], 88.46)
+
+    def test_get_chart_results(self):
+        data = self.question1.get_chart_results()
+        self.assertEqual(data['chart_data']['labels'], ['Choix 1', 'Choix 2'])
+        self.assertEqual(data['chart_data']['values'], [30, 70])
+
+
+class TestModelEventGroup(TestCase):
     def setUp(self):
-        self.user_lambda = create_user('lambda', False)
+        self.company = create_company('Société de test')
+        event_date = timezone.now() + datetime.timedelta(days=1)
+        self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
+            slug=slugify("Evénement de test" + str(event_date)), current=True, company=self.company)
+        self.group = EventGroup.objects.create(group_name="Groupe 1", weight=33)
+        self.event.groups.add(self.group)
+        self.user_lambda = create_user('lambda', group=self.group)
+        self.user_alpha = create_user('alpha')
+
+    def test_user_in_event(self):
+        user_in_evt = EventGroup.user_in_event(self.event.slug, self.user_lambda)
+        self.assertEqual(user_in_evt, True)
+        user_in_evt = EventGroup.user_in_event(self.event.slug, self.user_alpha)
+        self.assertEqual(user_in_evt, False)
+
+class TestModelUserVote(TestCase):
+    def setUp(self):
+        self.company = create_company('Société de test')
+        event_date = timezone.now() + datetime.timedelta(days=1)
+        self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
+            slug=slugify("Evénement de test" + str(event_date)), current=True, company=self.company)
+        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
+        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
+        self.group = EventGroup.objects.create(group_name="Groupe 1")
+        self.event.groups.add(self.group)
+        self.user_lambda = create_user('lambda', group=self.group)
+        self.user_alpha = create_user('alpha')
+        self.choice1 = Choice.objects.create(event=self.event, choice_text="Choix 1", choice_no=1)
+        self.choice2 = Choice.objects.create(event=self.event, choice_text="Choix 2", choice_no=2)
+
+    def test_get_user_vote(self):
+        UserVote.objects.create(user=self.user_lambda, question=self.question1, has_voted=False, nb_user_votes=1)
+        UserVote.objects.create(user=self.user_alpha, question=self.question1, has_voted=True, nb_user_votes=0)
+        user_vote = UserVote.get_user_vote(self.event.slug, self.user_lambda, 1)
+        self.assertEqual(user_vote.has_voted, False)
+        user_vote = UserVote.get_user_vote(self.event.slug, self.user_alpha, 1)
+        self.assertEqual(user_vote.has_voted, True)
+        
+    def test_init_uservotes(self):
+        UserVote.init_uservotes(self.event)
+        new_user_list = UserVote.objects.filter(question__event__slug=self.event.slug)
+        self.assertEqual(len(new_user_list), 2)
+        self.assertEqual(new_user_list[0].user.username, 'lambda')
+        self.assertEqual(new_user_list[0].question.question_text, 'Question 1')
+        self.assertEqual(new_user_list[1].question.question_text, 'Question 2')
+
+    def test_set_vote(self):
+        UserVote.objects.create(user=self.user_lambda, question=self.question1, has_voted=False, nb_user_votes=1)
+        Result.objects.create(eventgroup=self.group, question=self.question1, choice=self.choice1)
+        user_vote = UserVote.set_vote(self.event.slug, self.user_lambda, 1, 1)
+        self.assertEqual(user_vote.has_voted, True)
+        self.assertEqual(user_vote.nb_user_votes, 0)
+
+class TestModelResult(TestCase):
+    def setUp(self):
+        self.company = create_company('Société de test')
+        event_date = timezone.now() + datetime.timedelta(days=1)
+        self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
+            slug=slugify("Evénement de test" + str(event_date)), current=True, company=self.company)
+        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
+        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
+        self.group = EventGroup.objects.create(group_name="Groupe 1")
+        self.event.groups.add(self.group)
+        self.user_lambda = create_user('lambda', group=self.group)
+        self.user_alpha = create_user('alpha')
+        self.choice1 = Choice.objects.create(event=self.event, choice_text="Choix 1", choice_no=1)
+        self.choice2 = Choice.objects.create(event=self.event, choice_text="Choix 2", choice_no=2)
+        self.r1 = Result.objects.create(eventgroup=self.group, question=self.question1, choice=self.choice1)
+        self.r2 = Result.objects.create(eventgroup=self.group, question=self.question1, choice=self.choice2)
+        self.r3 = Result.objects.create(eventgroup=self.group, question=self.question2, choice=self.choice1)
+        self.r4 = Result.objects.create(eventgroup=self.group, question=self.question2, choice=self.choice2)
+
+    def test_add_vote(self):
+        Result.add_vote(self.user_lambda, self.event.slug, 1, 1)
+        self.r1.refresh_from_db()
+        self.r2.refresh_from_db()
+        self.r3.refresh_from_db()
+        self.r3.refresh_from_db()
+        self.assertEqual(self.r1.votes, 1)
+        self.assertEqual(self.r2.votes, 0)
+        self.assertEqual(self.r3.votes, 0)
+
+    
+    def test_get_vote_list(self):
+        vote_list = Result.get_vote_list(self.group, 1)
+        self.assertQuerysetEqual(vote_list, ['<Result: Votes du groupe Groupe 1 pour le choix 1 de la question 1>',
+            '<Result: Votes du groupe Groupe 1 pour le choix 2 de la question 1>'])
+
+
+class TestModelProcuration(TestCase):
+    def setUp(self):
         self.company = create_company('Société de test')
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
             slug=slugify("Evénement de test" + str(event_date)), company=self.company)
-        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
-        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
-        EventGroup.objects.create(event=self.event, user=self.user_lambda)
-        self.c1 = Choice.objects.create(choice_text="Oui", question=self.question1)
-        self.c2 = Choice.objects.create(choice_text="Non", question=self.question1, votes=3)
-        self.c3 = Choice.objects.create(choice_text="NSP", question=self.question1)
-        Choice.objects.create(choice_text="Oui", question=self.question2)
-        Choice.objects.create(choice_text="Non", question=self.question2)
-        Choice.objects.create(choice_text="NSP", question=self.question2)
+        self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
+        self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
+        self.event.groups.add(self.group1, self.group2)
+        self.usr11 = create_user('user11', self.group1)
+        self.usr12 = create_user('user12', self.group1)
+        self.usr13 = create_user('user13', self.group1)
+        self.usr14 = create_user('user14', self.group1)
+        self.usr21 = create_user('user21', self.group2)
+        self.usr22 = create_user('user22', self.group2)
+    
 
-    def test_get_choice_list(self):
-        choice_list = Choice.get_choice_list(self.event.slug, 1)
-        self.assertEqual(len(choice_list), 3)
-        self.assertEqual(choice_list[0].choice_text, "Oui")
+    def test_get_proxy_status_no_proxy(self):
+        proxy_list, user_proxy, user_proxy_list = Procuration.get_proxy_status(self.event.slug, self.usr11)
+        self.assertEqual(len(proxy_list), 3)
+        self.assertEqual(user_proxy, None)
+        self.assertEqual(len(user_proxy_list), 0)
 
-    def test_add_vote(self):
-        self.assertEqual(self.c1.votes, 0)
-        self.assertEqual(self.c2.votes, 3)
-        Choice.add_vote(1)
-        self.c1.refresh_from_db()  # Need to fetch database after it's been updated
-        self.assertEqual(self.c1.votes, 1)
-        Choice.add_vote(2)
-        self.c2.refresh_from_db()
-        self.assertEqual(self.c2.votes, 4)
+    
+    def test_set_user_proxy(self):
+        Procuration.set_user_proxy(self.event, self.usr11, self.usr13)
+        proc = Procuration.objects.get(event=self.event, user=self.usr11)
+        self.assertEqual(proc.user, self.usr11)
+        self.assertEqual(proc.proxy, self.usr13)
 
-class TestModelEventGroup(TestCase):
-    def setUp(self):
-        self.user_lambda = create_user('lambda', False)
-        self.user_alpha = create_user('alpha', False)
-        self.company = create_company('Société de test')
-        event_date = timezone.now() + datetime.timedelta(days=1)
-        self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
-            slug=slugify("Evénement de test" + str(event_date)), current=True, company=self.company)
-        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
-        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
-        EventGroup.objects.create(event=self.event, user=self.user_lambda)
-        Choice.objects.create(choice_text="Oui", question=self.question1, votes=1)
-        Choice.objects.create(choice_text="Non", question=self.question1, votes=2)
-        Choice.objects.create(choice_text="NSP", question=self.question1)
+    def test_confirm_proxy(self):
+        Procuration.set_user_proxy(self.event, self.usr11, self.usr13)
+        proc = Procuration.objects.get(event=self.event, user=self.usr11)
+        self.assertEqual(proc.proxy_confirmed, False)
+        Procuration.confirm_proxy(self.event, self.usr13, self.usr11.id)
+        proc.refresh_from_db()
+        self.assertEqual(proc.proxy_confirmed, True)
 
-    def test_get_user_list(self):
-        user_list = EventGroup.get_user_list(self.event.slug)
-        self.assertEqual(len(user_list), 1)
-        self.assertEqual(user_list[0].user.username, "lambda")
+    def test_refuse_proxy(self):
+        Procuration.set_user_proxy(self.event, self.usr11, self.usr13)
+        proxy_list = Procuration.objects.filter(event=self.event)
+        self.assertEqual(len(proxy_list), 1)
+        Procuration.cancel_proxy(self.event.slug, self.usr11)
+        proxy_list = Procuration.objects.filter(event=self.event)
+        self.assertEqual(len(proxy_list), 0)
 
-    def test_count_total_votes(self):
-        nb_votes = EventGroup.count_total_votes(self.event.slug)
-        self.assertEqual(nb_votes, 1)
 
-    def test_user_in_event_group(self):
-        user_in_group = EventGroup.user_in_event_group(self.event.slug, self.user_lambda)
-        self.assertEqual(user_in_group, True)
-        user_in_group = EventGroup.user_in_event_group(self.event.slug, self.user_alpha)
-        self.assertEqual(user_in_group, False)
 
-class TestModelUserVote(TestCase):
-    def setUp(self):
-        self.user_lambda = create_user('lambda', False)
-        self.user_alpha = create_user('alpha', False)
-        self.company = create_company('Société de test')
-        event_date = timezone.now() + datetime.timedelta(days=1)
-        self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
-            slug=slugify("Evénement de test" + str(event_date)), current=True, company=self.company)
-        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
-        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
-        EventGroup.objects.create(event=self.event, user=self.user_lambda)
-        self.c1 = Choice.objects.create(choice_text="Oui", question=self.question1, votes=1)
-        self.c2 = Choice.objects.create(choice_text="Non", question=self.question1, votes=2)
-        self.c3 = Choice.objects.create(choice_text="NSP", question=self.question1)
+# ===================================
+#           Test utilities
+# ===================================
 
-    def test_get_user_vote(self):
-        UserVote.objects.create(user=self.user_lambda, question=self.question1, has_voted=False)
-        UserVote.objects.create(user=self.user_alpha, question=self.question1, has_voted=True)
-        user_vote = UserVote.get_user_vote(self.user_lambda, 1)
-        self.assertEqual(user_vote.has_voted, False)
-        user_vote = UserVote.get_user_vote(self.user_alpha, 1)
-        self.assertEqual(user_vote.has_voted, True)
-        
-    @mock.patch('polls.models.Question.get_question_list')
-    @mock.patch('polls.models.EventGroup.get_user_list')
-    def test_init_uservotes(self, mock_user_list, mock_question_list):
-        mock_user_list.return_value = mock_get_event_user_list('dummy-event-slug')
-        mock_question_list.return_value = mock_get_question_list('dummy-event-slug')
-        UserVote.init_uservotes('dummy-event-slug')
-        new_user_list = UserVote.objects.filter(question__event__slug='dummy-event-slug')
-        self.assertEqual(len(new_user_list), 4)
-        self.assertEqual(new_user_list[0].user.username, 'user1')
-        self.assertEqual(new_user_list[0].question.question_text, 'Dummy question 1')
-        self.assertEqual(new_user_list[3].user.username, 'user2')
 
-    def test_set_vote(self):
-        UserVote.objects.create(user=self.user_lambda, question=self.question1, has_voted=False)
-        user_vote = UserVote.set_vote(self.user_lambda, 1)
-        self.assertEqual(user_vote.has_voted, True)
 
 
 # ===================================
@@ -277,8 +418,8 @@ class TestIndex(TestCase):
 
 class TestEvent(TestCase):
     def setUp(self):
-        self.user_staff = create_user('staff', True)
-        self.user_lambda = create_user('lambda', False)
+        self.user_staff = create_user('staff', staff=True)
+        self.user_lambda = create_user('lambda')
         self.company = create_company('Société de test')
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
@@ -307,7 +448,9 @@ class TestEvent(TestCase):
         self.assertContains(response, "Accéder à l'événement")
 
     def test_user_lambda_event_not_started(self):
-        EventGroup.objects.create(event=self.event, user=self.user_lambda)
+        self.group = EventGroup.objects.create(group_name="Groupe 1", weight=70)
+        self.event.groups.add(self.group)
+        self.group.users.add(self.user_lambda)
         self.client.force_login(self.user_lambda)
         url = reverse('polls:event', args=(self.event.slug,))
         response = self.client.get(url)
@@ -318,7 +461,9 @@ class TestEvent(TestCase):
         self.assertNotContains(response, "Accéder à l'événement")
 
     def test_user_lambda_event_started(self):
-        EventGroup.objects.create(event=self.event, user=self.user_lambda)
+        self.group = EventGroup.objects.create(group_name="Groupe 1", weight=70)
+        self.event.groups.add(self.group)
+        self.group.users.add(self.user_lambda)
         self.client.force_login(self.user_lambda)
         self.event.current = True
         self.event.save()
@@ -344,21 +489,16 @@ class TestEvent(TestCase):
 
 class TestQuestion(TestCase):
     def setUp(self):
-        self.user_staff = create_user('staff', True)
-        self.user_lambda = create_user('lambda', False)
         self.company = create_company('Société de test')
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
             slug=slugify("Evénement de test" + str(event_date)), company=self.company)
+        self.group = EventGroup.objects.create(group_name="Groupe 1", weight=70)
+        self.event.groups.add(self.group)
+        self.user_staff = create_user('staff', group=self.group, staff=True)
+        self.user_lambda = create_user('lambda', group=self.group)
         self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
         self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
-        EventGroup.objects.create(event=self.event, user=self.user_lambda)
-        Choice.objects.create(choice_text="Oui", question=self.question1)
-        Choice.objects.create(choice_text="Non", question=self.question1)
-        Choice.objects.create(choice_text="NSP", question=self.question1)
-        Choice.objects.create(choice_text="Oui", question=self.question2)
-        Choice.objects.create(choice_text="Non", question=self.question2)
-        Choice.objects.create(choice_text="NSP", question=self.question2)
 
     def test_launch_event(self):
         self.client.force_login(self.user_staff)
@@ -368,14 +508,14 @@ class TestQuestion(TestCase):
         my_event = get_object_or_404(Event, id=self.event.id)
         self.assertEqual(my_event.current, True)
         user_list = get_list_or_404(UserVote)
-        self.assertEqual(len(user_list), 2)
+        self.assertEqual(len(user_list), 4)
         self.assertEqual(response.context['question_no'], 1)
         self.assertEqual(response.context['event'].current, True)
         self.assertContains(response, "Question 1")
         self.assertContains(response, "Résolution suivante")
 
     def test_user_display_first_question(self):
-        UserVote.objects.create(user=self.user_lambda, question=self.question1, has_voted=False)
+        UserVote.objects.create(user=self.user_lambda, question=self.question1, has_voted=False, nb_user_votes=1)
         self.event.current = True
         self.event.save()
         self.client.force_login(self.user_lambda)
@@ -386,12 +526,11 @@ class TestQuestion(TestCase):
         self.assertEqual(response.context['last_question'], False)
         self.assertEqual(response.context['user_vote'].has_voted, False)
         self.assertContains(response, "Question 1")
-        self.assertContains(response, "Oui")
         self.assertContains(response, "Voter")
         self.assertContains(response, "Résolution suivante")
 
     def test_user_display_question_user_has_voted(self):
-        UserVote.objects.create(user=self.user_lambda, question=self.question1, has_voted=True)
+        UserVote.objects.create(user=self.user_lambda, question=self.question1, has_voted=True, nb_user_votes=0)
         self.event.current = True
         self.event.save()
         self.client.force_login(self.user_lambda)
@@ -404,7 +543,7 @@ class TestQuestion(TestCase):
         self.assertEqual(response.context['user_vote'].has_voted, True)
 
     def test_user_display_last_question(self):
-        UserVote.objects.create(user=self.user_lambda, question=self.question2, has_voted=False)
+        UserVote.objects.create(user=self.user_lambda, question=self.question2, has_voted=False, nb_user_votes=1)
         self.event.current = True
         self.event.save()
         self.client.force_login(self.user_lambda)
@@ -414,77 +553,7 @@ class TestQuestion(TestCase):
         self.assertEqual(response.context['question_no'], 2)
         self.assertEqual(response.context['last_question'], True)
         self.assertContains(response, "Question 2")
-        self.assertContains(response, "Oui")
         self.assertContains(response, "Voter")
         self.assertNotContains(response, "Résolution suivante")
 
-
-class TestGetChartData(TestCase):
-    def setUp(self):
-        self.user_lambda = create_user('lambda', False)
-        self.company = create_company('Société de test')
-        event_date = timezone.now() + datetime.timedelta(days=1)
-        self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
-            slug=slugify("Evénement de test" + str(event_date)), current=True, company=self.company)
-        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
-        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
-        EventGroup.objects.create(event=self.event, user=self.user_lambda)
-        Choice.objects.create(choice_text="Oui", question=self.question1, votes=3)
-        Choice.objects.create(choice_text="Non", question=self.question1, votes=1)
-        Choice.objects.create(choice_text="NSP", question=self.question1)
-
-    def test_chart_first_question(self):
-        url = reverse('polls:chart_data')
-        response = self.client.get(url, {'event_slug': self.event.slug, 'question_no': 1})
-        self.assertEqual(response.status_code, 200)
-        result = json.loads(response.content)
-        self.assertEqual(result['labels'], ['Oui', 'Non', 'NSP'])
-        self.assertEqual(result['values'], [3, 1, 0])
-        self.assertEqual(result['nb_votes'], 4)
-        self.assertEqual(result['total_votes'], 1)
-        bg_colors = [
-            'rgba(124, 252, 0, 0.2)',
-            'rgba(255, 99, 132, 0.2)',
-            'rgba(255, 159, 64, 0.2)',
-            'rgba(54, 162, 235, 0.2)',
-            'rgba(75, 192, 192, 0.2)',
-            'rgba(153, 102, 255, 0.2)',
-            'rgba(128, 128, 128, 0.2)',
-            'rgba(255, 206, 86, 0.2)',
-            'rgba(222, 184, 135, 0.2)',
-            'rgba(127, 255, 212, 0.2)'
-        ]
-        self.assertEqual(result['backgroundColor'], bg_colors)
-
-class TestVote(TestCase):
-    def setUp(self):
-        self.user_lambda = create_user('lambda', False)
-        self.company = create_company('Société de test')
-        event_date = timezone.now() + datetime.timedelta(days=1)
-        self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
-            slug=slugify("Evénement de test" + str(event_date)), current=True, company=self.company)
-        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
-        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
-        EventGroup.objects.create(event=self.event, user=self.user_lambda)
-        Choice.objects.create(choice_text="Oui", question=self.question1)
-        Choice.objects.create(choice_text="Non", question=self.question1)
-        Choice.objects.create(choice_text="NSP", question=self.question1)
-        UserVote.objects.create(user=self.user_lambda, question=self.question1, has_voted=False)
-
-    def test_user_vote_first_question(self):
-        self.client.force_login(self.user_lambda)
-        url = reverse('polls:vote', args=(self.event.slug, 1))
-        response = self.client.post(url, {'choice': 1})
-        result = json.loads(response.content)
-        self.assertEqual(response.status_code, 200)
-        my_vote = get_object_or_404(UserVote, user=self.user_lambda, question=self.question1)
-        self.assertEqual(my_vote.has_voted, True)
-        my_choice = get_object_or_404(Choice, choice_text="Oui", question=self.question1)
-        self.assertEqual(my_choice.votes, 1)
-        data = {'success': 'OK', 'voted': True}
-        self.assertEqual(result, data)
-
-
-class TestResults(TestCase):
-    pass
 

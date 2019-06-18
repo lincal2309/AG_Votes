@@ -370,3 +370,15 @@ $('#refuse_proxy').on("click", function(event) {
 $('#cancel_proxy').on("click", function(event) {
     console.log("Annulation proxy");
 })
+
+
+
+// ==========================
+//     Various functions
+// ==========================
+
+// Go back to previous page
+$('#back').on('click', function(event) {
+    event.preventDefault();
+    history.back();
+});
