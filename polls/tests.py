@@ -7,9 +7,13 @@ from django.utils.text import slugify
 from django.shortcuts import reverse, get_list_or_404, get_object_or_404
 from django.db.models import Count
 from django.contrib.auth.models import User
+from django.core import mail
+from django.core.files import File
+from django.conf import settings
 
 from unittest import mock
 
+import os
 import datetime
 import json
 
@@ -31,12 +35,9 @@ def create_user(username, group=None, staff=False):
     return usr
 
 def create_company(name):
-    return Company.objects.create(company_name=name, logo="logo.png", statut="SARL", siret="0123456789", address1="Rue des fauvettes", zip_code="99456")
-
-# ===================================
-#          Mock functions
-# ===================================
-
+    return Company.objects.create(company_name=name, logo="logo.png", statut="SARL", 
+        siret="0123456789", address1="Rue des fauvettes", zip_code="99456",
+        host='smtp.gmail.com', port=587, hname='test@polls.com', fax='toto')
 
 
 # ===================================
@@ -106,14 +107,82 @@ class TestPollsMail(TestCase):
         self.usr11 = create_user('user11', self.group1)
         self.usr12 = create_user('user12', self.group1)
         self.usr13 = create_user('user13', self.group1)
-        self.usr14 = create_user('user14', self.group1)
+        self.usr14 = create_user('user14')
         self.usr21 = create_user('user21', self.group2)
         self.usr22 = create_user('user22', self.group2)
 
     def test_ask_proxy_message(self):
-        mail = PollsMail('ask_proxy', self.event, sender=[self.usr11.email], recipient_list=[self.usr13.email], user=self.usr11, proxy=self.usr13)
-        self.assertEqual(len(mail.msg.outbox), 1)
-        self.assertEqual(mail.msg.outbox[0].subject, 'Pouvoir')
+        PollsMail('ask_proxy', self.event, sender=[self.usr11.email],
+            recipient_list=[self.usr13.email], user=self.usr11, proxy=self.usr13)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, 'Pouvoir')
+
+    def test_confirm_proxy_message(self):
+        PollsMail('confirm_proxy', self.event, sender=[self.usr11.email], user=self.usr11, proxy_id=self.usr12.id)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, 'Confirmation de pouvoir')
+
+    def test_invite_users_message(self):
+        # Create dummy file
+        with open(os.path.join(settings.MEDIA_ROOT, 'pdf/test_file.pdf'), 'w') as f:
+            dummy_file = File(f)
+            dummy_file.write('Liste des résolutions')
+
+        PollsMail('invite', self.event, attach='pdf/test_file.pdf')
+        self.assertEqual(len(mail.outbox), 5)
+        self.assertEqual(mail.outbox[0].subject, 'Invitation et ordre du jour')
+
+
+
+# ===================================
+#        Test admin functions
+# ===================================
+
+class TestEventAdmin(TestCase):
+    def setUp(self):
+        self.company = create_company('Société de test')
+        event_date = timezone.now() + datetime.timedelta(days=1)
+        self.event = Event.objects.create(event_name="Evénement de test", event_date=event_date, 
+            slug=slugify("Evénement de test" + str(event_date)), company=self.company)
+        self.question1 = Question.objects.create(question_text="Question 1", question_no=1, event=self.event)
+        self.question2 = Question.objects.create(question_text="Question 2", question_no=2, event=self.event)
+        self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
+        self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
+        self.event.groups.add(self.group1, self.group2)
+        self.usr11 = create_user('user11', self.group1)
+        self.usr12 = create_user('user12', self.group1)
+        self.usr13 = create_user('user13', self.group1)
+        self.usr14 = create_user('user14')
+        self.usr21 = create_user('user21', self.group2)
+        self.usr22 = create_user('user22', self.group2)
+
+        superusr = User.objects.create_superuser(username='test', password='test', email='test@test.py')
+        self.client.force_login(superusr)
+
+
+    @mock.patch('weasyprint.html')
+    def test_invite_users(self, mock_write_pdf):
+
+        # Mocking PDF creation with dummy file
+        with open(os.path.join(settings.MEDIA_ROOT, 'pdf/resolutions.pdf'), 'w') as f:
+            dummy_file = File(f)
+            dummy_file.write('Liste des résolutions')
+
+        mock_write_pdf.write_pdf.return_value = "dumb"
+
+        # Queryset : event list
+        event_list = Event.objects.filter(id=self.event.id)
+
+        # Data for action url
+        data ={
+            'action': 'invite_users',
+            '_selected_action': event_list
+        }
+        url = reverse('admin:polls_event_changelist')
+        response = self.client.post(url, data)
+
+        self.assertEqual(len(mail.outbox), 5)
+        self.assertEqual(mail.outbox[0].subject, 'Invitation et ordre du jour')
 
 
 # ===================================
@@ -352,14 +421,6 @@ class TestModelProcuration(TestCase):
         self.assertEqual(len(proxy_list), 0)
 
 
-
-# ===================================
-#           Test utilities
-# ===================================
-
-
-
-
 # ===================================
 #            Test views
 # ===================================
@@ -408,7 +469,7 @@ class TestIndex(TestCase):
 
     def test_display_home(self):
         # Display only future events
-        user = create_user('toto', False)
+        user = create_user('toto')
         self.client.force_login(user)
 
         response = self.client.get(reverse('polls:index'))

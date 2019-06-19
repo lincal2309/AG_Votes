@@ -72,7 +72,7 @@ class Event(models.Model):
     ]
     event_name = models.CharField("nom", max_length=200)
     event_date = models.DateField("date de l'événement")
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField()
     current = models.BooleanField("en cours", default=False)
     quorum = models.IntegerField(default=33)
     rule = models.CharField("mode de scrutin", max_length=5, choices=rules, default='MAJ')
@@ -123,7 +123,7 @@ class Question(models.Model):
         evt_group_list = EventGroup.get_list(self.event.slug)
 
         # Initialize global results data
-        global_choice_list = Choice.get_choice_list(self.event.slug).values('choice_text', 'votes')
+        global_choice_list = Choice.get_choice_list(self.event.slug).values('choice_text')
         group_vote = {}
         group_vote = {}
         for choice in global_choice_list:

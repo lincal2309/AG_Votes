@@ -36,7 +36,7 @@ def set_chart_data(event, evt_group_list, question_no):
     nb_groups = 0
 
     # Initialize global results data
-    global_choice_list = Choice.get_choice_list(event.slug).values('choice_text', 'votes')
+    global_choice_list = Choice.get_choice_list(event.slug).values('choice_text')
     group_vote = {}
     global_total_votes = 0
     global_nb_votes = 0

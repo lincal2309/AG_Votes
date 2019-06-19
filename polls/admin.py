@@ -54,8 +54,11 @@ class EventAdmin(admin.ModelAdmin):
         actions = ['invite_users']
 
     def invite_users(self, request, queryset):
+        print("start")
+        print(queryset)
         for event in queryset:
             # Check total groups' weight is 100
+            print("Check groups weight")
             if EventGroup.objects.filter(event=event).aggregate(Sum('weight'))['weight__sum'] != 100:
                 self.message_user(request, 'Le total des poids des groupes doit être égal à 100', level=messages.ERROR)
             else:
