@@ -6,29 +6,79 @@
 
     <div class="container">
         <div class="row">
-            <div class="offset-sm-1 col-sm-10">
+            <div class="col-sm-12">
                 <h1 class="text-center">{{ event.event_name }} - {{ event.event_date|date:"d/m/Y" }}</h1>
-                <p class="text-center">{{ nb_questions }} question{{ nb_questions|pluralize }} ser{{ nb_questions|pluralize:"a,ont" }} soumise{{ nb_questions|pluralize }} au vote :<p>
+            {% if not user.is_staff %}
+            </div>
+            <div class="col-md-7">
+            {% endif %}
+                <h3 class="text-center mt-5">{{ nb_questions }} question{{ nb_questions|pluralize }} ser{{ nb_questions|pluralize:"a,ont" }} soumise{{ nb_questions|pluralize }} au vote</h3>
                 <ol class="mt-30">
                     {% for question in question_list %}
                         <li class="mt-10">{{ question.question_text }}</li>
                     {% endfor %}
                 </ol>
+                <div class="offset-sm-4 col-sm-4 text-center">
+                    {% if user.is_staff and not event.current %}
+                        <a class="btn btn-secondary mt-30 pb-2" type="button" href='{% url 'polls:question' event.slug 1 %}'>Lancer l'événement</a>
+                    {% elif event.current and user_can_vote or user.is_staff %}
+                        <a class="btn btn-secondary mt-30 pb-2" type="button" href='{% url 'polls:question' event.slug 1 %}'>Accéder à l'événement</a>
+                    {% endif %}
+                </div>
             </div>
-            <div class="offset-sm-4 col-sm-4 text-center">
-                {% if user.is_staff and not event.current %}
-                    <a class="btn btn-secondary mt-30 pb-2" type="button" href='{% url 'polls:question' event.slug 1 %}'>Lancer l'événement</a>
-                {% elif event.current and user_can_vote or user.is_staff %}
-                    <a class="btn btn-secondary mt-30 pb-2" type="button" href='{% url 'polls:question' event.slug 1 %}'>Accéder à l'événement</a>
-                {% endif %}
-                {% if user.is_staff %}
-                    <form action='{% url 'polls:reinit' %}' method="post">
-                    {% csrf_token %}
-                    <input id="text" type="text" name="event_to_reinit" value="{{ event.slug }}" hidden>
-                    <button class="btn btn-main" type="submit">Réinitialiser l'événement</button>
-                    </form>
-                {% endif %}
+            {% if not user.is_staff %}
+            <div class="col-md-5 border-left mt-5">
+                <div class="row">
+                    <div class="col-sm-12" id="Pouvoirs">
+                        <h3 class="text-center">Pouvoirs</h3>
+                        {% if proxy_list %}
+                            <!-- Case user has no proxy and is not proxyholder => display list of users that could receive his proxy -->
+                            <p class="mt-4 pl-2 proxy_list">En cas d'absence, vous pouvez donner pouvoir à l'une des personnes suivantes :</p>
+                            <div class="row align-items-center proxy_list">
+                                <div class="offset-sm-1 col-sm-10">
+                                    <form id="proxy" action='.' method="post" data-url='{% url 'polls:set_proxy' %}' data-event="{{ event.slug }}" data-user="{{ user.id }}">
+                                    {% csrf_token %}
+                                        {% for proxy in proxy_list %}
+                                            <input type="radio" name="proxy" id="proxy{{ forloop.counter }}" value="{{ proxy.id }}" />
+                                            <label for="proxy{{ forloop.counter }}">{{ proxy.last_name }} {{ proxy.first_name }}</label><br>
+                                        {% endfor %}
+                                        <div class="text-center pt-5"><input type="submit" id="submit_proxy" class="btn btn-secondary" value="Donner pouvoir" /></div>
+                                    </form>
+                                </div>
+                            </div>
+                        {% elif user_proxy %}
+                            <!-- Case user has given proxy => display proxyholder -->
+                            <p class="mt-4 pl-2 text-center">Vous avez donné pouvoir à : <strong>{{ user_proxy.first_name }} {{ user_proxy.last_name }}</strong></p>
+                            <form id="cancel_proxy" action='{% url 'polls:cancel_proxy' %}' method="post" data-url='{% url 'polls:accept_proxy' %}' data-event="{{ event.slug }}" data-user="{{ user.id }}">
+                            {% csrf_token %}
+                                <input type="text" name="Action" value="Cancel" hidden>
+                                <input type="text" name="event" value="{{ event.slug }}" hidden>
+                                <div class="text-center"><button class="btn btn-secondary mt-4" id="cancel_proxy_btn" type="submit" data-user="{{ user_proxy.id }}">Annuler le pouvoir</button></div>
+                            </form>
+                        {% else %}
+                            <!-- Case user is proxyholder => display proxy list -->
+                            <p class="mt-4 pl-2">Vous avez reçu les pouvoir des personnes suivantes :</p>
+                            <form id="user_proxy" action='{% url 'polls:cancel_proxy' %}' method="post" data-url='{% url 'polls:accept_proxy' %}' data-event="{{ event.slug }}" data-user="{{ user.id }}">
+                            {% csrf_token %}
+                                {% for proxy in user_proxy_list %}
+                                <div class="row align-items-center">
+                                    <div class="offset-sm-1 col-sm-10">
+                                        <input type="checkbox" name="user_proxy" id="user_proxy{{ forloop.counter }}" value="{{ proxy.user.id }}" />
+                                        <label for="user_proxy{{ forloop.counter }}" {% if proxy.proxy_confirmed %} class="checkmark" title="Procuration confirmée" {% endif %}>{{ proxy.user.last_name }} {{ proxy.user.first_name }}</label><br>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                <div class="row justify-content-center pt-5">
+                                    <div class="col-sm-3"><input type="submit" id="accept_proxy" class="btn btn-secondary" value="Accepter" /></div>
+                                    <div class="col-sm-1"><input type="text" name="Action" value="Refuse" hidden><input type="text" name="event" value="{{ event.slug }}" hidden></div>
+                                    <div class="col-sm-3"><input type="submit" id="refuse_proxy" class="btn btn-secondary" value="Refuser" /></div>
+                                </div>
+                            </form>
+                            {% endif %}
+                    </div>
+                </div>
             </div>
+            {% endif %}
         </div>
     </div>
 

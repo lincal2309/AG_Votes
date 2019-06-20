@@ -11,7 +11,4 @@ dist/
 build/
 *.egg-info/
 
-bootstrap*
-jquery*
-
 .vscode/
