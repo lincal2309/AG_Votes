@@ -1,18 +1,17 @@
 # -*-coding:Utf-8 -*
 
-from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render, redirect, reverse, get_list_or_404
-from django.utils import timezone
-from django.contrib.auth.models import User, Group
+from django.http import JsonResponse
+from django.shortcuts import render, redirect, reverse
+from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Count
 from django.conf import settings
 
-import os
 import json
 
-from .models import Company, Event, Question, Choice, UserVote, EventGroup, Result, Procuration
+from .models import Company, Event, Question, Choice, UserVote, EventGroup,\
+    Result, Procuration
 from .forms import UserForm
 from .pollsmail import PollsMail
 
@@ -46,9 +45,11 @@ def set_chart_data(event, evt_group_list, question_no):
     # Gather votes info for each group
     for evt_group in evt_group_list:
         nb_groups += 1
-        total_votes = EventGroup.objects.filter(id=evt_group.id).aggregate(Count('users'))['users__count']
-    
-        choice_list = Result.get_vote_list(evt_group, question_no).values('choice__choice_text', 'votes', 'group_weight')
+        total_votes = EventGroup.objects.filter(id=evt_group.id).\
+            aggregate(Count('users'))['users__count']
+
+        choice_list = Result.get_vote_list(evt_group, question_no).\
+            values('choice__choice_text', 'votes', 'group_weight')
 
         labels = [choice['choice__choice_text'] for choice in choice_list]
         values = [choice['votes'] for choice in choice_list]
@@ -68,8 +69,9 @@ def set_chart_data(event, evt_group_list, question_no):
         global_nb_votes += nb_votes
         weight = choice_list[0]['group_weight']
         if event.rule == 'MAJ':
+            # A MODIFIER : cas d'égalité, pas de valeur... (règles à définir)
             max_val = values.index(max(values))
-            group_vote[labels[max_val]] += weight           # A MODIFIER : cas d'égalité, cas où pas de valeur (règles à définir)
+            group_vote[labels[max_val]] += weight
         elif event.rule == 'PROP':
             # Calculate totals per choice, including group's weight
             # Addition of each group's result
@@ -84,7 +86,6 @@ def set_chart_data(event, evt_group_list, question_no):
         for choice, value in group_vote.items():
             group_vote[choice] = round((value / total_votes) * 100, 2)
 
-
     # Setup global info for charts
     global_labels = []
     global_values = []
@@ -98,8 +99,7 @@ def set_chart_data(event, evt_group_list, question_no):
         'labels': global_labels,
         'values': global_values,
         }
-    
-    
+
     chart_background_colors = background_colors
     chart_border_colors = border_colors
 
@@ -121,6 +121,7 @@ def set_chart_data(event, evt_group_list, question_no):
 # =======================
 #  User management views
 # =======================
+
 @user_passes_test(lambda u: u.is_superuser)
 def create_user(request):
     # ================================================
@@ -142,7 +143,6 @@ def create_user(request):
         form = UserForm()
 
     return render(request, 'polls/sign_up.html', locals())
-
 
 
 def login_user(request):
@@ -177,7 +177,6 @@ def logout_user(request):
 @login_required
 def index(request):
     """ Home page """
-
     company = Company.get_company(1)
     next_event_list = Event.get_next_events(company)
     return render(request, 'polls/index.html', locals())
@@ -198,7 +197,8 @@ def event(request, event_slug):
         user_can_vote = True
 
         # Get user's proxy status
-        proxy_list, user_proxy, user_proxy_list = Procuration.get_proxy_status(event_slug, request.user)
+        proxy_list, user_proxy, user_proxy_list =\
+            Procuration.get_proxy_status(event_slug, request.user)
 
     return render(request, 'polls/event.html', locals())
 
@@ -222,14 +222,15 @@ def question(request, event_slug, question_no):
 
     # Gather user's info about the current question
     if not request.user.is_staff:
-        user_vote = UserVote.get_user_vote(event_slug, request.user, question_no)
+        user_vote = UserVote.get_user_vote(event_slug, request.user,
+            question_no)
 
     # Check if current question is the last one
     if question_no == len(Question.get_question_list(event_slug)):
         last_question = True
 
     return render(request, 'polls/question.html', locals())
-        
+
 
 @login_required
 def results(request, event_slug):
@@ -238,9 +239,8 @@ def results(request, event_slug):
     event = Event.get_event(event_slug)
     question_list = Question.get_question_list(event_slug)
     nb_questions = len(question_list)
-    
-    return render(request, 'polls/results.html', locals())
 
+    return render(request, 'polls/results.html', locals())
 
 
 # =======================
@@ -260,17 +260,16 @@ def get_chart_data(request):
 
     return JsonResponse(data)
 
-
 def vote(request, event_slug, question_no):
     """ Manage users' votes """
 
     choice_id = request.POST['choice']
-    user_vote = UserVote.set_vote(event_slug, request.user, question_no, choice_id)
+    user_vote = UserVote.set_vote(event_slug, request.user, question_no,
+        choice_id)
 
     data = {'success': 'OK', 'nb_votes': user_vote.nb_user_votes}
 
     return JsonResponse(data)
-
 
 def set_proxy(request):
     """ Set proxyholder """
@@ -280,9 +279,11 @@ def set_proxy(request):
     event = Event.get_event(request.POST['event_slug'])
 
     Procuration.set_user_proxy(event, user, proxy)
-    PollsMail('ask_proxy', event, sender=[user.email], recipient_list=[proxy.email], user=user, proxy=proxy)
+    PollsMail('ask_proxy', event, sender=[user.email],
+        recipient_list=[proxy.email], user=user, proxy=proxy)
 
-    data = {'proxy_f_name': proxy.first_name, 'proxy_l_name': proxy.last_name, 'proxy': request.POST['proxy']}
+    data = {'proxy_f_name': proxy.first_name, 'proxy_l_name': proxy.last_name,
+        'proxy': request.POST['proxy']}
 
     return JsonResponse(data)
 
@@ -290,12 +291,15 @@ def accept_proxy(request):
     """ Accept proxy request """
 
     user = User.objects.get(id=request.POST['user'])
-    proxy_list = json.loads(request.POST['cancel_list'])   # decode list sent in JSON format
+    # decode list sent in JSON format
+    proxy_list = json.loads(request.POST['cancel_list'])
+
     event = Event.get_event(request.POST['event_slug'])
 
     for proxy_id in proxy_list:
         Procuration.confirm_proxy(event, user, int(proxy_id))
-        PollsMail('confirm_proxy', event, sender=[user.email], user=user, proxy_id=proxy_id)
+        PollsMail('confirm_proxy', event, sender=[user.email],
+            user=user, proxy_id=proxy_id)
 
     data = {'status': 'Success'}
 
@@ -312,6 +316,5 @@ def cancel_proxy(request):
             Procuration.cancel_proxy(event_slug, int(proxy), request.user)
     else:
         Procuration.cancel_proxy(event_slug, request.user)
-
 
     return redirect('polls:event', event_slug=event_slug)

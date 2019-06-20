@@ -1,7 +1,6 @@
 # -*-coding:Utf-8 -*
 
 from django.contrib import admin, messages
-from django.shortcuts import render, redirect
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.db.models import Sum
@@ -10,11 +9,13 @@ from weasyprint import HTML, CSS
 
 import os
 
-from .models import Company, Event, Question, Choice, UserVote, EventGroup, Result, Procuration
+from .models import Company, Event, Question, Choice, UserVote, EventGroup,\
+    Result, Procuration
 from .pollsmail import PollsMail
 
 class PollsAdminSite(admin.AdminSite):
     site_header = 'Administration de l\'application Votes'
+
 
 admin_site = PollsAdminSite(name='polls_admin')
 
@@ -22,27 +23,33 @@ admin_site = PollsAdminSite(name='polls_admin')
 class CompanyAdmin(admin.ModelAdmin):
     fieldsets = [
         (None, {'fields': ['company_name', 'logo']}),
-        ('Informations administratives', {'fields': ['statut', 'siret', 'street_num', 'street_cplt', 'address1', 'address2', 'zip_code', 'city']}),
-        ('Configuration de la messagerie', {'fields': ['host', 'port', 'hname', 'fax', 'use_tls'], 'classes': ['collapse']}),
+        ('Informations administratives', {'fields': ['statut', 'siret', 
+            'street_num', 'street_cplt', 'address1', 'address2', 'zip_code',
+            'city']}),
+        ('Configuration de la messagerie', {'fields': ['host', 'port', 
+            'hname', 'fax', 'use_tls'], 'classes': ['collapse']}),
     ]
 
+    actions = ['info_company']
+
+    def info_company(self, request, queryset):
+        for comp in queryset:
+            print("Société " + comp.company_name + " fermée")
 
 class ChoiceInLine(admin.TabularInline):
     model = Choice
     fields = ['choice_text', 'choice_no']
     extra = 3
 
-
 class QuestionInLine(admin.TabularInline):
     model = Question
     fields = ['question_text', 'question_no']
     extra = 3
 
-
-
 class EventAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug" : ("event_name", "event_date")}
-    fields = ['event_name', 'event_date', 'slug', 'groups', 'quorum', 'rule', 'current']
+    fields = ['event_name', 'event_date', 'slug', 'groups', 'quorum', 'rule', 
+        'current']
     list_display = ('event_name', 'event_date', 'quorum', 'rule', 'current')
     ordering = ('event_date', 'event_name')
     filter_horizontal = ('groups',)
@@ -59,34 +66,44 @@ class EventAdmin(admin.ModelAdmin):
         for event in queryset:
             # Check total groups' weight is 100
             print("Check groups weight")
-            if EventGroup.objects.filter(event=event).aggregate(Sum('weight'))['weight__sum'] != 100:
-                self.message_user(request, 'Le total des poids des groupes doit être égal à 100', level=messages.ERROR)
+            if EventGroup.objects.filter(event=event).\
+                    aggregate(Sum('weight'))['weight__sum'] != 100:
+                self.message_user(request,
+                    'Le total des poids des groupes doit être égal à 100',
+                    level=messages.ERROR)
             else:
                 # Generate list of questions
                 company = Company.objects.get(event=event)
                 question_list = Question.get_question_list(event.slug)
-                context_data = {'company': company, 'event': event, 'question_list': question_list}
+                context_data = {'company': company, 'event': event,
+                    'question_list': question_list}
 
-                html_string = render_to_string('polls/resolutions.html', context_data)
-                html = HTML(string=html_string, base_url=request.build_absolute_uri())
-                document = html.write_pdf(os.path.join(settings.MEDIA_ROOT, 'pdf/resolutions.pdf'), stylesheets=[
-                    CSS(os.path.join(settings.STATIC_ROOT, 'polls/css/polls.css')),
-                    CSS(os.path.join(settings.STATIC_ROOT, 'polls/css/bootstrap.min.css'))
+                html_string = render_to_string('polls/resolutions.html',
+                    context_data)
+                html = HTML(string=html_string,
+                    base_url=request.build_absolute_uri())
+                document = html.write_pdf(os.path.join(settings.MEDIA_ROOT,
+                        'pdf/resolutions.pdf'), stylesheets=[
+                    CSS(os.path.join(settings.STATIC_ROOT,
+                        'polls/css/polls.css')),
+                    CSS(os.path.join(settings.STATIC_ROOT,
+                        'polls/css/bootstrap.min.css'))
                     ])
 
                 # Send email to users
                 PollsMail('invite', event, attach='pdf/resolutions.pdf')
 
                 # Message acknowledgement
-                message_usr = "Les participants à l'événement {} ont été invités".format(event.event_name)
+                message_usr = "Les participants à l'événement {} ont été invités".\
+                    format(event.event_name)
                 self.message_user(request, message_usr)
     invite_users.short_description = "Inviter les participants"
 
     def reinit_event(self, request, queryset):
-        # ==========================================================================
-        # DEVELOPMENT ONLY : allows to set event to "not started" for tests purposes
+        # =================================================================
+        # DEVELOPMENT ONLY : allows to set event to "not started" for tests
         # Should not be activated in production
-        # ==========================================================================
+        # =================================================================
         for event in queryset:
             # Set event to "not started"
             event.current = False
@@ -108,17 +125,16 @@ class EventAdmin(admin.ModelAdmin):
                 user_can_vote = True
     reinit_event.short_description = "Réinitialiser l'événement"
 
-
 class EventGroupAdmin(admin.ModelAdmin):
     fields = ['group_name', 'weight', 'users']
     filter_horizontal = ('users',)
-    
 
 class UserVoteAdmin(admin.ModelAdmin):
     list_display = ('uservote_label', 'has_voted', 'date_vote')
 
     def uservote_label(self, obj):
-        return "Vote de %s pour la question n° %s" % (obj.user.username, str(obj.question.question_no))
+        return "Vote de %s pour la question n° %s" % (obj.user.username,
+            str(obj.question.question_no))
     uservote_label.short_description = "Vote utilisateur"
 
 class ResultAdmin(admin.ModelAdmin):
@@ -129,7 +145,8 @@ class ProcurationAdmin(admin.ModelAdmin):
     list_display = ('procuration_detail', 'utilisateur_id', 'recipiendaire_id')
 
     def procuration_detail(self, obj):
-        return "Procuration de %s pour l'événement %s" % (obj.user.last_name, obj.event.event_name)
+        return "Procuration de %s pour l'événement %s" % (obj.user.last_name,
+            obj.event.event_name)
     procuration_detail.short_description = "Procuration"
 
     def utilisateur_id(self, obj):
@@ -137,7 +154,6 @@ class ProcurationAdmin(admin.ModelAdmin):
 
     def recipiendaire_id(self, obj):
         return obj.proxy.id
-
 
 
 admin.site.register(Company, CompanyAdmin)
