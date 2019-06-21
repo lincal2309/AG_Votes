@@ -69,7 +69,8 @@ class PollsMail():
             attributes, to ease future evolutions
         """
         self.event = event
-        self.company = Company.objects.get(event=self.event)
+        if event:
+            self.company = Company.objects.get(event=self.event)
         self.sender = sender
         self.recipient_list = recipient_list
         self.cc_list = cc_list
@@ -79,9 +80,12 @@ class PollsMail():
         for attr_name, attr_value in kwargs.items():
             setattr(self, attr_name, attr_value)
 
-        self.actions = {'invite':self.invite_users_message,
+        self.actions = {
+            'invite':self.invite_users_message,
             'ask_proxy': self.ask_proxy_message,
-            'confirm_proxy': self.confirm_proxy_message}
+            'confirm_proxy': self.confirm_proxy_message,
+            'test_mail': self.test_mail
+            }
 
         self.actions[action]()
 
@@ -136,5 +140,13 @@ class PollsMail():
         self.subject = "Confirmation de pouvoir"
         self.message = confirm_proxy.format(self.proxy.first_name,
             self.user.first_name, self.user.last_name)
+
+        self.send_email_info()
+
+    def test_mail(self):
+        self.company = self.comp
+        self.subject = 'Test envoi de mail ' + self.company.company_name
+        self.message = 'Ceci est un message de test pour la société ' + self.company.company_name
+        self.recipient_list = ['gressinc@gmail.com']
 
         self.send_email_info()

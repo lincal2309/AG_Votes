@@ -132,8 +132,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 LOGIN_URL = '/polls/login/'
 
 if DEBUG:
-    # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    # EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
     # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 

@@ -30,11 +30,11 @@ class CompanyAdmin(admin.ModelAdmin):
             'hname', 'fax', 'use_tls'], 'classes': ['collapse']}),
     ]
 
-    actions = ['info_company']
+    actions = ['test_email']
 
-    def info_company(self, request, queryset):
+    def test_email(self, request, queryset):
         for comp in queryset:
-            print("Société " + comp.company_name + " fermée")
+            PollsMail('test_mail', None, comp=comp)
 
 class ChoiceInLine(admin.TabularInline):
     model = Choice
