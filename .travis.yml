@@ -7,17 +7,17 @@ python:
 # safelist
 branches:
   only:
-    - development
+    - develop
 
 # Install pipenv then run it to install Pipfile dependencies
 before_script:
   - pip install pipenv
   - pipenv install
 
-env: DJANGO_SETTINGS_MODULE="projet_votes.settings.travis"
+# env: DJANGO_SETTINGS_MODULE="projet_votes.settings.travis"
 
 services:
-  - postgresql
+  - sqlite3
 
 script:
   - python manage.py test
