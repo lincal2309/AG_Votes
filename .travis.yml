@@ -14,7 +14,7 @@ before_script:
   - pip install pipenv
   - pipenv install
 
-env: DJANGO_SETTINGS_MODULE="projet_votes.settings.travis"
+# env: DJANGO_SETTINGS_MODULE="projet_votes.settings.travis"
 
 services:
   - sqlite3
