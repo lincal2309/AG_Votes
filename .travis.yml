@@ -7,7 +7,7 @@ python:
 # safelist
 branches:
   only:
-    - development
+    - develop
 
 # Install pipenv then run it to install Pipfile dependencies
 before_script:
