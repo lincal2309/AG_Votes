@@ -22,18 +22,15 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 
-if DEBUG:
-    SECRET_KEY = 'a1nvi(1u2(*e12at&b9%n$qgkolly2k#$*=l0%=hw-8+k88!w@'
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    # EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
-    # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-else:
-    ALLOWED_HOSTS = ['127.0.0.1']
-    SECRET_KEY = os.environ['SECRET_KEY']
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+SECRET_KEY = 'a1nvi(1u2(*e12at&b9%n$qgkolly2k#$*=l0%=hw-8+k88!w@'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+ALLOWED_HOSTS = []
 
 
 # Application definition
