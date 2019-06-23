@@ -15,4 +15,4 @@ build/
 
 db.sqlite3
 production.py
-travis_temp.py
+travis.py
