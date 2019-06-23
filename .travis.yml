@@ -17,7 +17,7 @@ before_script:
 env: DJANGO_SETTINGS_MODULE="projet_votes.settings.travis"
 
 services:
-  - postgresql
+  - sqlite3
 
 script:
   - python manage.py test
