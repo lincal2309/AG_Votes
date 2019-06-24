@@ -41,7 +41,7 @@ class Company(models.Model):
         return cls.objects.get(id=id)
 
 class EventGroup(models.Model):
-    users = models.ManyToManyField(User, verbose_name="utilisateurs")
+    users = models.ManyToManyField(User, verbose_name="utilisateurs", blank=True)
     group_name = models.CharField("nom", max_length=100)
     weight = models.IntegerField("poids", default=0)
 
@@ -65,7 +65,7 @@ class EventGroup(models.Model):
 
 class Event(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    groups = models.ManyToManyField(EventGroup, verbose_name="groupes")
+    groups = models.ManyToManyField(EventGroup, verbose_name="groupes", blank=True)
     rules = [
         ('MAJ', 'Majorité'),
         ('PROP', 'Proportionnelle')

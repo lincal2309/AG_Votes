@@ -13,11 +13,12 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
+import pathlib
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 # Add a 3rd 'dirname' call as settings moved in a subfolder
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+# BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
@@ -61,7 +62,7 @@ ROOT_URLCONF = 'projet_votes.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
