@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect, reverse
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Count
+from django.db.models import Count, Sum
 from django.conf import settings
 
 import json
@@ -219,8 +219,13 @@ def question(request, event_slug, question_no):
 
     # Start event - occur when staff only used "Launch event" button
     if request.user.is_staff and not event.current:
-        # Initialize users vote & results table
-        init_event(event)
+        # Event can be launched only if total groups' weight == 100
+        if EventGroup.objects.filter(event=event).\
+                aggregate(Sum('weight'))['weight__sum'] != 100:
+            return redirect('polls:event', event_slug=event_slug)
+        else:
+            # Initialize users vote & results table
+            init_event(event)
 
     # Gather user's info about the current question
     if not request.user.is_staff:
