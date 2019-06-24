@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from django.core import mail
 from django.core.files import File
 from django.conf import settings
+from django.db.models import Sum
 
 from unittest import mock
 
@@ -568,7 +569,16 @@ class TestQuestion(TestCase):
         self.question2 = Question.objects.create(question_text="Question 2",
             question_no=2, event=self.event)
 
+    def test_launch_event_total_weight_not_100(self):
+        self.client.force_login(self.user_staff)
+        url = reverse('polls:question', args=(self.event.slug, 1))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 302)
+
     def test_launch_event(self):
+        # Add a group to have a total weight of 100
+        group2 = EventGroup.objects.create(group_name="Groupe 2", weight=30)
+        self.event.groups.add(group2)
         self.client.force_login(self.user_staff)
         url = reverse('polls:question', args=(self.event.slug, 1))
         response = self.client.get(url)
