@@ -92,7 +92,10 @@ class Event(models.Model):
 
     @classmethod
     def get_next_events(cls, company):
-        return cls.objects.filter(company=company, event_date__gte=timezone.now()).order_by('event_date')
+        return cls.objects.filter(
+            company=company,
+            event_date__gte=timezone.now()).\
+                order_by('event_date')
 
     def set_current(self):
         self.current = True
