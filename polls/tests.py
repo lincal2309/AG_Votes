@@ -400,7 +400,7 @@ class TestModelResult(TestCase):
         self.assertEqual(self.r3.votes, 0)
 
     def test_get_vote_list(self):
-        vote_list = Result.get_vote_list(self.group, 1)
+        vote_list = Result.get_vote_list(self.event, self.group, 1)
         self.assertQuerysetEqual(vote_list,
             ['<Result: Votes du groupe Groupe 1 pour le choix 1 de la question 1>',
             '<Result: Votes du groupe Groupe 1 pour le choix 2 de la question 1>'])

@@ -142,14 +142,14 @@ class Question(models.Model):
             total_votes = EventGroup.objects.filter(id=evt_group.id).\
                 aggregate(Count('users'))['users__count']
 
-            choice_list = Result.get_vote_list(evt_group, self.question_no).\
+            result_list = Result.get_vote_list(self.event, evt_group, self.question_no).\
                 values('choice__choice_text', 'votes', 'group_weight')
 
-            labels = [choice['choice__choice_text'] for choice in choice_list]
-            values = [choice['votes'] for choice in choice_list]
+            labels = [choice['choice__choice_text'] for choice in result_list]
+            values = [choice['votes'] for choice in result_list]
 
             # Calculate aggregate results
-            weight = choice_list[0]['group_weight']
+            weight = result_list[0]['group_weight']
             if self.event.rule == 'MAJ':
                 # Règles à définir : cas d'égalité, cas où pas de valeur
                 max_val = values.index(max(values))
@@ -158,7 +158,8 @@ class Question(models.Model):
                 # Calculate totals per choice, including group's weight
                 # Addition of each group's result
                 for i, choice in enumerate(labels):
-                    group_vote[choice] += values[i] * weight / 100
+                    if choice in group_vote:
+                        group_vote[choice] += values[i] * weight / 100
 
         if self.event.rule == 'PROP':
             # Calculate percentage for eache choice
@@ -252,6 +253,8 @@ class UserVote(models.Model):
         question_list = Question.get_question_list(event.slug)
         user_group_list = EventGroup.objects.filter(event=event)
         event_choice_list = Choice.get_choice_list(event.slug)
+        print("====================================")
+        print(event_choice_list)
         for question in question_list:
             for event_user in event_user_list:
                 nb_user_votes = 1
@@ -305,8 +308,8 @@ class Result(models.Model):
         res.save()
 
     @classmethod
-    def get_vote_list(cls, evt_group, question_no):
-        return cls.objects.filter(eventgroup=evt_group,
+    def get_vote_list(cls, event, evt_group, question_no):
+        return cls.objects.filter(eventgroup__event=event, eventgroup=evt_group,
             question__question_no=question_no).order_by('choice__choice_no')
 
 class Procuration(models.Model):

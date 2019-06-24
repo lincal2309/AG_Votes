@@ -127,8 +127,13 @@ class UserVoteAdmin(admin.ModelAdmin):
     uservote_label.short_description = "Vote utilisateur"
 
 class ResultAdmin(admin.ModelAdmin):
-    list_display = ('eventgroup', 'question', 'choice', 'votes')
+    list_display = ('event_label', 'eventgroup', 'question', 'choice', 'votes')
     ordering = ('eventgroup', 'question', 'choice')
+
+    def event_label(self, obj):
+        event = Event.objects.get(groups=obj.eventgroup, question=obj.question, choice=obj.choice)
+        return event.event_name
+    event_label.short_description = "Evènement"
 
 class ProcurationAdmin(admin.ModelAdmin):
     list_display = ('procuration_detail', 'utilisateur_id', 'recipiendaire_id')
@@ -148,3 +153,4 @@ class ProcurationAdmin(admin.ModelAdmin):
 admin.site.register(Company, CompanyAdmin)
 admin.site.register(Event, EventAdmin)
 admin.site.register(EventGroup, EventGroupAdmin)
+admin.site.register(Result, ResultAdmin)
