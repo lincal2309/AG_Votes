@@ -48,11 +48,11 @@ def set_chart_data(event, evt_group_list, question_no):
         total_votes = EventGroup.objects.filter(id=evt_group.id).\
             aggregate(Count('users'))['users__count']
 
-        choice_list = Result.get_vote_list(evt_group, question_no).\
+        result_list = Result.get_vote_list(event, evt_group, question_no).\
             values('choice__choice_text', 'votes', 'group_weight')
 
-        labels = [choice['choice__choice_text'] for choice in choice_list]
-        values = [choice['votes'] for choice in choice_list]
+        labels = [choice['choice__choice_text'] for choice in result_list]
+        values = [choice['votes'] for choice in result_list]
         nb_votes = sum(values)
 
         chart_nb = "chart" + str(nb_groups)
@@ -67,7 +67,7 @@ def set_chart_data(event, evt_group_list, question_no):
         # Use if / elif to ease adding future rules
         global_total_votes += total_votes
         global_nb_votes += nb_votes
-        weight = choice_list[0]['group_weight']
+        weight = result_list[0]['group_weight']
         if event.rule == 'MAJ':
             # A MODIFIER : cas d'égalité, pas de valeur... (règles à définir)
             max_val = values.index(max(values))
@@ -76,7 +76,8 @@ def set_chart_data(event, evt_group_list, question_no):
             # Calculate totals per choice, including group's weight
             # Addition of each group's result
             for i, choice in enumerate(labels):
-                group_vote[choice] += values[i] * weight / 100
+                if choice in group_vote:
+                    group_vote[choice] += values[i] * weight / 100
 
     if event.rule == 'PROP':
         # Calculate percentage for each choice
