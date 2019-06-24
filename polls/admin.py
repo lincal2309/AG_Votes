@@ -54,11 +54,8 @@ class EventAdmin(admin.ModelAdmin):
     actions = ['invite_users', 'reinit_event']
 
     def invite_users(self, request, queryset):
-        print("start")
-        print(queryset)
         for event in queryset:
             # Check total groups' weight is 100
-            print("Check groups weight")
             if EventGroup.objects.filter(event=event).\
                     aggregate(Sum('weight'))['weight__sum'] != 100:
                 self.message_user(request,
@@ -150,9 +147,4 @@ class ProcurationAdmin(admin.ModelAdmin):
 
 admin.site.register(Company, CompanyAdmin)
 admin.site.register(Event, EventAdmin)
-admin.site.register(Question)
-admin.site.register(Choice)
-admin.site.register(UserVote, UserVoteAdmin)
 admin.site.register(EventGroup, EventGroupAdmin)
-admin.site.register(Result, ResultAdmin)
-admin.site.register(Procuration, ProcurationAdmin)
