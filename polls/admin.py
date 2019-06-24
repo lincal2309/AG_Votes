@@ -13,12 +13,6 @@ from .models import Company, Event, Question, Choice, UserVote, EventGroup,\
     Result, Procuration
 from .pollsmail import PollsMail
 
-class PollsAdminSite(admin.AdminSite):
-    site_header = 'Administration de l\'application Votes'
-
-
-admin_site = PollsAdminSite(name='polls_admin')
-
 
 class CompanyAdmin(admin.ModelAdmin):
     fieldsets = [
@@ -38,17 +32,19 @@ class CompanyAdmin(admin.ModelAdmin):
 
 class ChoiceInLine(admin.TabularInline):
     model = Choice
+    ordering = ('choice_no',)
     fields = ['choice_text', 'choice_no']
     extra = 3
 
 class QuestionInLine(admin.TabularInline):
     model = Question
+    ordering = ('question_no',)
     fields = ['question_text', 'question_no']
     extra = 3
 
 class EventAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug" : ("event_name", "event_date")}
-    fields = ['event_name', 'event_date', 'slug', 'groups', 'quorum', 'rule', 
+    fields = ['event_name', 'event_date', 'slug', 'company', 'groups', 'quorum', 'rule', 
         'current']
     list_display = ('event_name', 'event_date', 'quorum', 'rule', 'current')
     ordering = ('event_date', 'event_name')
