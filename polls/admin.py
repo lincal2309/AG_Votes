@@ -51,10 +51,7 @@ class EventAdmin(admin.ModelAdmin):
     filter_horizontal = ('groups',)
     inlines = [QuestionInLine, ChoiceInLine]
 
-    if settings.DEBUG:
-        actions = ['invite_users', 'reinit_event']
-    else:
-        actions = ['invite_users']
+    actions = ['invite_users', 'reinit_event']
 
     def invite_users(self, request, queryset):
         print("start")
@@ -97,8 +94,7 @@ class EventAdmin(admin.ModelAdmin):
 
     def reinit_event(self, request, queryset):
         # =================================================================
-        # DEVELOPMENT ONLY : allows to set event to "not started" for tests
-        # Should not be activated in production
+        # SUPERUSER ONLY : allows to set event to "not started" for tests
         # =================================================================
         for event in queryset:
             # Set event to "not started"

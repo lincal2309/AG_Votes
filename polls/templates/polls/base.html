@@ -16,9 +16,9 @@
         <title>Votes</title>
 
         <!-- Favicon -->
-        {% if company %}
+        {% if company.logo %}
             <link rel="icon" type="image/png" href="{{ company.logo.url }}" />
-        {% elif event.company %}
+        {% elif event.company.logo %}
             <link rel="icon" type="image/png" href="{{ event.company.logo.url }}" />
         {% endif %}
 
