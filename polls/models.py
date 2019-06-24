@@ -165,8 +165,9 @@ class Question(models.Model):
             total_votes = 0
             for val in group_vote.values():
                 total_votes += val
-            for choice, value in group_vote.items():
-                group_vote[choice] = round((value / total_votes) * 100, 2)
+            if total_votes > 0:
+                for choice, value in group_vote.items():
+                    group_vote[choice] = round((value / total_votes) * 100, 2)
 
         return group_vote
 

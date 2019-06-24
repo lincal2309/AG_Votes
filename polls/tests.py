@@ -121,6 +121,21 @@ class TestSetChartData(TestCase):
         group_data = data['chart_data']['chart1']
         self.assertEqual(group_data['values'], [3, 1])
 
+    def test_get_results_prop_not_all_questions_answered(self):
+        Result.objects.filter(question=self.question2).delete()
+        Event.objects.filter(id=self.event.id).update(rule='PROP')
+        self.event.refresh_from_db()
+
+        evt_group_list = EventGroup.get_list(self.event.slug)
+        data = set_chart_data(self.event, evt_group_list, 1)
+        global_data = data['chart_data']['global']
+
+        # Global data
+        self.assertEqual(global_data['values'], [34.62, 65.38])
+
+        # Group 1 data
+        group_data = data['chart_data']['chart1']
+        self.assertEqual(group_data['values'], [3, 1])
 
 class TestPollsMail(TestCase):
     def setUp(self):
