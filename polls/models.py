@@ -64,7 +64,7 @@ class EventGroup(models.Model):
         return user_in_group
 
 class Event(models.Model):
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name="société")
     groups = models.ManyToManyField(EventGroup, verbose_name="groupes", blank=True)
     rules = [
         ('MAJ', 'Majorité'),
@@ -92,7 +92,7 @@ class Event(models.Model):
 
     @classmethod
     def get_next_events(cls, company):
-        return cls.objects.filter(company=company, event_date__gte=timezone.now())
+        return cls.objects.filter(company=company, event_date__gte=timezone.now()).order_by('event_date')
 
     def set_current(self):
         self.current = True

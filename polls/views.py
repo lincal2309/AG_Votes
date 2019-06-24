@@ -79,12 +79,14 @@ def set_chart_data(event, evt_group_list, question_no):
                 group_vote[choice] += values[i] * weight / 100
 
     if event.rule == 'PROP':
-        # Calculate percentage for eache choice
+        # Calculate percentage for each choice
         total_votes = 0
         for val in group_vote.values():
             total_votes += val
-        for choice, value in group_vote.items():
-            group_vote[choice] = round((value / total_votes) * 100, 2)
+        # Calculate global results only if at least 1 vote
+        if total_votes > 0:
+            for choice, value in group_vote.items():
+                group_vote[choice] = round((value / total_votes) * 100, 2)
 
     # Setup global info for charts
     global_labels = []
