@@ -106,6 +106,37 @@ class TestSetChartData(TestCase):
         self.assertEqual(group_data['nb_votes'], 4)
         self.assertEqual(group_data['total_votes'], 4)
 
+    def test_get_results_prop(self):
+        Event.objects.filter(id=self.event.id).update(rule='PROP')
+        self.event.refresh_from_db()
+
+        evt_group_list = EventGroup.get_list(self.event.slug)
+        data = set_chart_data(self.event, evt_group_list, 1)
+        global_data = data['chart_data']['global']
+
+        # Global data
+        self.assertEqual(global_data['values'], [34.62, 65.38])
+
+        # Group 1 data
+        group_data = data['chart_data']['chart1']
+        self.assertEqual(group_data['values'], [3, 1])
+
+    def test_get_results_prop_not_all_questions_answered(self):
+        Result.objects.filter(question=self.question2).delete()
+        Event.objects.filter(id=self.event.id).update(rule='PROP')
+        self.event.refresh_from_db()
+
+        evt_group_list = EventGroup.get_list(self.event.slug)
+        data = set_chart_data(self.event, evt_group_list, 1)
+        global_data = data['chart_data']['global']
+
+        # Global data
+        self.assertEqual(global_data['values'], [34.62, 65.38])
+
+        # Group 1 data
+        group_data = data['chart_data']['chart1']
+        self.assertEqual(group_data['values'], [3, 1])
+
 class TestPollsMail(TestCase):
     def setUp(self):
         self.company = create_company('Société de test')
@@ -570,6 +601,7 @@ class TestQuestion(TestCase):
             question_no=2, event=self.event)
 
     def test_launch_event_total_weight_not_100(self):
+        # Launching event not possible until total groups' weight == 100
         self.client.force_login(self.user_staff)
         url = reverse('polls:question', args=(self.event.slug, 1))
         response = self.client.get(url)

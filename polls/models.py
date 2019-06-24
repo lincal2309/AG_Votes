@@ -92,7 +92,10 @@ class Event(models.Model):
 
     @classmethod
     def get_next_events(cls, company):
-        return cls.objects.filter(company=company, event_date__gte=timezone.now()).order_by('event_date')
+        return cls.objects.filter(
+            company=company,
+            event_date__gte=timezone.now()).\
+                order_by('event_date')
 
     def set_current(self):
         self.current = True
@@ -162,8 +165,9 @@ class Question(models.Model):
             total_votes = 0
             for val in group_vote.values():
                 total_votes += val
-            for choice, value in group_vote.items():
-                group_vote[choice] = round((value / total_votes) * 100, 2)
+            if total_votes > 0:
+                for choice, value in group_vote.items():
+                    group_vote[choice] = round((value / total_votes) * 100, 2)
 
         return group_vote
 
