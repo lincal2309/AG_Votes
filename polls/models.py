@@ -253,8 +253,6 @@ class UserVote(models.Model):
         question_list = Question.get_question_list(event.slug)
         user_group_list = EventGroup.objects.filter(event=event)
         event_choice_list = Choice.get_choice_list(event.slug)
-        print("====================================")
-        print(event_choice_list)
         for question in question_list:
             for event_user in event_user_list:
                 nb_user_votes = 1

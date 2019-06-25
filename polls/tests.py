@@ -182,6 +182,74 @@ class TestPollsMail(TestCase):
         self.assertEqual(mail.outbox[0].subject, 'Invitation et ordre du jour')
 
 
+
+# ===================================
+#        Test admin actions
+# ===================================
+
+class TestAdminActions(TestCase):
+    def setUp(self):
+        self.company = create_company('Société de test')
+        event_date = timezone.now() + datetime.timedelta(days=1)
+        self.event = Event.objects.create(event_name="Evénement de test",
+            event_date=event_date, slug="event-test", company=self.company)
+
+        self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
+        self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
+        self.event.groups.add(self.group1, self.group2)
+
+        create_user('user11', self.group1)
+        create_user('user12', self.group1)
+        create_user('user13', self.group1)
+        create_user('user14')
+        create_user('user21', self.group2)
+        create_user('user22', self.group2)
+
+        superusr = User.objects.create_superuser(username='test', password='test',
+            email='test@test.py')
+        self.client.force_login(superusr)
+
+    def test_info_company(self):
+        data = {
+            'action': 'test_email',
+            '_selected_action': [self.company.id]
+        }
+
+        url = reverse('admin:polls_company_changelist')
+        response = self.client.post(url, data, follow=True)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_invite_users_total_group_weight_not_100(self):
+        EventGroup.objects.filter(id=self.group1.id).update(weight=10)
+        self.group1.refresh_from_db()
+
+        data ={
+            'action': 'invite_users',
+            '_selected_action': [self.event.id]
+        }
+        url = reverse('admin:polls_event_changelist')
+
+        response = self.client.post(url, data, follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_invite_users(self):
+    
+        data ={
+            'action': 'invite_users',
+            '_selected_action': [self.event.id]
+        }
+        url = reverse('admin:polls_event_changelist')
+
+        response = self.client.post(url, data, follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 5)
+        self.assertEqual(mail.outbox[0].subject, 'Invitation et ordre du jour')
+
+
 # ===================================
 #        Test models' methods
 # ===================================
