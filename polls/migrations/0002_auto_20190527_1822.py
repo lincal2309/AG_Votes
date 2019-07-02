@@ -5,14 +5,10 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0001_initial'),
-    ]
+    dependencies = [("polls", "0001_initial")]
 
     operations = [
         migrations.RenameField(
-            model_name='event',
-            old_name='groups',
-            new_name='evt_groups',
-        ),
+            model_name="event", old_name="groups", new_name="evt_groups"
+        )
     ]

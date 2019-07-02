@@ -6,15 +6,17 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0025_delete_userpoll'),
-    ]
+    dependencies = [("polls", "0025_delete_userpoll")]
 
     operations = [
         migrations.AddField(
-            model_name='groupvote',
-            name='question',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, to='polls.Question'),
+            model_name="groupvote",
+            name="question",
+            field=models.ForeignKey(
+                default=1,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="polls.Question",
+            ),
             preserve_default=False,
-        ),
+        )
     ]

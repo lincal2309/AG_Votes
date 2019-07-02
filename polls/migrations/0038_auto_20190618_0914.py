@@ -5,13 +5,13 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0037_auto_20190618_0909'),
-    ]
+    dependencies = [("polls", "0037_auto_20190618_0909")]
 
     operations = [
         migrations.AddConstraint(
-            model_name='question',
-            constraint=models.CheckConstraint(check=models.Q(question_no__gt=0), name='question_no_gt_0'),
-        ),
+            model_name="question",
+            constraint=models.CheckConstraint(
+                check=models.Q(question_no__gt=0), name="question_no_gt_0"
+            ),
+        )
     ]

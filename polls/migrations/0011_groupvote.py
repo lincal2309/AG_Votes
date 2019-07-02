@@ -6,22 +6,36 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0010_choice_choice_no'),
-    ]
+    dependencies = [("polls", "0010_choice_choice_no")]
 
     operations = [
         migrations.CreateModel(
-            name='GroupVote',
+            name="GroupVote",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('votes', models.IntegerField()),
-                ('choice', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.Choice')),
-                ('eventgroup', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.EventGroup')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("votes", models.IntegerField()),
+                (
+                    "choice",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="polls.Choice"
+                    ),
+                ),
+                (
+                    "eventgroup",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="polls.EventGroup",
+                    ),
+                ),
             ],
-            options={
-                'verbose_name': 'GroupVote',
-                'verbose_name_plural': 'GroupVotes',
-            },
-        ),
+            options={"verbose_name": "GroupVote", "verbose_name_plural": "GroupVotes"},
+        )
     ]

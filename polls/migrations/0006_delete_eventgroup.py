@@ -5,12 +5,6 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0005_auto_20190530_0920'),
-    ]
+    dependencies = [("polls", "0005_auto_20190530_0920")]
 
-    operations = [
-        migrations.DeleteModel(
-            name='EventGroup',
-        ),
-    ]
+    operations = [migrations.DeleteModel(name="EventGroup")]

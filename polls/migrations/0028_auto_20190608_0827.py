@@ -5,23 +5,22 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0027_auto_20190608_0740'),
-    ]
+    dependencies = [("polls", "0027_auto_20190608_0740")]
 
     operations = [
         migrations.AlterModelOptions(
-            name='result',
-            options={'verbose_name': 'Résultat des votes', 'verbose_name_plural': 'Résultats des votes'},
+            name="result",
+            options={
+                "verbose_name": "Résultat des votes",
+                "verbose_name_plural": "Résultats des votes",
+            },
         ),
         migrations.RenameField(
-            model_name='eventgroup',
-            old_name='vote_weight',
-            new_name='weight',
+            model_name="eventgroup", old_name="vote_weight", new_name="weight"
         ),
         migrations.AddField(
-            model_name='result',
-            name='weight',
-            field=models.IntegerField(default=0, verbose_name='poids'),
+            model_name="result",
+            name="weight",
+            field=models.IntegerField(default=0, verbose_name="poids"),
         ),
     ]

@@ -5,15 +5,13 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0009_auto_20190530_1150'),
-    ]
+    dependencies = [("polls", "0009_auto_20190530_1150")]
 
     operations = [
         migrations.AddField(
-            model_name='choice',
-            name='choice_no',
+            model_name="choice",
+            name="choice_no",
             field=models.IntegerField(default=1),
             preserve_default=False,
-        ),
+        )
     ]

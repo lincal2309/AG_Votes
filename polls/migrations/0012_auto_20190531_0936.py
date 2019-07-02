@@ -9,18 +9,21 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('polls', '0011_groupvote'),
+        ("polls", "0011_groupvote"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='uservote',
-            name='proxy_user',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='proxy', to=settings.AUTH_USER_MODEL),
+            model_name="uservote",
+            name="proxy_user",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="proxy",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='groupvote',
-            name='votes',
-            field=models.IntegerField(default=0),
+            model_name="groupvote", name="votes", field=models.IntegerField(default=0)
         ),
     ]

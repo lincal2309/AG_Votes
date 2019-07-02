@@ -5,18 +5,15 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0022_auto_20190606_1941'),
-    ]
+    dependencies = [("polls", "0022_auto_20190606_1941")]
 
     operations = [
-        migrations.RemoveField(
-            model_name='eventgroup',
-            name='events',
-        ),
+        migrations.RemoveField(model_name="eventgroup", name="events"),
         migrations.AddField(
-            model_name='event',
-            name='groups',
-            field=models.ManyToManyField(to='polls.EventGroup', verbose_name='événement'),
+            model_name="event",
+            name="groups",
+            field=models.ManyToManyField(
+                to="polls.EventGroup", verbose_name="événement"
+            ),
         ),
     ]

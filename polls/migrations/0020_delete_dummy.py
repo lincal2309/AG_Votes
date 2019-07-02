@@ -5,12 +5,6 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0019_dummy'),
-    ]
+    dependencies = [("polls", "0019_dummy")]
 
-    operations = [
-        migrations.DeleteModel(
-            name='Dummy',
-        ),
-    ]
+    operations = [migrations.DeleteModel(name="Dummy")]

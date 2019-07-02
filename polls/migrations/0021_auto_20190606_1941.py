@@ -8,22 +8,21 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('polls', '0020_delete_dummy'),
+        ("polls", "0020_delete_dummy"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='eventgroup',
-            name='user',
-            field=models.ManyToManyField(to=settings.AUTH_USER_MODEL, verbose_name='utilisateur'),
+            model_name="eventgroup",
+            name="user",
+            field=models.ManyToManyField(
+                to=settings.AUTH_USER_MODEL, verbose_name="utilisateur"
+            ),
         ),
-        migrations.RemoveField(
-            model_name='eventgroup',
-            name='event',
-        ),
+        migrations.RemoveField(model_name="eventgroup", name="event"),
         migrations.AddField(
-            model_name='eventgroup',
-            name='event',
-            field=models.ManyToManyField(to='polls.Event', verbose_name='événement'),
+            model_name="eventgroup",
+            name="event",
+            field=models.ManyToManyField(to="polls.Event", verbose_name="événement"),
         ),
     ]

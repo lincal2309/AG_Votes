@@ -5,14 +5,12 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0012_auto_20190531_0936'),
-    ]
+    dependencies = [("polls", "0012_auto_20190531_0936")]
 
     operations = [
         migrations.AddField(
-            model_name='uservote',
-            name='proxy_confirmed',
+            model_name="uservote",
+            name="proxy_confirmed",
             field=models.BooleanField(default=False),
-        ),
+        )
     ]
