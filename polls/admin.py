@@ -18,13 +18,15 @@ from .models import (
     EventGroup,
     Result,
     Procuration,
+    UserComp,
 )
 from .pollsmail import PollsMail
 
 
 class CompanyAdmin(admin.ModelAdmin):
+    prepopulated_fields = {"comp_slug": ("company_name",)}
     fieldsets = [
-        (None, {"fields": ["company_name", "logo"]}),
+        (None, {"fields": ["company_name", "comp_slug", "logo"]}),
         (
             "Informations administratives",
             {
@@ -217,3 +219,4 @@ admin.site.register(Company, CompanyAdmin)
 admin.site.register(Event, EventAdmin)
 admin.site.register(EventGroup, EventGroupAdmin)
 admin.site.register(Result, ResultAdmin)
+admin.site.register(UserComp)

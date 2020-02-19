@@ -7,13 +7,16 @@
     <div class="container">
         <div class="row">
             <div class="col-lg-10 align-items-center text-center">
-            {% for event in next_event_list %}
-                <h2><a href="{% url 'polls:event' event.slug %}"> {{ event.event_name }} </a></h2>
-                <p>Prévu le : {{ event.event_date|date:"d/m/Y" }}<p>
-            {% empty %}
-                <h2 class="h2_perso">Aucun événement prévu</h2>
-            </div>
-            {% endfor %}
+                <h2>Bienvenue dans l'application de votes électroniques</h2>
+                {% if user.is_superuser %}
+                    <h3>Liste des entreprises</h3>
+                    {% for company in comp_list %}
+                        <h4><a href="{% url 'polls:company_home' company.comp_slug %}"> {{ company.company_name }} </a></h4>
+                    {% endfor %}
+                {% elif not user.is_autenticated %}
+                    <a class="btn btn-secondary mt-30 pb-2" type="button" href='{% url 'polls:login' %}'>Se connecter</a>
+                {% endif %}
+
         </div>
     </div>
 

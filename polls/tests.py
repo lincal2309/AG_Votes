@@ -24,8 +24,9 @@ from .models import (
     EventGroup,
     Result,
     Procuration,
+    UserComp,
 )
-from .views import set_chart_data
+from .views import set_chart_data, init_event
 from .pollsmail import PollsMail
 
 
@@ -34,15 +35,18 @@ from .pollsmail import PollsMail
 # ===================================
 
 
-def create_user(username, group=None, staff=False):
+def create_user(company, username, group=None, staff=False):
     email = username + "@toto.com"
     last_name = "nom_" + username
     usr = User.objects.create_user(
-        username, password=username, is_staff=staff, email=email, last_name=last_name
+        username=username, password=username, is_staff=staff, email=email, last_name=last_name
     )
+    usrcomp = UserComp.objects.create(company=company, user=usr)
+    # usrcomp.save()
+
     if group:
-        group.users.add(usr)
-    return usr
+        group.users.add(usrcomp)
+    return usrcomp
 
 
 def create_company(name):
@@ -58,6 +62,51 @@ def create_company(name):
         hname="test@polls.com",
         fax="toto",
     )
+
+def add_dummy_event(company, name="Dummy event", groups=None, new_groups=True):
+    # Create dummy event and add group if any
+    # Allows to test case were more than 1 event is in the database
+    event_date = timezone.now() + datetime.timedelta(days=1)
+    event = Event.objects.create(
+        company=company,
+        event_name=name,
+        event_date=event_date,
+        slug=slugify(name + str(event_date)),
+    )
+    Question.objects.create(
+        question_text="Dummy quest 1", question_no=1, event=event
+    )
+    Question.objects.create(
+        question_text="Dummy quest 2", question_no=2, event=event
+    )
+    Choice.objects.create(
+        event=event, choice_text="Dummy choice 1", choice_no=1
+    )
+    Choice.objects.create(
+        event=event, choice_text="Dummy choice 2", choice_no=2
+    )
+    
+    if groups is not None:
+        # Add groups to event if any
+        for group in groups:
+            event.groups.add(group)
+    else:
+        groups = []
+
+    if new_groups:
+        # Create dummy groups if requested
+        group1 = EventGroup.objects.create(group_name="Dummy group 1", weight=30)
+        group2 = EventGroup.objects.create(group_name="Dummy group 2", weight=70)
+        event.groups.add(group1, group2)
+        groups += [group1, group2]
+
+    if len(groups) > 0:
+        # if groups sent and / or created, create results and uservotes
+        for group in groups:
+            create_user(company, "user " + group.group_name + " 1", group=group)
+            create_user(company, "user " + group.group_name + " 2", group=group)
+
+        init_event(event)
 
 
 # ===================================
@@ -91,6 +140,7 @@ class TestSetChartData(TestCase):
         self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group1,
             question=self.question1,
             choice=self.choice1,
@@ -98,6 +148,7 @@ class TestSetChartData(TestCase):
             group_weight=30,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group1,
             question=self.question1,
             choice=self.choice2,
@@ -105,6 +156,7 @@ class TestSetChartData(TestCase):
             group_weight=30,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group1,
             question=self.question2,
             choice=self.choice1,
@@ -112,6 +164,7 @@ class TestSetChartData(TestCase):
             group_weight=30,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group1,
             question=self.question2,
             choice=self.choice2,
@@ -119,6 +172,7 @@ class TestSetChartData(TestCase):
             group_weight=30,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group2,
             question=self.question1,
             choice=self.choice1,
@@ -126,6 +180,7 @@ class TestSetChartData(TestCase):
             group_weight=70,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group2,
             question=self.question1,
             choice=self.choice2,
@@ -133,6 +188,7 @@ class TestSetChartData(TestCase):
             group_weight=70,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group2,
             question=self.question2,
             choice=self.choice1,
@@ -140,18 +196,22 @@ class TestSetChartData(TestCase):
             group_weight=70,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group2,
             question=self.question2,
             choice=self.choice2,
             votes=2,
             group_weight=70,
         )
-        self.usr11 = create_user("user11", self.group1)
-        self.usr12 = create_user("user12", self.group1)
-        self.usr13 = create_user("user13", self.group1)
-        self.usr14 = create_user("user14", self.group1)
-        self.usr21 = create_user("user21", self.group2)
-        self.usr22 = create_user("user22", self.group2)
+        self.usr11 = create_user(self.company, "user11", self.group1)
+        self.usr12 = create_user(self.company, "user12", self.group1)
+        self.usr13 = create_user(self.company, "user13", self.group1)
+        self.usr14 = create_user(self.company, "user14", self.group1)
+        self.usr21 = create_user(self.company, "user21", self.group2)
+        self.usr22 = create_user(self.company, "user22", self.group2)
+
+        add_dummy_event(self.company)
+
 
     def test_chart_first_question_maj(self):
         evt_group_list = EventGroup.get_list(self.event.slug)
@@ -224,19 +284,19 @@ class TestPollsMail(TestCase):
         self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
         self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
-        self.usr11 = create_user("user11", self.group1)
-        self.usr12 = create_user("user12", self.group1)
-        self.usr13 = create_user("user13", self.group1)
-        self.usr14 = create_user("user14")
-        self.usr21 = create_user("user21", self.group2)
-        self.usr22 = create_user("user22", self.group2)
+        self.usr11 = create_user(self.company, "user11", self.group1)
+        self.usr12 = create_user(self.company, "user12", self.group1)
+        self.usr13 = create_user(self.company, "user13", self.group1)
+        self.usr14 = create_user(self.company, "user14")
+        self.usr21 = create_user(self.company, "user21", self.group2)
+        self.usr22 = create_user(self.company, "user22", self.group2)
 
     def test_ask_proxy_message(self):
         PollsMail(
             "ask_proxy",
             self.event,
-            sender=[self.usr11.email],
-            recipient_list=[self.usr13.email],
+            sender=[self.usr11.user.email],
+            recipient_list=[self.usr13.user.email],
             user=self.usr11,
             proxy=self.usr13,
         )
@@ -247,7 +307,7 @@ class TestPollsMail(TestCase):
         PollsMail(
             "confirm_proxy",
             self.event,
-            sender=[self.usr11.email],
+            sender=[self.usr11.user.email],
             user=self.usr11,
             proxy_id=self.usr12.id,
         )
@@ -285,12 +345,12 @@ class TestAdminActions(TestCase):
         self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
 
-        create_user("user11", self.group1)
-        create_user("user12", self.group1)
-        create_user("user13", self.group1)
-        create_user("user14")
-        create_user("user21", self.group2)
-        create_user("user22", self.group2)
+        create_user(self.company, "user11", self.group1)
+        create_user(self.company, "user12", self.group1)
+        create_user(self.company, "user13", self.group1)
+        create_user(self.company, "user14")
+        create_user(self.company, "user21", self.group2)
+        create_user(self.company, "user22", self.group2)
 
         superusr = User.objects.create_superuser(
             username="test", password="test", email="test@test.py"
@@ -416,6 +476,7 @@ class TestModelQuestion(TestCase):
         self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group1,
             question=self.question1,
             choice=self.choice1,
@@ -423,6 +484,7 @@ class TestModelQuestion(TestCase):
             group_weight=30,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group1,
             question=self.question1,
             choice=self.choice2,
@@ -430,6 +492,7 @@ class TestModelQuestion(TestCase):
             group_weight=30,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group1,
             question=self.question2,
             choice=self.choice1,
@@ -437,6 +500,7 @@ class TestModelQuestion(TestCase):
             group_weight=30,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group1,
             question=self.question2,
             choice=self.choice2,
@@ -444,6 +508,7 @@ class TestModelQuestion(TestCase):
             group_weight=30,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group2,
             question=self.question1,
             choice=self.choice1,
@@ -451,6 +516,7 @@ class TestModelQuestion(TestCase):
             group_weight=70,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group2,
             question=self.question1,
             choice=self.choice2,
@@ -458,6 +524,7 @@ class TestModelQuestion(TestCase):
             group_weight=70,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group2,
             question=self.question2,
             choice=self.choice1,
@@ -465,6 +532,7 @@ class TestModelQuestion(TestCase):
             group_weight=70,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group2,
             question=self.question2,
             choice=self.choice2,
@@ -519,8 +587,8 @@ class TestModelEventGroup(TestCase):
         )
         self.group = EventGroup.objects.create(group_name="Groupe 1", weight=33)
         self.event.groups.add(self.group)
-        self.user_lambda = create_user("lambda", group=self.group)
-        self.user_alpha = create_user("alpha")
+        self.user_lambda = create_user(self.company, "lambda", group=self.group)
+        self.user_alpha = create_user(self.company, "alpha")
 
     def test_user_in_event(self):
         user_in_evt = EventGroup.user_in_event(self.event.slug, self.user_lambda)
@@ -548,8 +616,8 @@ class TestModelUserVote(TestCase):
         )
         self.group = EventGroup.objects.create(group_name="Groupe 1")
         self.event.groups.add(self.group)
-        self.user_lambda = create_user("lambda", group=self.group)
-        self.user_alpha = create_user("alpha")
+        self.user_lambda = create_user(self.company, "lambda", group=self.group)
+        self.user_alpha = create_user(self.company, "alpha")
         self.choice1 = Choice.objects.create(
             event=self.event, choice_text="Choix 1", choice_no=1
         )
@@ -559,12 +627,14 @@ class TestModelUserVote(TestCase):
 
     def test_get_user_vote(self):
         UserVote.objects.create(
+            event=self.event,
             user=self.user_lambda,
             question=self.question1,
             has_voted=False,
             nb_user_votes=1,
         )
         UserVote.objects.create(
+            event=self.event,
             user=self.user_alpha,
             question=self.question1,
             has_voted=True,
@@ -579,18 +649,20 @@ class TestModelUserVote(TestCase):
         UserVote.init_uservotes(self.event)
         new_user_list = UserVote.objects.filter(question__event__slug=self.event.slug)
         self.assertEqual(len(new_user_list), 2)
-        self.assertEqual(new_user_list[0].user.username, "lambda")
+        self.assertEqual(new_user_list[0].user.user.username, "lambda")
         self.assertEqual(new_user_list[0].question.question_text, "Question 1")
         self.assertEqual(new_user_list[1].question.question_text, "Question 2")
 
     def test_set_vote(self):
         UserVote.objects.create(
+            event=self.event,
             user=self.user_lambda,
             question=self.question1,
             has_voted=False,
             nb_user_votes=1,
         )
         Result.objects.create(
+            event=self.event,
             eventgroup=self.group, question=self.question1, choice=self.choice1
         )
         user_vote = UserVote.set_vote(self.event.slug, self.user_lambda, 1, 1)
@@ -617,8 +689,8 @@ class TestModelResult(TestCase):
         )
         self.group = EventGroup.objects.create(group_name="Groupe 1")
         self.event.groups.add(self.group)
-        self.user_lambda = create_user("lambda", group=self.group)
-        self.user_alpha = create_user("alpha")
+        self.user_lambda = create_user(self.company, "lambda", group=self.group)
+        self.user_alpha = create_user(self.company, "alpha")
         self.choice1 = Choice.objects.create(
             event=self.event, choice_text="Choix 1", choice_no=1
         )
@@ -626,15 +698,19 @@ class TestModelResult(TestCase):
             event=self.event, choice_text="Choix 2", choice_no=2
         )
         self.r1 = Result.objects.create(
+            event=self.event,
             eventgroup=self.group, question=self.question1, choice=self.choice1
         )
         self.r2 = Result.objects.create(
+            event=self.event,
             eventgroup=self.group, question=self.question1, choice=self.choice2
         )
         self.r3 = Result.objects.create(
+            event=self.event,
             eventgroup=self.group, question=self.question2, choice=self.choice1
         )
         self.r4 = Result.objects.create(
+            event=self.event,
             eventgroup=self.group, question=self.question2, choice=self.choice2
         )
 
@@ -672,12 +748,12 @@ class TestModelProcuration(TestCase):
         self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
         self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
-        self.usr11 = create_user("user11", self.group1)
-        self.usr12 = create_user("user12", self.group1)
-        self.usr13 = create_user("user13", self.group1)
-        self.usr14 = create_user("user14", self.group1)
-        self.usr21 = create_user("user21", self.group2)
-        self.usr22 = create_user("user22", self.group2)
+        self.usr11 = create_user(self.company, "user11", self.group1)
+        self.usr12 = create_user(self.company, "user12", self.group1)
+        self.usr13 = create_user(self.company, "user13", self.group1)
+        self.usr14 = create_user(self.company, "user14", self.group1)
+        self.usr21 = create_user(self.company, "user21", self.group2)
+        self.usr22 = create_user(self.company, "user22", self.group2)
 
     def test_get_proxy_status_no_proxy(self):
         proxy_list, user_proxy, user_proxy_list = Procuration.get_proxy_status(
@@ -717,7 +793,8 @@ class TestModelProcuration(TestCase):
 
 class TestLoginUser(TestCase):
     def test_login(self):
-        create_user("toto")
+        self.company = create_company("Société de test")
+        create_user(self.company, "toto")
         response = self.client.post(
             reverse("polls:login"), {"username": "toto", "password": "toto"}
         )
@@ -734,31 +811,32 @@ class TestLoginUser(TestCase):
         self.assertContains(response, "Utilisateur inconnu")
 
     def test_already_logged_in(self):
-        user = create_user("toto")
-        self.client.force_login(user)
+        self.company = create_company("Société de test")
+        user = create_user(self.company, "toto")
+        self.client.force_login(user.user)
         response = self.client.get(reverse("polls:login"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Vous êtes déjà connecté")
-        self.assertContains(response, user.username)
+        self.assertContains(response, user.user.username)
 
 
 class TestIndex(TestCase):
     @classmethod
     def setUpTestData(cls):
-        company = create_company("Société de test")
+        cls.company = create_company("Société de test")
         passed_date = timezone.now() - datetime.timedelta(days=1)
         future_date = timezone.now() + datetime.timedelta(days=1)
         Event.objects.create(
             event_name="Evénement passé",
             event_date=passed_date,
             slug=slugify("Evénement passé" + str(passed_date)),
-            company=company,
+            company=cls.company,
         )
         Event.objects.create(
             event_name="Evénement futur",
             event_date=future_date,
             slug=slugify("Evénement futur" + str(future_date)),
-            company=company,
+            company=cls.company,
         )
 
     def test_display_home_no_login_user(self):
@@ -769,8 +847,8 @@ class TestIndex(TestCase):
 
     def test_display_home(self):
         # Display only future events
-        user = create_user("toto")
-        self.client.force_login(user)
+        user = create_user(self.company, "toto")
+        self.client.force_login(user.user)
 
         response = self.client.get(reverse("polls:index"))
         self.assertEqual(response.status_code, 200)
@@ -780,9 +858,9 @@ class TestIndex(TestCase):
 
 class TestEvent(TestCase):
     def setUp(self):
-        self.user_staff = create_user("staff", staff=True)
-        self.user_lambda = create_user("lambda")
         self.company = create_company("Société de test")
+        self.user_staff = create_user(self.company, "staff", staff=True)
+        self.user_lambda = create_user(self.company, "lambda")
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -798,7 +876,7 @@ class TestEvent(TestCase):
         )
 
     def test_user_staff_event_not_started(self):
-        self.client.force_login(self.user_staff)
+        self.client.force_login(self.user_staff.user)
         url = reverse("polls:event", args=(self.event.slug,))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -807,7 +885,7 @@ class TestEvent(TestCase):
         self.assertNotContains(response, "Accéder à l'événement")
 
     def test_user_staff_event_started(self):
-        self.client.force_login(self.user_staff)
+        self.client.force_login(self.user_staff.user)
         self.event.current = True
         self.event.save()
         url = reverse("polls:event", args=(self.event.slug,))
@@ -821,7 +899,7 @@ class TestEvent(TestCase):
         self.group = EventGroup.objects.create(group_name="Groupe 1", weight=70)
         self.event.groups.add(self.group)
         self.group.users.add(self.user_lambda)
-        self.client.force_login(self.user_lambda)
+        self.client.force_login(self.user_lambda.user)
         url = reverse("polls:event", args=(self.event.slug,))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -834,7 +912,7 @@ class TestEvent(TestCase):
         self.group = EventGroup.objects.create(group_name="Groupe 1", weight=70)
         self.event.groups.add(self.group)
         self.group.users.add(self.user_lambda)
-        self.client.force_login(self.user_lambda)
+        self.client.force_login(self.user_lambda.user)
         self.event.current = True
         self.event.save()
         url = reverse("polls:event", args=(self.event.slug,))
@@ -846,7 +924,7 @@ class TestEvent(TestCase):
         self.assertContains(response, "Accéder à l'événement")
 
     def test_user_lambda_not_in_event_list(self):
-        self.client.force_login(self.user_lambda)
+        self.client.force_login(self.user_lambda.user)
         self.event.current = True
         self.event.save()
         url = reverse("polls:event", args=(self.event.slug,))
@@ -870,8 +948,8 @@ class TestQuestion(TestCase):
         )
         self.group = EventGroup.objects.create(group_name="Groupe 1", weight=70)
         self.event.groups.add(self.group)
-        self.user_staff = create_user("staff", group=self.group, staff=True)
-        self.user_lambda = create_user("lambda", group=self.group)
+        self.user_staff = create_user(self.company, "staff", group=self.group, staff=True)
+        self.user_lambda = create_user(self.company, "lambda", group=self.group)
         self.question1 = Question.objects.create(
             question_text="Question 1", question_no=1, event=self.event
         )
@@ -881,7 +959,7 @@ class TestQuestion(TestCase):
 
     def test_launch_event_total_weight_not_100(self):
         # Launching event not possible until total groups' weight == 100
-        self.client.force_login(self.user_staff)
+        self.client.force_login(self.user_staff.user)
         url = reverse("polls:question", args=(self.event.slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 302)
@@ -890,7 +968,7 @@ class TestQuestion(TestCase):
         # Add a group to have a total weight of 100
         group2 = EventGroup.objects.create(group_name="Groupe 2", weight=30)
         self.event.groups.add(group2)
-        self.client.force_login(self.user_staff)
+        self.client.force_login(self.user_staff.user)
         url = reverse("polls:question", args=(self.event.slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -905,6 +983,7 @@ class TestQuestion(TestCase):
 
     def test_user_display_first_question(self):
         UserVote.objects.create(
+            event=self.event,
             user=self.user_lambda,
             question=self.question1,
             has_voted=False,
@@ -912,7 +991,7 @@ class TestQuestion(TestCase):
         )
         self.event.current = True
         self.event.save()
-        self.client.force_login(self.user_lambda)
+        self.client.force_login(self.user_lambda.user)
         url = reverse("polls:question", args=(self.event.slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -925,6 +1004,7 @@ class TestQuestion(TestCase):
 
     def test_user_display_question_user_has_voted(self):
         UserVote.objects.create(
+            event=self.event,
             user=self.user_lambda,
             question=self.question1,
             has_voted=True,
@@ -932,7 +1012,7 @@ class TestQuestion(TestCase):
         )
         self.event.current = True
         self.event.save()
-        self.client.force_login(self.user_lambda)
+        self.client.force_login(self.user_lambda.user)
         url = reverse("polls:question", args=(self.event.slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -943,6 +1023,7 @@ class TestQuestion(TestCase):
 
     def test_user_display_last_question(self):
         UserVote.objects.create(
+            event=self.event,
             user=self.user_lambda,
             question=self.question2,
             has_voted=False,
@@ -950,7 +1031,7 @@ class TestQuestion(TestCase):
         )
         self.event.current = True
         self.event.save()
-        self.client.force_login(self.user_lambda)
+        self.client.force_login(self.user_lambda.user)
         url = reverse("polls:question", args=(self.event.slug, 2))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)

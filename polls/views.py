@@ -19,6 +19,7 @@ from .models import (
     EventGroup,
     Result,
     Procuration,
+    UserComp,
 )
 from .forms import UserForm
 from .pollsmail import PollsMail
@@ -190,16 +191,29 @@ def logout_user(request):
 # =======================
 
 
-@login_required
 def index(request):
     """ Home page """
-    company = Company.get_company(1)
-    next_event_list = Event.get_next_events(company)
-    return render(request, "polls/index.html", locals())
+    if request.user.is_superuser:
+        comp_list = Company.objects.filter()
+        return render(request, "polls/index.html", locals())
+    elif request.user.is_authenticated:
+        user_comp = UserComp.objects.get(user=request.user)
+        return redirect("polls:company_home", comp_slug=user_comp.company.comp_slug)
+    else:
+        return render(request, "polls/index.html", locals())
 
 
 @login_required
-def event(request, event_slug):
+def company_home(request, comp_slug):
+    """ Company's home page """
+    # Display event list
+    company = Company.get_company(comp_slug)
+    next_event_list = Event.get_next_events(company)
+    return render(request, "polls/company_home.html", locals())
+
+
+@login_required
+def event(request, comp_slug, event_slug):
     """ Event details page page """
 
     # Define event context
@@ -209,19 +223,19 @@ def event(request, event_slug):
 
     # Check if connected user is part of the event and is authorized to vote
     user_can_vote = False
-    if EventGroup.user_in_event(event_slug, request.user):
+    if EventGroup.user_in_event(event_slug, request.user.usercomp):
         user_can_vote = True
 
         # Get user's proxy status
         proxy_list, user_proxy, user_proxy_list = Procuration.get_proxy_status(
-            event_slug, request.user
+            event_slug, request.user.usercomp
         )
 
     return render(request, "polls/event.html", locals())
 
 
 @login_required
-def question(request, event_slug, question_no):
+def question(request, comp_slug, event_slug, question_no):
     """ Questions details page 
         Manage information display """
 
@@ -248,7 +262,7 @@ def question(request, event_slug, question_no):
 
     # Gather user's info about the current question
     if not request.user.is_staff:
-        user_vote = UserVote.get_user_vote(event_slug, request.user, question_no)
+        user_vote = UserVote.get_user_vote(event_slug, request.user.usercomp, question_no)
 
     # Check if current question is the last one
     if question_no == len(Question.get_question_list(event_slug)):
@@ -258,7 +272,7 @@ def question(request, event_slug, question_no):
 
 
 @login_required
-def results(request, event_slug):
+def results(request, comp_slug, event_slug):
     """ Results page """
 
     event = Event.get_event(event_slug)
@@ -287,11 +301,11 @@ def get_chart_data(request):
     return JsonResponse(data)
 
 
-def vote(request, event_slug, question_no):
+def vote(request, comp_slug, event_slug, question_no):
     """ Manage users' votes """
 
     choice_id = request.POST["choice"]
-    user_vote = UserVote.set_vote(event_slug, request.user, question_no, choice_id)
+    user_vote = UserVote.set_vote(event_slug, request.user.usercomp, question_no, choice_id)
 
     data = {"success": "OK", "nb_votes": user_vote.nb_user_votes}
 

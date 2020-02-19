@@ -10,6 +10,7 @@ from django.conf import settings
 
 class Company(models.Model):
     company_name = models.CharField("nom", max_length=200)
+    comp_slug = models.SlugField("slug")
     logo = models.ImageField(upload_to="img/", null=True, blank=True)
     statut = models.CharField("forme juridique", max_length=50)
     siret = models.CharField("SIRET", max_length=50)
@@ -29,17 +30,25 @@ class Company(models.Model):
 
     class Meta:
         verbose_name = "Société"
+        constraints = [
+            models.UniqueConstraint(fields=["comp_slug"], name="unique_comp_slug")
+        ]
 
     def __str__(self):
         return self.company_name
 
     @classmethod
-    def get_company(cls, id):
-        return cls.objects.get(id=id)
+    def get_company(cls, slug):
+        return cls.objects.get(comp_slug=slug)
+
+
+class UserComp(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name="Utilisateur")
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name="Société")
 
 
 class EventGroup(models.Model):
-    users = models.ManyToManyField(User, verbose_name="utilisateurs", blank=True)
+    users = models.ManyToManyField(UserComp, verbose_name="utilisateurs", blank=True)
     group_name = models.CharField("nom", max_length=100)
     weight = models.IntegerField("poids", default=0)
 
@@ -80,7 +89,7 @@ class Event(models.Model):
     class Meta:
         verbose_name = "Evénement"
         constraints = [
-            models.UniqueConstraint(fields=["company_id", "slug"], name="unique_slug")
+            models.UniqueConstraint(fields=["company_id", "slug"], name="unique_event_slug")
         ]
 
     def __str__(self):
@@ -232,7 +241,8 @@ class Choice(models.Model):
 
 
 class UserVote(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="utilisateur")
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, verbose_name="événement")
+    user = models.ForeignKey(UserComp, on_delete=models.CASCADE, verbose_name="utilisateur")
     question = models.ForeignKey(
         Question, on_delete=models.CASCADE, verbose_name="résolution"
     )
@@ -256,6 +266,7 @@ class UserVote(models.Model):
     def get_user_vote(cls, event_slug, user, question_no):
         return cls.objects.get(
             user=user,
+            event__slug=event_slug,
             question__event__slug=event_slug,
             question__question_no=question_no,
         )
@@ -263,7 +274,7 @@ class UserVote(models.Model):
     @classmethod
     def init_uservotes(cls, event):
         event_user_list = [
-            user for user in User.objects.filter(eventgroup__event=event)
+            user for user in UserComp.objects.filter(eventgroup__event=event)
         ]
         question_list = Question.get_question_list(event.slug)
         user_group_list = EventGroup.objects.filter(event=event)
@@ -279,11 +290,12 @@ class UserVote(models.Model):
                 elif user_proxy_list:
                     nb_user_votes += len(user_proxy_list)
                 cls.objects.create(
-                    user=event_user, question=question, nb_user_votes=nb_user_votes
+                    event=event, user=event_user, question=question, nb_user_votes=nb_user_votes
                 )
             for event_choice in event_choice_list:
                 for usr_group in user_group_list:
                     Result.objects.create(
+                        event=event,
                         eventgroup=usr_group,
                         choice=event_choice,
                         question=question,
@@ -304,6 +316,7 @@ class UserVote(models.Model):
 
 
 class Result(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, verbose_name="événement")
     eventgroup = models.ForeignKey(
         EventGroup, on_delete=models.CASCADE, verbose_name="groupe d'utilisateurs"
     )
@@ -329,6 +342,7 @@ class Result(models.Model):
     @classmethod
     def add_vote(cls, user, event_slug, question_no, choice_id):
         res = cls.objects.get(
+            event__slug=event_slug,
             eventgroup__users=user,
             eventgroup__event__slug=event_slug,
             question__question_no=question_no,
@@ -340,16 +354,17 @@ class Result(models.Model):
     @classmethod
     def get_vote_list(cls, event, evt_group, question_no):
         return cls.objects.filter(
-            eventgroup__event=event,
+            event=event,
             eventgroup=evt_group,
+            eventgroup__event=event,
             question__question_no=question_no,
         ).order_by("choice__choice_no")
 
 
 class Procuration(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="utilisateur")
+    user = models.ForeignKey(UserComp, on_delete=models.CASCADE, verbose_name="utilisateur")
     proxy = models.ForeignKey(
-        User,
+        UserComp,
         on_delete=models.CASCADE,
         related_name="proxy",
         verbose_name="récipiendaire",
@@ -379,11 +394,11 @@ class Procuration(models.Model):
             # Case user is proxyholder => get proxy list
             user_proxy_list = cls.objects.filter(
                 proxy=user, event__slug=event_slug
-            ).order_by("user__last_name")
+            ).order_by("usercomp__user__last_name")
         elif len(cls.objects.filter(user=user)) > 0:
             # Case user has given proxy => get proxyholder
             usv = cls.objects.get(user=user)
-            user_proxy = User.objects.get(id=usv.proxy.id)
+            user_proxy = UserComp.objects.get(id=usv.proxy.id)
         else:
             # Case user has no proxy and is not proxyholder
             # => get list of users that could receive his proxy
@@ -395,10 +410,10 @@ class Procuration(models.Model):
                 int(proxy["user__id"]) for proxy in cls.objects.all().values("user__id")
             ]
             proxy_list = (
-                User.objects.filter(eventgroup__users=user)
+                UserComp.objects.filter(eventgroup__users=user)
                 .exclude(id=user.id)
                 .exclude(id__in=id_list)
-                .order_by("last_name")
+                .order_by("user__last_name")
             )
         return proxy_list, user_proxy, user_proxy_list
 

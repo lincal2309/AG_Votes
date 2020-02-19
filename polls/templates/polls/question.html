@@ -59,7 +59,7 @@
             <!-- For non-staff users, display votes' options -->
             <div class="row align-items-center pt-3">
                 <div class="offset-sm-4 col-sm-4">
-                    <form id="vote" action='.' method="post" data-url='{% url 'polls:vote' event.slug question_no %}' data-event="{{ event.slug }}" data-question="{{ question_no }}">
+                    <form id="vote" action='.' method="post" data-url='{% url 'polls:vote' company.comp_slug event.slug question_no %}' data-event="{{ event.slug }}" data-question="{{ question_no }}">
                     {% csrf_token %}
                         {% for choice in choice_list %}
                             <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}" />

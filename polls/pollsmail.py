@@ -1,10 +1,9 @@
 # -*-coding:Utf-8 -*
 
 from django.core.mail import EmailMessage, get_connection
-from django.contrib.auth.models import User
 from django.conf import settings
 
-from .models import Company
+from .models import Company, UserComp
 
 # Base texts for emails
 invite_text = """Bonjour {} {},
@@ -132,12 +131,12 @@ class PollsMail:
         )
 
         self.subject = "Invitation et ordre du jour"
-        for user in User.objects.filter(eventgroup__event=self.event):
-            if user.email:
-                self.recipient_list = [user.email]
+        for user in UserComp.objects.filter(eventgroup__event=self.event):
+            if user.user.email:
+                self.recipient_list = [user.user.email]
                 self.message = invite_text.format(
-                    user.first_name,
-                    user.last_name,
+                    user.user.first_name,
+                    user.user.last_name,
                     self.event.event_name,
                     str(self.event.event_date),
                 )
@@ -162,20 +161,20 @@ class PollsMail:
         self.subject = "Pouvoir"
         self.cc_list += self.sender
         self.message = ask_proxy.format(
-            self.proxy.first_name,
+            self.proxy.user.first_name,
             self.event.event_name,
             str(self.event.event_date),
-            self.user.first_name,
-            self.user.last_name,
+            self.user.user.first_name,
+            self.user.user.last_name,
         )
 
         self.send_email_info()
 
     def confirm_proxy_message(self):
-        self.proxy = User.objects.get(id=self.proxy_id)
+        self.proxy = UserComp.objects.get(id=self.proxy_id)
         self.subject = "Confirmation de pouvoir"
         self.message = confirm_proxy.format(
-            self.proxy.first_name, self.user.first_name, self.user.last_name
+            self.proxy.user.first_name, self.user.user.first_name, self.user.user.last_name
         )
 
         self.send_email_info()

@@ -19,8 +19,8 @@ from django.conf.urls.static import static
 from django.conf import settings
 
 urlpatterns = [
-    path("polls/", include("polls.urls")),
     path("admin/", admin.site.urls, name="admin"),
+    path("", include("polls.urls")),
 ]
 
 # Added for media files management
