@@ -108,17 +108,13 @@ function create_chart() {
     }
 }
 
-// Create chart at first page display if data available
+// Display page management
 $(document).ready(function(event) {
-    console.log("Doc ready")
     if ($('#results').length > 0) {
-        console.log("Création chart")
+        // Results page : create charts if data available
         let nb_charts = $('#nb_questions').attr('data-nb');
-        console.log(`Nb charts : ${nb_charts}`)
         for (let chart_num = 1; chart_num <= nb_charts; chart_num++) {
-            console.log(`Chart #${chart_num}`)
             let data = JSON.parse(document.getElementById(`${chart_num}`).textContent);
-            console.log(data)
             let ctx = $(`#chart${chart_num}`);
             let charts_data = data.chart_data;
 
@@ -158,6 +154,24 @@ $(document).ready(function(event) {
         }
         
     }
+
+    else if ($('#admin-polls').length > 0) {
+        // Admin page : show admin events options
+        switch(parseInt($("#menu_id").val())) {
+            case 1:
+                adminEvents()
+                break;
+            case 2:
+                adminUsers()
+                break;
+            case 3:
+                adminGroups()
+                break;
+            default:
+                adminEvents()
+        }
+    }
+
 })
 
 
@@ -371,6 +385,40 @@ $('#cancel_proxy').on("click", function(event) {
     console.log("Annulation proxy");
 })
 
+
+// ==================================
+//      Administration functions
+// ==================================
+
+function adminEvents() {
+    $('#admin-events').show();
+    $('#menu-events').addClass("underlined");
+    $('#admin-users').hide();
+    $('#menu-users').removeClass("underlined");
+    $('#admin-groups').hide();
+    $('#menu-groups').removeClass("underlined");
+    $("#menu_id").val(1);
+}
+
+function adminUsers() {
+    $('#admin-events').hide();
+    $('#menu-events').removeClass("underlined");
+    $('#admin-users').show();
+    $('#menu-users').addClass("underlined");
+    $('#admin-groups').hide();
+    $('#menu-groups').removeClass("underlined");
+    $("#menu_id").val(2);
+}
+
+function adminGroups() {
+    $('#admin-events').hide();
+    $('#menu-events').removeClass("underlined");
+    $('#admin-users').hide();
+    $('#menu-users').removeClass("underlined");
+    $('#admin-groups').show();
+    $('#menu-groups').addClass("underlined");
+    $("#menu_id").val(3);
+}
 
 
 // ==========================

@@ -155,3 +155,12 @@ a .btn-secondary.disabled, a .btn-secondary:disabled {
 .event_title {
   color: aqua;
 }
+
+.underlined {
+  text-decoration: underline;
+}
+
+.is_admin {
+  color: green;
+  font-weight: bold;
+}

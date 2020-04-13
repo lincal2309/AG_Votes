@@ -108,7 +108,7 @@ class EventAdmin(admin.ModelAdmin):
             else:
                 # Generate list of questions
                 company = Company.objects.get(event=event)
-                question_list = Question.get_question_list(event.slug)
+                question_list = Question.get_question_list(event)
                 context_data = {
                     "company": company,
                     "event": event,
@@ -184,6 +184,17 @@ class UserVoteAdmin(admin.ModelAdmin):
     uservote_label.short_description = "Vote utilisateur"
 
 
+class UserCompAdmin(admin.ModelAdmin):
+    list_display = ("user", "company", "is_admin")
+
+    def usercomp_label(self, obj):
+        return "Utilisateur %s rattaché à la société %s" % (
+            obj.user.username,
+            obj.company.company_name,
+        )
+
+    usercomp_label.short_description = "Utilisateurs par société"
+
 class ResultAdmin(admin.ModelAdmin):
     list_display = ("event_label", "eventgroup", "question", "choice", "votes")
     ordering = ("eventgroup", "question", "choice")
@@ -219,4 +230,4 @@ admin.site.register(Company, CompanyAdmin)
 admin.site.register(Event, EventAdmin)
 admin.site.register(EventGroup, EventGroupAdmin)
 admin.site.register(Result, ResultAdmin)
-admin.site.register(UserComp)
+admin.site.register(UserComp, UserCompAdmin)

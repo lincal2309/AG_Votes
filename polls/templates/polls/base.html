@@ -24,7 +24,7 @@
 
         <!-- Theme CSS - Includes Bootstrap -->
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-        <link href="{% static "polls/css/polls.css" %}" rel="stylesheet">
+        <link href="{% static 'polls/css/polls.css' %}" rel="stylesheet">
 
     </head>
 
@@ -61,16 +61,19 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-right">
                             <!-- Menu Footer-->
-                            {% if user.is_staff %}
+                            {% if user.usercomp.is_admin %}
                                 <li class="user-footer">
-                                        <a href="/admin/" class="btn btn-default btn-flat">Administration</a>
+                                    <a href="{% url 'polls:admin_polls' user.usercomp.company.comp_slug 1 %}" class="btn btn-default btn-flat">Administration</a>
                                 </li>
                             {% endif %}
                             {% if user.is_superuser %}
                                 <li class="user-footer">
                                     <a href="sign_up/" class="btn btn-default btn-flat">Création user</a>
                                 </li>
-                            {% endif %}
+                                <li class="user-footer">
+                                    <a href="/admin/" class="btn btn-default btn-flat">Administration générale</a>
+                            </li>
+                        {% endif %}
                             <li class="user-footer">
                                 <a href="{% url 'polls:logout' %}" class="btn btn-default btn-flat">Déconnexion</a>
                             </li>
@@ -106,9 +109,10 @@
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+        <script src="{% static 'polls/js/jquery.bootstrap.modal.forms.js' %}"></script>
 
         <!-- Custom scripts for this template -->
-        <script src="{% static "polls/js/polls.js" %}"></script>
+        <script src="{% static 'polls/js/polls.js' %}"></script>
 
     </body>
 

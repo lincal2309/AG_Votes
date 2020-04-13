@@ -27,7 +27,7 @@
                 <h3> Résultats </h3>
                 <div class="col-sm-6">
                     <!-- Chart showing votes' results -->
-                    <canvas id="global_chart" url-endpoint="{% url 'polls:chart_data' %}" event-slug="{{ event.slug }}" question-no="{{ question_no }}" ></canvas>
+                    <canvas id="global_chart" url-endpoint="{% url 'polls:chart_data' %}" comp-slug="{{ event.company.slug }}" event-slug="{{ event.slug }}" question-no="{{ question_no }}" ></canvas>
                 </div>
                 <div class="offset-sm-1 col-sm-3">
                     <!-- Progress bar showing nb votes vs total expected votes (i.e. nb users who should vote) -->
@@ -59,7 +59,7 @@
             <!-- For non-staff users, display votes' options -->
             <div class="row align-items-center pt-3">
                 <div class="offset-sm-4 col-sm-4">
-                    <form id="vote" action='.' method="post" data-url='{% url 'polls:vote' company.comp_slug event.slug question_no %}' data-event="{{ event.slug }}" data-question="{{ question_no }}">
+                    <form id="vote" action='.' method="post" data-url='{% url 'polls:vote' event.company.comp_slug event.slug question_no %}' data-event="{{ event.slug }}" data-question="{{ question_no }}">
                     {% csrf_token %}
                         {% for choice in choice_list %}
                             <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}" />
@@ -90,12 +90,12 @@
         <!-- Button to go to next question if any others, or go to global results page -->
         <div class="row col-sm-12 justify-content-center pt-3">
         {% if last_question %}
-            <a class="btn btn-secondary" type="button" href="{% url 'polls:results' event.slug %}">Résultats</a>
+        <a class="btn btn-secondary" type="button" href="{% url 'polls:results' event.company.comp_slug event.slug %}">Résultats</a>
         {% elif user_vote.has_voted or user.is_staff %}
-            <a id="next-btn" class="btn btn-secondary" type="button" href="{% url 'polls:question' event.slug question_no|add:'1' %}">Résolution suivante</a>
+            <a id="next-btn" class="btn btn-secondary" type="button" href="{% url 'polls:question' event.company.comp_slug event.slug question_no|add:'1' %}">Résolution suivante</a>
         {% else %}
             <!-- In this case, user is non-staff member and has not voted yet : button disabled -->
-            <a id="next-btn" class="btn btn-secondary disabled" type="button" href="{% url 'polls:question' event.slug question_no|add:'1' %}">Résolution suivante</a>
+            <a id="next-btn" class="btn btn-secondary disabled" type="button" href="{% url 'polls:question' event.company.comp_slug event.slug question_no|add:'1' %}">Résolution suivante</a>
         {% endif %}
         </div>
     </div>

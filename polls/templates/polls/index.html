@@ -11,6 +11,11 @@
                 {% if user.is_superuser %}
                     <h3>Liste des entreprises</h3>
                     {% for company in comp_list %}
+                        {% if company.logo is not NULL %}
+                        <div class="logo-lg head-text-color">
+                            <img src="{{ company.logo.url }}" height=50>
+                        </div>
+                        {% endif %}
                         <h4><a href="{% url 'polls:company_home' company.comp_slug %}"> {{ company.company_name }} </a></h4>
                     {% endfor %}
                 {% elif not user.is_autenticated %}

@@ -9,6 +9,12 @@ from django.conf import settings
 
 
 class Company(models.Model):
+    """
+    Company informations
+    - Detailed information for display purposes in the application
+      but also used in documents built and sent by the application
+    - Mail information to be able to send emails
+    """
     company_name = models.CharField("nom", max_length=200)
     comp_slug = models.SlugField("slug")
     logo = models.ImageField(upload_to="img/", null=True, blank=True)
@@ -39,15 +45,39 @@ class Company(models.Model):
 
     @classmethod
     def get_company(cls, slug):
+        """ Retreive company from its slug """
         return cls.objects.get(comp_slug=slug)
 
 
 class UserComp(models.Model):
+    """
+    Link between users and companies
+    Used to restrict display to companie(s) the users belong to
+    """
     user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name="Utilisateur")
     company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name="Société")
+    is_admin = models.BooleanField("administrateur", default=False)
+
+    class Meta:
+        verbose_name = "Liens Utilisateurs / Sociétés"
+        verbose_name_plural = "Liens Utilisateurs / Sociétés"
+
+    @classmethod
+    def create_usercomp(cls, user, company, is_admin=False):
+        """ Create a new UserComp """
+        usr_comp = UserComp(user=user, company=company, is_admin=is_admin)
+        usr_comp.save()
+        return usr_comp
 
 
 class EventGroup(models.Model):
+    """
+    Groups of users - Need to be linked to a company
+    The link with events is supported by the Event
+    (as groups can be reused in several Events)
+    """
+    # TO DO : link to a company (direct or indirect, the link should be unique)
+    # Note that users are linked to a Company => functional rules could be convenient
     users = models.ManyToManyField(UserComp, verbose_name="utilisateurs", blank=True)
     group_name = models.CharField("nom", max_length=100)
     weight = models.IntegerField("poids", default=0)
@@ -61,10 +91,12 @@ class EventGroup(models.Model):
 
     @classmethod
     def get_list(cls, event_slug):
+        """ Retreive list of groups linked to an event identified with its slug """
         return cls.objects.filter(event__slug=event_slug)
 
     @classmethod
     def user_in_event(cls, event_slug, user):
+        """ Checks whether a user belongs to the group or not """
         user_in_group = False
         if len(user.eventgroup_set.filter(event__slug=event_slug)) > 0:
             user_in_group = True
@@ -72,6 +104,11 @@ class EventGroup(models.Model):
 
 
 class Event(models.Model):
+    """
+    Class defining Events and related information
+    Events are mandatory linked to a Company
+    Events should contain at least one group of users
+    """
     company = models.ForeignKey(
         Company, on_delete=models.CASCADE, verbose_name="société"
     )
@@ -87,6 +124,9 @@ class Event(models.Model):
     )
 
     class Meta:
+        # Constraint(s) : an event_slug can be linked to only one company
+        #       This allow several companies to use the same event_slugs,
+        #       unless one sngle event_slug is used by company
         verbose_name = "Evénement"
         constraints = [
             models.UniqueConstraint(fields=["company_id", "slug"], name="unique_event_slug")
@@ -96,21 +136,31 @@ class Event(models.Model):
         return self.event_name
 
     @classmethod
-    def get_event(cls, event_slug):
-        return get_object_or_404(Event, slug=event_slug)
+    def get_event(cls, comp_slug, event_slug):
+        """ Retreive event from its slug """
+        # TO DO : add the company in the parameters to ensure one single row is returned
+        # company = Company.get_company(comp_slug)
+        return get_object_or_404(Event, slug=event_slug, company__comp_slug=comp_slug)
 
     @classmethod
     def get_next_events(cls, company):
+        """ Retreive all events releted to a company that are planned in the future """
         return cls.objects.filter(
             company=company, event_date__gte=timezone.now()
         ).order_by("event_date")
 
     def set_current(self):
+        """ Set the event to be "in progress" """
         self.current = True
         self.save()
 
 
 class Question(models.Model):
+    """
+    Questions / resolutions class
+    Each quesiton or resolution is linked to a unique event and has a unique number
+    (which defines the order)
+    """
     event = models.ForeignKey(Event, on_delete=models.CASCADE, verbose_name="événement")
     question_text = models.TextField("texte de la résolution")
     question_no = models.IntegerField("numéro de résolution")
@@ -128,14 +178,17 @@ class Question(models.Model):
         return self.question_text
 
     @classmethod
-    def get_question_list(cls, event_slug):
-        return cls.objects.filter(event__slug=event_slug).order_by("question_no")
+    def get_question_list(cls, event):
+        """ Retreives all questions for an event, ordered by number """
+        return cls.objects.filter(event=event).order_by("question_no")
 
     @classmethod
-    def get_question(cls, event_slug, question_no):
-        return cls.objects.get(event__slug=event_slug, question_no=question_no)
+    def get_question(cls, event, question_no):
+        """ Retreives a question from its and numer and the related event's slug """
+        return cls.objects.get(event=event, question_no=question_no)
 
     def get_results(self):
+        """ Calculates votes' results for a question """
         # Calcultate global results for the question
         evt_group_list = EventGroup.get_list(self.event.slug)
 
@@ -175,7 +228,7 @@ class Question(models.Model):
                         group_vote[choice] += values[i] * weight / 100
 
         if self.event.rule == "PROP":
-            # Calculate percentage for eache choice
+            # Calculate percentage for each choice
             total_votes = 0
             for val in group_vote.values():
                 total_votes += val
@@ -186,6 +239,7 @@ class Question(models.Model):
         return group_vote
 
     def get_chart_results(self):
+        """  Set up results data to be displayed """
         group_vote = self.get_results()
 
         # Setup global info for charts
@@ -217,6 +271,12 @@ class Question(models.Model):
 
 
 class Choice(models.Model):
+    """
+    Choices class
+    For each event, the possible answers are stored globally 
+        and will be proposed for each quesiton / resolution
+    Each choise has a unique number that defines the display order
+    """
     event = models.ForeignKey(
         Event, on_delete=models.CASCADE, null=True, verbose_name="événement"
     )
@@ -237,10 +297,17 @@ class Choice(models.Model):
 
     @classmethod
     def get_choice_list(cls, event_slug):
+        """ Retreives all choices for an event, ordered by number """
         return Choice.objects.filter(event__slug=event_slug).order_by("choice_no")
 
 
 class UserVote(models.Model):
+    """
+    Follow up users' votes for an event
+    Indicates, for each Evznt / User / question :
+        Number of votes (in case of procuration)
+        If he has voted, and when
+    """
     event = models.ForeignKey(Event, on_delete=models.CASCADE, verbose_name="événement")
     user = models.ForeignKey(UserComp, on_delete=models.CASCADE, verbose_name="utilisateur")
     question = models.ForeignKey(
@@ -264,6 +331,7 @@ class UserVote(models.Model):
 
     @classmethod
     def get_user_vote(cls, event_slug, user, question_no):
+        """ Return user's vote status """
         return cls.objects.get(
             user=user,
             event__slug=event_slug,
@@ -273,10 +341,15 @@ class UserVote(models.Model):
 
     @classmethod
     def init_uservotes(cls, event):
+        """
+        Initializae user votes table
+        When the event is lauchend, gather all info related to the vote, including procurations,
+            to define each user rights to vote
+        """
         event_user_list = [
             user for user in UserComp.objects.filter(eventgroup__event=event)
         ]
-        question_list = Question.get_question_list(event.slug)
+        question_list = Question.get_question_list(event)
         user_group_list = EventGroup.objects.filter(event=event)
         event_choice_list = Choice.get_choice_list(event.slug)
         for question in question_list:
@@ -304,6 +377,7 @@ class UserVote(models.Model):
 
     @classmethod
     def set_vote(cls, event_slug, user, question_no, choice_id):
+        """ Update info while user's voting """
         user_vote = cls.get_user_vote(event_slug, user, question_no)
         user_vote.nb_user_votes, user_vote.has_voted, user_vote.date_vote = (
             user_vote.nb_user_votes - 1,
@@ -316,6 +390,10 @@ class UserVote(models.Model):
 
 
 class Result(models.Model):
+    """
+    Manage votes results
+    Results are strored for each group
+    """
     event = models.ForeignKey(Event, on_delete=models.CASCADE, verbose_name="événement")
     eventgroup = models.ForeignKey(
         EventGroup, on_delete=models.CASCADE, verbose_name="groupe d'utilisateurs"
@@ -362,6 +440,10 @@ class Result(models.Model):
 
 
 class Procuration(models.Model):
+    """
+    Procuration management
+    Store all information about user, proxy, and procuration formal acceptance
+    """
     user = models.ForeignKey(UserComp, on_delete=models.CASCADE, verbose_name="utilisateur")
     proxy = models.ForeignKey(
         UserComp,
