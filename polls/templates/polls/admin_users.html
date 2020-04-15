@@ -1,0 +1,112 @@
+
+
+<div class="container">
+    <div class="row">
+        <div class="col-sm-12 align-items-center text-center">
+            <h3 id="admin-users-details">Gestion des utilisateurs</h2>
+        </div>
+        <div class="col-md-9">
+            <div class="row">
+                <!-- Modal for update display -->
+                <div class="modal fade" id="update_usr" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                        </div>
+                    </div>
+                </div><!-- /.modal -->
+
+                <ol class="mt-30">
+                    {% for usr in user_list  %}
+                        <li class="mt-10 {% if usr.is_admin %}is_admin{% endif %}">
+                            {{ usr.user.last_name }} {{ usr.user.first_name }} {{ usr.user.username }}
+                            <!-- Update buttons -->
+                            <a class="fa fa-pencil" data-toggle="modal" href="{% url 'polls:updt_user' usr.id %}" data-target="#update_usr" title="Modifier" data-tooltip></a>
+
+                            <button type="button" class="update-user btn btn-sm btn-primary" data-id="{% url 'polls:updt_user' usr.id %}" data-toggle="modal" href="{% url 'polls:updt_user' usr.id %}" data-target="#update_usr" data-tooltip>
+                                <span class="fa fa-pencil">Modifier</span>
+                            </button>
+
+                            {% comment %} <button type="button" class="update-user btn btn-sm btn-primary" data-id="{% url 'polls:update_user' usr.pk %}">
+                                <span class="fa fa-pencil">Modifier</span>
+                            </button> {% endcomment %}
+
+                            <!-- Delete buttons -->
+                            <button type="button" class="delete-user btn btn-sm btn-danger" data-id="{% url 'polls:delete_user' usr.pk %}">
+                                <span class="fa fa-trash">X</span>
+                            </button>
+                        </li>
+                    {% endfor %}
+                </ol>
+            </div>
+
+            <div>
+                <!-- Create button -->
+                <button class="create-user btn btn-primary" data-toggle="modal" data-target="#create_usr">Nouvel utilisateur</button>
+
+                <!-- Popup de création d'un utilisateur -->
+                <div id="create_usr" class="modal fade" role="dialog">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button type="button" class="close" data-dismiss="modal">×</button>
+                                <h5>Créer un utilisateur</h3>
+                            </div>
+                            <div class="modal-body">
+                                {% if user_exists %}
+                                <div class="col-lg-12 align-self-baseline error-msg">
+                                    <h3 class="error-msg">Nom d'utilisateur existant : veuillez en choisir un autre</h3>
+                                </div>
+                                {% endif %}
+
+                                <form action="{% url 'polls:admin_polls' comp_slug 2 %}" method="post">
+                                    {% csrf_token %}
+
+                                    {{ user_form.as_p }}
+                                    {{ usercomp_form.as_p }}
+
+                                    <button class="btn btn-success" type="submit">Créer</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <div>
+
+            <div>
+                <!-- Popup de modification d'un utilisateur -->
+                {% comment %} <div id="update_usr" class="modal fade" role="dialog">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button type="button" class="close" data-dismiss="modal">×</button>
+                                <h5>Modifier un utilisateur</h3>
+                            </div>
+                            <div class="modal-body">
+                                {% if user_exists %}
+                                <div class="col-lg-12 align-self-baseline error-msg">
+                                    <h3 class="error-msg">Nom d'utilisateur existant : veuillez en choisir un autre</h3>
+                                </div>
+                                {% endif %}
+
+                                <form action="{% url 'polls:admin_polls' comp_slug 2 %}" method="post">
+                                    {% csrf_token %}
+
+                                    {{ user_form.as_p }}
+                                    {{ usercomp_form.as_p }}
+
+                                    <button class="btn btn-success" type="submit">Créer</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div> {% endcomment %}
+            </div>
+
+            <div>
+                <!-- Popup de suppression d'un utilisateur -->
+            </div>
+
+        </div>
+
+    </div>
+</div>

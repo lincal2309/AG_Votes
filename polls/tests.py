@@ -42,7 +42,7 @@ def create_user(company, username, group=None, staff=False):
         username=username, password=username, is_staff=staff, email=email, last_name=last_name
     )
     usrcomp = UserComp.objects.create(company=company, user=usr)
-    # usrcomp.save()
+    usrcomp.save()
 
     if group:
         group.users.add(usrcomp)
@@ -52,6 +52,7 @@ def create_user(company, username, group=None, staff=False):
 def create_company(name):
     return Company.objects.create(
         company_name=name,
+        comp_slug=slugify(name),
         logo="logo.png",
         statut="SARL",
         siret="0123456789",
@@ -397,7 +398,7 @@ class TestAdminActions(TestCase):
 class TestModelCompany(TestCase):
     def test_get_company(self):
         comp = create_company("Société de test")
-        company = Company.get_company(1)
+        company = Company.get_company("societe-de-test")
         self.assertEqual(comp.id, company.id)
 
 
@@ -411,7 +412,7 @@ class TestModelEvent(TestCase):
             slug=slugify("Evénement de test" + str(event_date)),
             company=self.company,
         )
-        my_event = Event.get_event("evenement-de-test2150-05-12")
+        my_event = Event.get_event(self.company.comp_slug, "evenement-de-test2150-05-12")
         self.assertEqual(self.event, my_event)
 
     def test_get_next_events(self):
@@ -541,13 +542,13 @@ class TestModelQuestion(TestCase):
         )
 
     def test_get_question_list(self):
-        question_list = Question.get_question_list(self.event.slug)
+        question_list = Question.get_question_list(self.event)
         self.assertEqual(len(question_list), 2)
         self.assertEqual(question_list[0].question_text, "Question 1")
         self.assertEqual(question_list[1].question_text, "Question 2")
 
     def test_get_question(self):
-        my_question = Question.get_question(self.event.slug, 1)
+        my_question = Question.get_question(self.event, 1)
         self.assertEqual(my_question, self.question1)
 
     def test_get_results_maj(self):
@@ -840,20 +841,24 @@ class TestIndex(TestCase):
         )
 
     def test_display_home_no_login_user(self):
-        # Redirect to login page if no user logged in
+        # Displays dedicated home page
         response = self.client.get(reverse("polls:index"))
-        self.assertEqual(response.status_code, 302)
-        self.assertIn("login", response.url)
+        self.assertEqual(response.status_code, 200)
+        # TO DO : Change next tests according to finalize home page
+        # self.assertIn("login", response.url)
 
     def test_display_home(self):
         # Display only future events
         user = create_user(self.company, "toto")
         self.client.force_login(user.user)
 
-        response = self.client.get(reverse("polls:index"))
+        # Test with follow=True arg to be able to test htmlo content
+        # Thus, status code will be 200 instead of 302 for a redirection
+        response = self.client.get(reverse("polls:index"), follow=True)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "futur")
-        self.assertNotContains(response, "passé")
+        self.assertContains(response, "Prochain")
+        self.assertContains(response, "Prévu le")
+        self.assertNotContains(response, "Aucun")
 
 
 class TestEvent(TestCase):
@@ -877,7 +882,7 @@ class TestEvent(TestCase):
 
     def test_user_staff_event_not_started(self):
         self.client.force_login(self.user_staff.user)
-        url = reverse("polls:event", args=(self.event.slug,))
+        url = reverse("polls:event", args=(self.company.comp_slug, self.event.slug))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["nb_questions"], 2)
@@ -888,7 +893,7 @@ class TestEvent(TestCase):
         self.client.force_login(self.user_staff.user)
         self.event.current = True
         self.event.save()
-        url = reverse("polls:event", args=(self.event.slug,))
+        url = reverse("polls:event", args=(self.company.comp_slug, self.event.slug))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["nb_questions"], 2)
@@ -900,7 +905,7 @@ class TestEvent(TestCase):
         self.event.groups.add(self.group)
         self.group.users.add(self.user_lambda)
         self.client.force_login(self.user_lambda.user)
-        url = reverse("polls:event", args=(self.event.slug,))
+        url = reverse("polls:event", args=(self.company.comp_slug, self.event.slug))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["nb_questions"], 2)
@@ -915,7 +920,7 @@ class TestEvent(TestCase):
         self.client.force_login(self.user_lambda.user)
         self.event.current = True
         self.event.save()
-        url = reverse("polls:event", args=(self.event.slug,))
+        url = reverse("polls:event", args=(self.company.comp_slug, self.event.slug))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["nb_questions"], 2)
@@ -927,7 +932,7 @@ class TestEvent(TestCase):
         self.client.force_login(self.user_lambda.user)
         self.event.current = True
         self.event.save()
-        url = reverse("polls:event", args=(self.event.slug,))
+        url = reverse("polls:event", args=(self.company.comp_slug, self.event.slug))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["nb_questions"], 2)
@@ -960,7 +965,7 @@ class TestQuestion(TestCase):
     def test_launch_event_total_weight_not_100(self):
         # Launching event not possible until total groups' weight == 100
         self.client.force_login(self.user_staff.user)
-        url = reverse("polls:question", args=(self.event.slug, 1))
+        url = reverse("polls:question", args=(self.company.comp_slug, self.event.slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 302)
 
@@ -969,7 +974,7 @@ class TestQuestion(TestCase):
         group2 = EventGroup.objects.create(group_name="Groupe 2", weight=30)
         self.event.groups.add(group2)
         self.client.force_login(self.user_staff.user)
-        url = reverse("polls:question", args=(self.event.slug, 1))
+        url = reverse("polls:question", args=(self.company.comp_slug, self.event.slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         my_event = get_object_or_404(Event, id=self.event.id)
@@ -992,7 +997,7 @@ class TestQuestion(TestCase):
         self.event.current = True
         self.event.save()
         self.client.force_login(self.user_lambda.user)
-        url = reverse("polls:question", args=(self.event.slug, 1))
+        url = reverse("polls:question", args=(self.company.comp_slug, self.event.slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["question_no"], 1)
@@ -1013,7 +1018,7 @@ class TestQuestion(TestCase):
         self.event.current = True
         self.event.save()
         self.client.force_login(self.user_lambda.user)
-        url = reverse("polls:question", args=(self.event.slug, 1))
+        url = reverse("polls:question", args=(self.company.comp_slug, self.event.slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["question_no"], 1)
@@ -1032,7 +1037,7 @@ class TestQuestion(TestCase):
         self.event.current = True
         self.event.save()
         self.client.force_login(self.user_lambda.user)
-        url = reverse("polls:question", args=(self.event.slug, 2))
+        url = reverse("polls:question", args=(self.company.comp_slug, self.event.slug, 2))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["question_no"], 2)
