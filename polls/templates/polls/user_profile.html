@@ -8,9 +8,9 @@
         <div class="row">
             <div class="col-lg-12 align-items-center text-center">
                 {% if usr_id %}
-                <form action="{% url 'polls:user_profile' comp_slug usr_id %}" method="post">
+                <form action="{% url 'polls:user_profile' usr_id %}" method="post">
                 {% else %}
-                <form action="{% url 'polls:create_user' comp_slug %}" method="post">
+                <form action="{% url 'polls:create_user' %}" method="post">
                 {% endif %}
                     {% csrf_token %}
 
@@ -22,7 +22,7 @@
 
                     <br>
                     {% if usr_id and user.id == usr_id %}
-                    <a type="button" class="chg_pwd btn btn-primary" href="{% url 'polls:change_password' comp_slug %}">
+                    <a type="button" class="chg_pwd btn btn-primary" href="{% url 'polls:change_password' %}">
                         Modifier le mot de passe
                     </a>
                     <br>

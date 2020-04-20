@@ -152,6 +152,17 @@ def set_chart_data(event, evt_group_list, question_no):
     return data
 
 
+def user_is_admin(comp_slug, current_user):
+    access_admin = False
+    if current_user.is_authenticated and UserComp.objects.filter(user=current_user):
+        # Checks that user is connected and UserComp exists for him
+        if current_user.usercomp.company.comp_slug == comp_slug and current_user.usercomp.is_admin:
+            # The user needs to belong to the company and have admin role
+            access_admin = True
+
+    return access_admin
+
+
 # =======================
 #  User management views
 # =======================
@@ -190,6 +201,12 @@ def login_user(request):
             user = authenticate(username=username, password=password)
             if user:
                 login(request, user)
+                try:
+                    request.session['comp_slug'] = user.usercomp.company.comp_slug
+                    # request.session['company'] = user.usercomp.company
+                except:
+                    # user has no usercomp (superuser) : nothing to store
+                    pass
                 return redirect(reverse("polls:index"))
             else:
                 error = True
@@ -201,6 +218,7 @@ def login_user(request):
 
 def logout_user(request):
     logout(request)
+    request.session.flush()
     return redirect(reverse("polls:index"))
 
 
@@ -215,8 +233,8 @@ def index(request):
         comp_list = Company.objects.filter()
         return render(request, "polls/index.html", locals())
     elif request.user.is_authenticated:
-        user_comp = UserComp.objects.get(user=request.user)
-        return redirect("polls:company_home", comp_slug=user_comp.company.comp_slug)
+        # user_comp = UserComp.objects.get(user=request.user)
+        return redirect("polls:company_home", comp_slug=request.session['comp_slug'])
     else:
         return render(request, "polls/index.html", locals())
 
@@ -424,56 +442,55 @@ def create_new_user(comp_slug, user_data):
         usr_comp = UserComp.create_usercomp(
             user=new_user, 
             company=company,
-            email=user_data["phone_number"],
+            phone_num=user_data["phone_num"],
             is_admin=user_data["is_admin"]
         )
     return new_user, usr_comp
 
 
 @login_required
-def admin_events(request, comp_slug):
+def admin_events(request):
     '''
         Manage events creation and options
     '''
-    access_admin = False
     current_user = request.user
-    if current_user.is_authenticated and UserComp.objects.filter(user=current_user):
-        # Checks that user is connected and UserComp exists for him
-        if current_user.usercomp.company.comp_slug == comp_slug and current_user.usercomp.is_admin:
-            # The user needs to belong to the company and have admin role
-            access_admin = True
+    access_admin = user_is_admin(request.session['comp_slug'], current_user)
 
     if access_admin:
-        return render(request, "polls/admin_events.html", locals())
+        return render(request, "polls/admin_events.html")
     else:
         # User is not authorized to go to the page : back to home page
         return redirect("polls:index")
 
 
-# @user_passes_test(lambda u: u.is_superuser)
 @login_required
-def admin_users(request, comp_slug):
+def admin_users(request):
     '''
         Manage users
     '''
-    access_admin = False
+    comp_slug = request.session['comp_slug']
     current_user = request.user
-    if current_user.is_authenticated and UserComp.objects.filter(user=current_user):
-        # Checks that user is connected and UserComp exists for him
-        if current_user.usercomp.company.comp_slug == comp_slug and current_user.usercomp.is_admin:
-            # The user needs to belong to the company and have admin role
-            access_admin = True
+    access_admin = user_is_admin(comp_slug, current_user)
 
     if access_admin:
-        user_list = UserComp.objects.order_by('user__last_name').filter(company__comp_slug=comp_slug)
+        # Company's users list
+        company = Company.get_company(comp_slug)
+        user_list = UserComp.objects.order_by('user__last_name').filter(company=company)
+
+        # Prepare form to upload users from file
         upload_form = UploadFileForm()
-        return render(request, "polls/admin_users.html", locals())
+
+        data = {
+            'user_list': user_list,
+            'upload_form': upload_form
+        }
+        return render(request, "polls/admin_users.html", data)
     else:
         # User is not authorized to go to the page : back to home page
         return redirect("polls:index")
 
 @login_required
-def user_profile(request, comp_slug, usr_id=0):
+def user_profile(request, usr_id=0):
     if usr_id > 0:
         current_user = User.objects.get(pk=usr_id)
         user_form = UserBaseForm(request.POST or None, instance=current_user)
@@ -484,6 +501,7 @@ def user_profile(request, comp_slug, usr_id=0):
     
     if request.method == 'POST':
         if user_form.is_valid() and usercomp_form.is_valid():
+            comp_slug = request.session['comp_slug']
             if usr_id == 0:
                 # New user
                 user_data = {
@@ -510,44 +528,32 @@ def user_profile(request, comp_slug, usr_id=0):
                         format(upd_user.last_name, upd_user.first_name)
         
                 messages.success(request, msg)
-            
-            # Redirect to previous page (referer)
-            url_dest = "polls:" + request.POST['url_dest']
-            return redirect(url_dest, comp_slug=comp_slug)
 
-    # Store referer (page that called the view) to be able to go back to the page
-    ref_origin = request.META['HTTP_REFERER']
-    host = request.META['HTTP_HOST']
-    url_ref = ref_origin.replace("http://", "").replace(host, "")
-    url_match = resolve(url_ref)
-    url_dest = url_match.url_name
+            return render(request, "polls/user_profile.html", locals())
+
     return render(request, "polls/user_profile.html", locals())
 
 
 @login_required
-def change_password(request, comp_slug):
+def change_password(request):
     if request.method == 'POST':
         pwd_form = PasswordChangeForm(request.user, request.POST)
         if pwd_form.is_valid():
             user = pwd_form.save()
             update_session_auth_hash(request, user)  # Important!
             messages.success(request, 'Mot de passe modifié avec succès.')
-            return redirect('polls:user_profile', comp_slug=comp_slug, usr_id=request.user.id)
+            return redirect('polls:user_profile', usr_id=request.user.id)
         else:
             messages.error(request, 'Veuillez corriger les erreurs ci-dessous.')
     else:
         pwd_form = PasswordChangeForm(request.user)
 
-    # return render(request, 'polls/change_pwd.html', {
-    #     'form': pwd_form,
-    #     'comp_slug': comp_slug,
-    # })
-    return render(request, "polls/change_pwd.html", locals())
+    return render(request, "polls/change_pwd.html")
         
 
 
 @login_required
-def delete_user(request, comp_slug, usr_id):
+def delete_user(request, usr_id):
     del_usr = User.objects.get(pk=usr_id)
     msg = "Utilisateur {0} {1} supprimé.".\
             format(del_usr.last_name, del_usr.first_name)
@@ -555,11 +561,11 @@ def delete_user(request, comp_slug, usr_id):
     User.objects.filter(pk=usr_id).delete()
 
     messages.success(request, msg)
-    return redirect("polls:admin_users", comp_slug=comp_slug)
+    return redirect("polls:admin_users")
 
 
 @login_required
-def load_users(request, comp_slug):
+def load_users(request):
     if request.method == 'POST':
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
@@ -580,7 +586,7 @@ def load_users(request, comp_slug):
                 index_list = [titles.index(elt) for elt in elt_list]
             except:
                 messages.error(request, "Chargement du fichier impossible : la structure ne correspond pas à ce qui est attendu")
-                return redirect("polls:admin_users", comp_slug=comp_slug)
+                return redirect("polls:admin_users")
 
             nb_lines = 0
             nb_warn = 0
@@ -660,7 +666,7 @@ def load_users(request, comp_slug):
                         email=email
                     )
 
-                    company = Company.get_company(comp_slug)
+                    company = Company.get_company(request.session['comp_slug'])
                     usr_comp = UserComp.create_usercomp(
                         user=new_user,
                         company=company,
@@ -676,24 +682,19 @@ def load_users(request, comp_slug):
             for warn_msg in warn_messages:
                 messages.warning(request, warn_msg)
 
-            return redirect("polls:admin_users", comp_slug=comp_slug)
+            return redirect("polls:admin_users")
 
 
 @login_required
-def admin_groups(request, comp_slug):
+def admin_groups(request):
     '''
         Manage users groups
     '''
-    access_admin = False
     current_user = request.user
-    if current_user.is_authenticated and UserComp.objects.filter(user=current_user):
-        # Checks that user is connected and UserComp exists for him
-        if current_user.usercomp.company.comp_slug == comp_slug and current_user.usercomp.is_admin:
-            # The user needs to belong to the company and have admin role
-            access_admin = True
+    access_admin = user_is_admin(request.session['comp_slug'], current_user)
 
     if access_admin:
-        return render(request, "polls/admin_groups.html", locals())
+        return render(request, "polls/admin_groups.html")
     else:
         # User is not authorized to go to the page : back to home page
         return redirect("polls:index")

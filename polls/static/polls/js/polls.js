@@ -433,6 +433,11 @@ $('.delete-user').on("click", function() {
     $('#form_dlt_usr').attr("action", $('#form_dlt_usr').attr("action").replace("0", $(this).attr("data-usr-id")));
 })
 
+$('#close_dlte').on("click", function(event) {
+    event.preventDefault();
+    $('#delete-user').modal('hide');
+})
+
 // ==========================
 //     Various functions
 // ==========================

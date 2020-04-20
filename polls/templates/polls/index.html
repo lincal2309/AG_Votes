@@ -19,7 +19,7 @@
                         <h4><a href="{% url 'polls:company_home' company.comp_slug %}"> {{ company.company_name }} </a></h4>
                     {% endfor %}
                 {% elif not user.is_autenticated %}
-                    <a class="btn btn-secondary mt-30 pb-2" type="button" href='{% url 'polls:login' %}'>Se connecter</a>
+                    <a class="btn btn-secondary mt-30 pb-2" type="button" href="{% url 'polls:login' %}">Se connecter</a>
                 {% endif %}
 
         </div>

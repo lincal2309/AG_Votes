@@ -41,15 +41,15 @@
             <nav class="navbar navbar-expand-md navbar-light fixed-top bg-light">
                 {% block logo %}
                 <a href="{% url 'polls:index' %}" class="logo">
-                    {% if user.is_supervisor %}
+                    {% if user.is_superuser %}
                         <div class="logo-lg head-text-color">
                             <img src="{% static 'polls/img/votes_icon.png' %}" height=50>
-                            <p class="navbar-brand"> Administration de l'application de votes électroniques</p>
+                            <p class="navbar-brand">&nbsp Administration de l'application de votes électroniques</p>
                         </div>
                     {% elif user.usercomp.company.logo is not NULL %}
                         <div class="logo-lg head-text-color">
                             <img src="{{ user.usercomp.company.logo.url }}" height=50>
-                            <p class="navbar-brand"> {{ user.usercomp.company.company_name }}</p>
+                            <p class="navbar-brand">&nbsp &nbsp &nbsp {{ user.usercomp.company.company_name }}</p>
                         </div>
                     {% endif %}
                 </a>
@@ -67,21 +67,25 @@
                             <ul class="dropdown-menu dropdown-menu-right">
                                 <!-- Menu Footer-->
                                 <li class="user-footer">
-                                    <a href="{% url 'polls:user_profile' comp_slug user.id %}" class="btn btn-default btn-flat">Profil</a>
+                                    <a href="{% url 'polls:user_profile' user.id %}" class="btn btn-default btn-flat">Profil</a>
                                 </li>
+
                                 {% if user.usercomp.is_admin %}
                                     <li class="user-footer">
-                                        <a href="{% url 'polls:admin_events' user.usercomp.company.comp_slug %}" class="btn btn-default btn-flat">Administration</a>
+                                        <a href="{% url 'polls:admin_events' %}" class="btn btn-default btn-flat">Administration</a>
                                     </li>
                                 {% endif %}
+
                                 {% if user.is_superuser %}
                                     <li class="user-footer">
-                                        <a href="sign_up/" class="btn btn-default btn-flat">Création user</a>
+                                        <!-- Allows to create users for testing purposes -->
+                                        <a href="{% url 'polls:sign_up' %}" class="btn btn-default btn-flat">Création user</a>
                                     </li>
                                     <li class="user-footer">
                                         <a href="/admin/" class="btn btn-default btn-flat">Administration générale</a>
-                                </li>
-                            {% endif %}
+                                    </li>
+                                {% endif %}
+
                                 <li class="user-footer">
                                     <a href="{% url 'polls:logout' %}" class="btn btn-default btn-flat">Déconnexion</a>
                                 </li>
