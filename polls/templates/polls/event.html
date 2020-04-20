@@ -22,9 +22,9 @@
                 </ol>
                 <div class="offset-sm-4 col-sm-4 text-center">
                     {% if user.is_staff and not event.current %}
-                        <a class="btn btn-secondary mt-30 pb-2" type="button" href='{% url 'polls:question' event.company.comp_slug event.slug 1 %}'>Lancer l'événement</a>
+                        <a class="btn btn-secondary mt-30 pb-2" type="button" href="{% url 'polls:question' event.company.comp_slug event.slug 1 %}">Lancer l'événement</a>
                     {% elif event.current and user_can_vote or user.is_staff %}
-                        <a class="btn btn-secondary mt-30 pb-2" type="button" href='{% url 'polls:question' event.company.comp_slug event.slug 1 %}'>Accéder à l'événement</a>
+                        <a class="btn btn-secondary mt-30 pb-2" type="button" href="{% url 'polls:question' event.company.comp_slug event.slug 1 %}">Accéder à l'événement</a>
                     {% endif %}
                 </div>
             </div>

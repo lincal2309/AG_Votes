@@ -170,8 +170,19 @@ $(document).ready(function(event) {
             default:
                 adminEvents()
         }
+
+        if ($('#display_msg').length > 0) {
+            $('#display_msg').modal('show');
+        }
+
     }
 
+})
+
+// Close modals on cancel button
+// As far as only 1 modal can be displayed : all modals can be closed, so we can use the 'modal' class
+$('.close-btn').on('click', function () {
+    $('.modal').modal('hide');
 })
 
 
@@ -192,6 +203,12 @@ $('#switch').on("mousedown", function (e) {
         clearInterval(IntervalID);
     }
 })
+
+
+// Tooltips
+$(document).ready(function(){
+    $('[data-toggle="tooltip"]').tooltip();
+  });
 
 
 // Enable Django CSRF-ready AJAX Calls
@@ -391,42 +408,37 @@ $('#cancel_proxy').on("click", function(event) {
 // ==================================
 
 function adminEvents() {
-    $('#admin-events').show();
     $('#menu-events').addClass("underlined");
-    $('#admin-users').hide();
     $('#menu-users').removeClass("underlined");
-    $('#admin-groups').hide();
     $('#menu-groups').removeClass("underlined");
-    $("#menu_id").val(1);
 }
 
 function adminUsers() {
-    $('#admin-events').hide();
     $('#menu-events').removeClass("underlined");
-    $('#admin-users').show();
     $('#menu-users').addClass("underlined");
-    $('#admin-groups').hide();
     $('#menu-groups').removeClass("underlined");
-    $("#menu_id").val(2);
 }
 
 function adminGroups() {
-    $('#admin-events').hide();
     $('#menu-events').removeClass("underlined");
-    $('#admin-users').hide();
     $('#menu-users').removeClass("underlined");
-    $('#admin-groups').show();
     $('#menu-groups').addClass("underlined");
-    $("#menu_id").val(3);
 }
 
+// Delete user modal display
+$('.delete-user').on("click", function() {
+    dlte_usr = $(this).attr("data-usr-name") + " " + $(this).attr("data-usr-first-name");
+    mdl_action = $('#form_dlt_usr').attr("action");
+    $('#dlte-confirm').html("Voulez-vous supprimer l'utilisateur <strong>" + dlte_usr + "</strong> ?");
+    $('#form_dlt_usr').attr("action", $('#form_dlt_usr').attr("action").replace("0", $(this).attr("data-usr-id")));
+})
 
 // ==========================
 //     Various functions
 // ==========================
 
 // Go back to previous page
-$('#back').on('click', function(event) {
+$('.back_btn').on('click', function(event) {
     event.preventDefault();
     history.back();
 });

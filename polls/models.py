@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db.models import Count, Q
 from django.conf import settings
-
+from django.core.validators import RegexValidator
 
 class Company(models.Model):
     """
@@ -56,6 +56,8 @@ class UserComp(models.Model):
     """
     user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name="Utilisateur")
     company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name="Société")
+    phone_regex = RegexValidator(regex=r'^0[0-9]([ .-]?[0-9]{2}){4}$', message=("Format de numéro de téléphone invalide"))
+    phone_num = models.CharField("numéro de téléphone", validators=[phone_regex], max_length=14, null=True, blank=True)
     is_admin = models.BooleanField("administrateur", default=False)
 
     class Meta:
@@ -63,9 +65,9 @@ class UserComp(models.Model):
         verbose_name_plural = "Liens Utilisateurs / Sociétés"
 
     @classmethod
-    def create_usercomp(cls, user, company, is_admin=False):
+    def create_usercomp(cls, user, company, phone_num='', is_admin=False):
         """ Create a new UserComp """
-        usr_comp = UserComp(user=user, company=company, is_admin=is_admin)
+        usr_comp = UserComp(user=user, company=company, phone_num=phone_num, is_admin=is_admin)
         usr_comp.save()
         return usr_comp
 

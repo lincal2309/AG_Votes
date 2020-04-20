@@ -1,31 +1,33 @@
 # Forms used by polls app
 
-from django.forms import Form, ModelForm, CharField, PasswordInput
+from django import forms
 from django.contrib.auth.models import User
-# from django.contrib.auth.forms import UserCreationForm
-# from bootstrap_modal_forms.forms import BSModalForm
+from django.core.validators import FileExtensionValidator
 
 from .models import (
-    UserComp
+    UserComp,
 )
 
 
 # Form used for login view
-class UserForm(Form):
-    username = CharField(label="Nom d'utilisateur", max_length=30)
-    password = CharField(label="Mot de passe", widget=PasswordInput)
+class UserForm(forms.Form):
+    username = forms.CharField(label="Nom d'utilisateur", max_length=30)
+    password = forms.CharField(label="Mot de passe", widget=forms.PasswordInput)
 
 
 # Forms for user management
-class UserBaseForm(ModelForm):
+class UserBaseForm(forms.ModelForm):
+    # Create user form
     class Meta:
         model = User
-        fields = ['last_name', 'first_name', 'username', 'password', 'email']
-        widgets = {
-            'password': PasswordInput,
-        }
+        fields = ['last_name', 'first_name', 'username', 'email']
 
-class UserCompForm(ModelForm):
+class UserCompForm(forms.ModelForm):
     class Meta:
         model = UserComp
-        fields = ['is_admin']
+        fields = ['phone_num', 'is_admin']
+
+class UploadFileForm(forms.Form):
+    file = forms.FileField(label="Fichier", validators=[FileExtensionValidator(['xls', 'xlsx'], message=("Seuls les fichiers *.xls et *.xlsx sont pris en charge"))])
+    sheet = forms.CharField(label="Onglet", max_length=30, initial="Feuil1")
+    use_groups = forms.BooleanField(label="Utiliser les groupes", initial=True)

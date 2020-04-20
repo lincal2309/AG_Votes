@@ -1,22 +1,30 @@
 # -*-coding:Utf-8 -*
 
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, reverse
-from django.template.loader import render_to_string
+# from django.template.loader import render_to_string
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.forms import PasswordChangeForm
 from django.db.models import Count, Sum
 from django.conf import settings
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError
-from django.forms import inlineformset_factory
+# from django.contrib.auth.password_validation import validate_password
+from django.contrib import messages
+# from django.core.exceptions import ValidationError
+from django.core.files import File
+# from django.forms import inlineformset_factory
 
-from django.urls import reverse_lazy
-from django.views.generic.edit import FormView
-from django.views.generic.list import ListView
+from django.urls import reverse_lazy, resolve
+# from django.views.generic.edit import FormView
+# from django.views.generic.list import ListView
 
-from .forms import UserBaseForm, UserCompForm
+import openpyxl
+
+import re
+
+from .forms import UserBaseForm, UserCompForm, UploadFileForm
+from .tools import define_password
 
 import json
 
@@ -391,9 +399,42 @@ def cancel_proxy(request):
 #      Administration views & actions
 # ========================================
 
+def create_new_user(comp_slug, user_data):
+    ''' Function used to create new user '''
+    username = user_data["username"]
+    # password = user_form.cleaned_data["password"]
+    if User.objects.filter(username=username):
+        user_exists = True
+    else:
+        # Save new user first
+        #   Use create_user method (instead of form.save()) to include password validation
+        new_pass = username.lower()
+        new_user = User.objects.create_user(
+            username=username,
+            password=new_pass,
+            last_name=user_data["last_name"],
+            first_name=user_data["first_name"],
+            email=user_data["email"]
+            )
+        # new_user.save()
+        # Save UserComp
+        #   - create the object without saving
+        #   - add user and finally validate
+        company = Company.get_company(comp_slug)
+        usr_comp = UserComp.create_usercomp(
+            user=new_user, 
+            company=company,
+            email=user_data["phone_number"],
+            is_admin=user_data["is_admin"]
+        )
+    return new_user, usr_comp
 
-def admin_polls(request, comp_slug, admin_id):
-    # company = Company.get_company(comp_slug)
+
+@login_required
+def admin_events(request, comp_slug):
+    '''
+        Manage events creation and options
+    '''
     access_admin = False
     current_user = request.user
     if current_user.is_authenticated and UserComp.objects.filter(user=current_user):
@@ -403,120 +444,256 @@ def admin_polls(request, comp_slug, admin_id):
             access_admin = True
 
     if access_admin:
-        # Operations performed for authorized users
-        if request.method == 'POST':
-            # A form (user creation or update) has been submitted
-            user_form = UserBaseForm(request.POST)
-            usercomp_form = UserCompForm(request.POST)
-            if user_form.is_valid() and usercomp_form.is_valid():
-                if admin_id == 2:
-                    # User management
-                    username = user_form.cleaned_data["username"]
-                    # password = user_form.cleaned_data["password"]
-                    if User.objects.filter(username=username):
-                        user_exists = True
-                    else:
-                        # Save new user first
-                        #   Use create_user method (instead of form.save()) to include password validation
-                        new_user = User.objects.create_user(
-                            username=username,
-                            password=user_form.cleaned_data["password"],
-                            last_name=user_form.cleaned_data["last_name"],
-                            first_name=user_form.cleaned_data["first_name"],
-                            email=user_form.cleaned_data["email"]
-                            )
-                        # Save UserComp
-                        #   - create the object without saving
-                        #   - add user and finally validate
-                        usr_comp = usercomp_form.save(commit=False)
-                        usr_comp.company = Company.get_company(comp_slug)
-                        usr_comp.user = new_user
-                        usr_comp.save()
-                else:
-                    # To be defined
-                    x = 1
-        else:
-            # Send form details for user cretation or modification
-            user_form = UserBaseForm()
-            usercomp_form = UserCompForm()
-
-        user_list = UserComp.objects.order_by('user__last_name').filter(company__comp_slug=comp_slug)
-        # user_form = UserBaseForm()
-        # usercomp_form = UserCompForm()
-        return render(request, "polls/admin_polls.html", locals())
+        return render(request, "polls/admin_events.html", locals())
     else:
         # User is not authorized to go to the page : back to home page
         return redirect("polls:index")
 
 
-def create_user(request, comp_slug):
+# @user_passes_test(lambda u: u.is_superuser)
+@login_required
+def admin_users(request, comp_slug):
+    '''
+        Manage users
+    '''
+    access_admin = False
+    current_user = request.user
+    if current_user.is_authenticated and UserComp.objects.filter(user=current_user):
+        # Checks that user is connected and UserComp exists for him
+        if current_user.usercomp.company.comp_slug == comp_slug and current_user.usercomp.is_admin:
+            # The user needs to belong to the company and have admin role
+            access_admin = True
+
+    if access_admin:
+        user_list = UserComp.objects.order_by('user__last_name').filter(company__comp_slug=comp_slug)
+        upload_form = UploadFileForm()
+        return render(request, "polls/admin_users.html", locals())
+    else:
+        # User is not authorized to go to the page : back to home page
+        return redirect("polls:index")
+
+@login_required
+def user_profile(request, comp_slug, usr_id=0):
+    if usr_id > 0:
+        current_user = User.objects.get(pk=usr_id)
+        user_form = UserBaseForm(request.POST or None, instance=current_user)
+        usercomp_form = UserCompForm(request.POST or None, instance=current_user.usercomp)
+    else:
+        user_form = UserBaseForm(request.POST or None)
+        usercomp_form = UserCompForm(request.POST or None)
+    
     if request.method == 'POST':
-        # A form (user creation or update) has been submitted
-        user_form = UserBaseForm(request.POST)
-        usercomp_form = UserCompForm(request.POST)
         if user_form.is_valid() and usercomp_form.is_valid():
-            username = user_form.cleaned_data["username"]
-            # password = user_form.cleaned_data["password"]
-            if User.objects.filter(username=username):
-                user_exists = True
+            if usr_id == 0:
+                # New user
+                user_data = {
+                    'username':  user_form.cleaned_data["username"],
+                    'last_name': user_form.cleaned_data["last_name"],
+                    'first_name': user_form.cleaned_data["first_name"],
+                    'email': user_form.cleaned_data["email"],
+                    'phone_num': usercomp_form.cleaned_data["phone_num"],
+                    'is_admin': usercomp_form.cleaned_data["is_admin"],
+                }
+                new_user, usr_comp = create_new_user(comp_slug, user_data)
+                msg = "Utilisateur {0} {1} créé avec succès".\
+                    format(new_user.last_name, new_user.first_name)
+                messages.success(request, msg)
             else:
-                # Save new user first
-                #   Use create_user method (instead of form.save()) to include password validation
-                new_user = User.objects.create_user(
-                    username=username,
-                    password=user_form.cleaned_data["password"],
-                    last_name=user_form.cleaned_data["last_name"],
-                    first_name=user_form.cleaned_data["first_name"],
-                    email=user_form.cleaned_data["email"]
+                # Update user
+                upd_user = user_form.save()
+                usercomp_form.save()
+
+                if upd_user == request.user:
+                    msg = ("Votre profil a été modifié avec succès.")
+                else:
+                    msg = "Utilisateur {0} {1} modifié avec succès.".\
+                        format(upd_user.last_name, upd_user.first_name)
+        
+                messages.success(request, msg)
+            
+            # Redirect to previous page (referer)
+            url_dest = "polls:" + request.POST['url_dest']
+            return redirect(url_dest, comp_slug=comp_slug)
+
+    # Store referer (page that called the view) to be able to go back to the page
+    ref_origin = request.META['HTTP_REFERER']
+    host = request.META['HTTP_HOST']
+    url_ref = ref_origin.replace("http://", "").replace(host, "")
+    url_match = resolve(url_ref)
+    url_dest = url_match.url_name
+    return render(request, "polls/user_profile.html", locals())
+
+
+@login_required
+def change_password(request, comp_slug):
+    if request.method == 'POST':
+        pwd_form = PasswordChangeForm(request.user, request.POST)
+        if pwd_form.is_valid():
+            user = pwd_form.save()
+            update_session_auth_hash(request, user)  # Important!
+            messages.success(request, 'Mot de passe modifié avec succès.')
+            return redirect('polls:user_profile', comp_slug=comp_slug, usr_id=request.user.id)
+        else:
+            messages.error(request, 'Veuillez corriger les erreurs ci-dessous.')
+    else:
+        pwd_form = PasswordChangeForm(request.user)
+
+    # return render(request, 'polls/change_pwd.html', {
+    #     'form': pwd_form,
+    #     'comp_slug': comp_slug,
+    # })
+    return render(request, "polls/change_pwd.html", locals())
+        
+
+
+@login_required
+def delete_user(request, comp_slug, usr_id):
+    del_usr = User.objects.get(pk=usr_id)
+    msg = "Utilisateur {0} {1} supprimé.".\
+            format(del_usr.last_name, del_usr.first_name)
+
+    User.objects.filter(pk=usr_id).delete()
+
+    messages.success(request, msg)
+    return redirect("polls:admin_users", comp_slug=comp_slug)
+
+
+@login_required
+def load_users(request, comp_slug):
+    if request.method == 'POST':
+        form = UploadFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            f = request.FILES['file']
+
+            wb = openpyxl.load_workbook(f)
+            sheet = request.POST['sheet']
+            ws = wb[sheet]
+
+            # Check the files has the required information
+            elt_list = ['Nom', 'Prénom', 'Mail', 'Téléphone', 'Username']
+
+            # Gather values in file's first row - supposed to be headers to retreive data
+            header = ws[1]
+            titles = [cell.value for cell in header]
+
+            try:
+                index_list = [titles.index(elt) for elt in elt_list]
+            except:
+                messages.error(request, "Chargement du fichier impossible : la structure ne correspond pas à ce qui est attendu")
+                return redirect("polls:admin_users", comp_slug=comp_slug)
+
+            nb_lines = 0
+            nb_warn = 0
+            nb_err = 0
+            err_messages = []
+            warn_messages = []
+
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                nb_lines += 1
+                unique_user = True
+
+                last_name = row[0]
+                first_name = row[1]
+                email = row[2]
+                phone_num = row[3]
+                if row[4] is not None:
+                    username = row[4]
+                else:
+                    username = last_name.lower()
+
+                # Data controls :
+                # - user unicity : if username alreay exists;
+                #       * for provided usernames, raise an error and reject line
+                #       * else (username == last_name) : check first name and email
+                #           if both are equal, reject row
+                #           else : define new id with first-name chars
+                # - phone numer format (warning only)
+
+                if User.objects.filter(username=username).exists():
+                    db_user = User.objects.get(username=username)
+                    if (db_user.last_name == last_name and db_user.first_name == first_name \
+                                                      and db_user.email == email) \
+                        or (row[4] is not None):
+                        # user already exists
+                        nb_err += 1
+                        err_messages.insert(0, "Utilisateur {0} {1} non créé : il existe déjà".format(last_name, first_name))
+                        continue  # directly goes no next iteration
+
+                    else:
+                        unique_user = False
+                        i = 0
+                        while unique_user == False:
+                            username += first_name.lower()[i:i+1]
+                            i += 1
+                            if User.objects.filter(username=username).exists():
+                                # It's another user than before : needs to check unicity again
+                                db_user = User.objects.get(username=username)
+                                if (db_user.last_name == last_name and db_user.first_name == first_name \
+                                                                and db_user.email == email) \
+                                    or (row[4] is not None):
+                                    # user already exists
+                                    nb_err += 1
+                                    err_messages.insert(0, "Utilisateur {0} {1} non créé : il existe déjà".format(last_name, first_name))
+                                    break
+
+                                elif i >= len(first_name.lower()):
+                                    # Not able to automatically define a unique username
+                                    nb_err += 1
+                                    err_messages.insert(0, "Utilisateur {0} {1} non créé : impossible de définir un nom d'utilisateur unique".format(last_name, first_name))
+                                    break
+                            else:
+                                unique_user = True
+
+                # Out of while loop : check if a unique username has been found
+                if unique_user is True:
+                    if phone_num is not None and not re.match(r'^0[0-9]([ .-]?[0-9]{2}){4}$', str(phone_num)):
+                        phone_num = ''    # integrate no phone number rather than invalid one
+                        nb_warn += 1
+                        warn_messages.insert(0, "Utilisateur {0} {1} : numéro de téléphone invalide".format(last_name, first_name))
+
+                    # Create user & usercomp
+                    new_user = User.objects.create_user(
+                        username=username,
+                        password=username,
+                        last_name=last_name,
+                        first_name=first_name,
+                        email=email
                     )
-                # Save UserComp
-                #   - create the object without saving
-                #   - add user and finally validate
-                usr_comp = usercomp_form.save(commit=False)
-                usr_comp.company = Company.get_company(comp_slug)
-                usr_comp.user = new_user
-                usr_comp.save()
-        return redirect("polls:admin_polls", comp_slug=comp_slug, admin_id=2)
+
+                    company = Company.get_company(comp_slug)
+                    usr_comp = UserComp.create_usercomp(
+                        user=new_user,
+                        company=company,
+                        phone_num=phone_num
+                    )
+            
+            # Messages are created at the end to ensure having the right order
+            msg = "{0} utilisateurs sur {1} correctement intégrés, {2} avertissement(s).".format((nb_lines - nb_err), nb_lines, nb_warn)
+            messages.success(request, msg)
+
+            for err_msg in err_messages:
+                messages.error(request, err_msg)
+            for warn_msg in warn_messages:
+                messages.warning(request, warn_msg)
+
+            return redirect("polls:admin_users", comp_slug=comp_slug)
+
+
+@login_required
+def admin_groups(request, comp_slug):
+    '''
+        Manage users groups
+    '''
+    access_admin = False
+    current_user = request.user
+    if current_user.is_authenticated and UserComp.objects.filter(user=current_user):
+        # Checks that user is connected and UserComp exists for him
+        if current_user.usercomp.company.comp_slug == comp_slug and current_user.usercomp.is_admin:
+            # The user needs to belong to the company and have admin role
+            access_admin = True
+
+    if access_admin:
+        return render(request, "polls/admin_groups.html", locals())
     else:
-        # Send form details for user cretation or modification
-        user_form = UserBaseForm()
-        usercomp_form = UserCompForm()
-
-
-def update_user(request, comp_slug, usr_id):
-    current_user = User.objects.get(pk=usr_id)
-    UserCompFormSet = inlineformset_factory(User, UserComp, fields=('title',))
-    if request.method == "POST":
-        formset = UserCompFormSet(request.POST, request.FILES, instance=current_user)
-        if formset.is_valid():
-            formset.save()
-            # Do something. Should generally end with a redirect. For example:
-            return redirect("polls:admin_polls", comp_slug=comp_slug, admin_id=2)
-    else:
-        formset = UserCompFormSet(instance=current_user)
-    # return render(request, 'manage_books.html', {'formset': formset})
-    # return render(request, "polls/admin_polls.html", locals())
-    return HttpResponse(render_to_string('polls/user_update_success.html', {'user': current_user}))
-
-
-class UpdateUserView(FormView):
-    model = User
-    form_class = UserBaseForm
-    template_name = 'polls/update_user.html'
-
-    def dispatch(self, *args, **kwargs):
-        self.item_id = kwargs['pk']
-        return super(UpdateUserView, self).dispatch(*args, **kwargs)
-
-    def form_valid(self, form):
-        form.save()
-        user = User.objects.get(id=self.user_id)
-        return HttpResponse(render_to_string('polls/user_update_success.html', {'user': user}))
-
-
-class DeleteUserView(FormView):
-    model = User
-    template_name = 'polls/delete_user.html'
-    form_class = UserBaseForm
-    success_message = 'Utilisateur supprimé avec succès.'
-    success_url = reverse_lazy('admin_polls')
+        # User is not authorized to go to the page : back to home page
+        return redirect("polls:index")

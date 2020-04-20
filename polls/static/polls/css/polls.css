@@ -1,3 +1,27 @@
+.modal {
+  margin-top: 20%;
+}
+
+ul.list_msg {
+  list-style: none;
+}
+
+li.error::before {
+  content: "\2022";
+  color: red;
+  display: inline-block;
+  width: 1em;
+  margin-left: 1em;
+}
+
+li.warning::before {
+  content: "\2022";
+  color: orange;
+  display: inline-block;
+  width: 1em;
+  margin-left: 1em;
+}
+
 .user-menu {
     list-style: none;
 }
