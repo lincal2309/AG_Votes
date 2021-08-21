@@ -1,0 +1,39 @@
+{% extends './base.html' %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-lg-12 align-items-center text-center">
+        {% if usr_id %}
+        <form action="{% url 'polls:adm_user_profile' usr_id %}" method="post">
+        {% else %}
+        <form action="{% url 'polls:adm_create_user' %}" method="post">
+        {% endif %}
+            {% csrf_token %}
+
+            {{ user_form.as_p }}
+            {{ usercomp_form.as_p }}
+
+            <!-- Hidden field where the referer is identified to go back to the related page after validation -->
+            <input type="hidden" name="url_dest" value="{{ url_dest }}" />
+
+            <br>
+            <!-- If a user edits his profile, give access to change password page -->
+            {% if usr_id and user.id == usr_id %}
+            <a type="button" class="chg_pwd btn btn-primary" href="{% url 'polls:change_password' %}">
+                Modifier le mot de passe
+            </a>
+            <br>
+            <br>
+            {% endif %}
+
+            <button class="btn btn-success" type="submit">{% if usr_id %}Mettre à jour{% else %}Créer{% endif %}</button>
+            &nbsp &nbsp &nbsp
+            <a class="btn btn-secondary back_btn" href="*">Annuler</a>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

@@ -18,6 +18,12 @@ class Company(models.Model):
     company_name = models.CharField("nom", max_length=200)
     comp_slug = models.SlugField("slug")
     logo = models.ImageField(upload_to="img/", null=True, blank=True)
+    use_groups = models.BooleanField("utilise les groupes", default=False)   # Company uses groups or not
+    rules = [("MAJ", "Majorité"), ("PROP", "Proportionnelle")]   # Default management rule
+    rule = models.CharField(
+        "mode de scrutin", max_length=5, choices=rules, default="MAJ"
+    )
+    upd_rule = models.BooleanField("choisir la règle de répartition pour chaque événement", default=False)     # Event rule might change from one to another or always use default
     statut = models.CharField("forme juridique", max_length=50)
     siret = models.CharField("SIRET", max_length=50)
     street_num = models.IntegerField("N° de rue", null=True, blank=True)
@@ -60,6 +66,8 @@ class UserComp(models.Model):
     phone_num = models.CharField("numéro de téléphone", validators=[phone_regex], max_length=14, null=True, blank=True)
     is_admin = models.BooleanField("administrateur", default=False)
 
+    def __str__(self):
+        return '%s %s' % (self.user.last_name, self.user.first_name)
     class Meta:
         verbose_name = "Liens Utilisateurs / Sociétés"
         verbose_name_plural = "Liens Utilisateurs / Sociétés"
@@ -71,15 +79,21 @@ class UserComp(models.Model):
         usr_comp.save()
         return usr_comp
 
+    @classmethod
+    def get_users_in_comp(cls, comp_slug):
+        user_list = cls.objects.filter(company__comp_slug=comp_slug)
+        return user_list
+
 
 class EventGroup(models.Model):
     """
-    Groups of users - Need to be linked to a company
+    Groups of users
     The link with events is supported by the Event
     (as groups can be reused in several Events)
     """
-    # TO DO : link to a company (direct or indirect, the link should be unique)
-    # Note that users are linked to a Company => functional rules could be convenient
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, verbose_name="société"
+    )
     users = models.ManyToManyField(UserComp, verbose_name="utilisateurs", blank=True)
     group_name = models.CharField("nom", max_length=100)
     weight = models.IntegerField("poids", default=0)
@@ -91,6 +105,13 @@ class EventGroup(models.Model):
         verbose_name = "Groupe d'utilisateurs"
         verbose_name_plural = "Groupes d'utilisateurs"
 
+    @classmethod
+    def create_group(cls, group_info):
+        print("SAVE GROUP")
+        new_group = EventGroup(company=group_info["company"], group_name=group_info["group_name"], weight=group_info["weight"])
+        new_group.save()
+        return new_group
+    
     @classmethod
     def get_list(cls, event_slug):
         """ Retreive list of groups linked to an event identified with its slug """
@@ -150,6 +171,13 @@ class Event(models.Model):
         return cls.objects.filter(
             company=company, event_date__gte=timezone.now()
         ).order_by("event_date")
+
+    @classmethod
+    def get_old_events(cls, company):
+        """ Retreive all passed events releted to a company """
+        return cls.objects.filter(
+            company=company, event_date__lt=timezone.now()
+        ).order_by("-event_date")
 
     def set_current(self):
         """ Set the event to be "in progress" """

@@ -23,7 +23,7 @@
                         {% comment %} <div class="container txt-box"> {% endcomment %}
                             {% comment %} The page is included in the main page so we need to check if the form can be built {% endcomment %}
                             {% if user_form %}
-                                <form action="{% url 'polls:create_user' %}" method="post">
+                                <form action="{% url 'polls:adm_create_user' %}" method="post">
                                     {% csrf_token %}
 
                                     {{ user_form }}

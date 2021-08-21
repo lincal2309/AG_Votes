@@ -1,0 +1,77 @@
+{% extends './base.html' %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="row">
+    {% include "./adm_head.html" %}
+
+    <div class="col-sm-9">
+        <input type="hidden" id="menu_id" value="3" /> <!-- Hidden value to store the current selected menu -->
+        <div class="row">
+            <div id="admin-groups" class="col-sm-12 text-center">
+                <h4 class="mt-5">Détails du groupe</h4>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-sm-12 mt-30">
+                {% if grp_id %}
+                <form action="{% url 'polls:adm_group_detail' grp_id %}" method="post">
+                {% else %}
+                <form action="{% url 'polls:adm_group_detail' %}" method="post">
+                {% endif %}
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="control-group {%if group_form.group_name.errors %}error{%endif%}"></div>
+                        <div class="control-group {%if group_form.weight.errors %}error{%endif%}"></div>
+                        {{ group_form.group_name}} {{ group_form.weight }}
+                        <a type="button" id="disp_detail" class="collapse-group btn btn-sm" href="">
+                            <span id="btn_grp" class="fas fa-chevron-up" data-toggle="tooltip" title="Masquer/Afficher détails"></span>
+                        </a>
+                    </div>
+                    <div class="row mt-30 grp-content" id="grp_content">
+                        <div class="col-md-5 d-flex justify-content-center">
+                            {{ group_form.all_users}}
+                        </div>
+                        <div class="col-md-2 d-flex flex-column text-center justify-content-around">
+                            <a type="button" id="add_all" class="update-user btn btn-sm" href="">
+                                <span class="fa fa-fast-forward" style="color: #339af0;" data-toggle="tooltip" title="Ajouter tout"></span>
+                            </a>
+                            <a type="button" id="add_selected" class="update-user btn btn-sm" href="">
+                                <span class="fa fa-step-forward" style="color: #339af0;" data-toggle="tooltip" title="Ajouter sélection"></span>
+                            </a>
+                            <a type="button" id="remove_selected" class="update-user btn btn-sm" href="">
+                                <span class="fa fa-step-backward" style="color: #339af0;" data-toggle="tooltip" title="Retirer sélection"></span>
+                            </a>
+                            <a type="button" id="remove_all" class="update-user btn btn-sm" href="">
+                                <span class="fa fa-fast-backward" style="color: #339af0;" data-toggle="tooltip" title="Retirer tout"></span>
+                            </a>
+                        </div>
+                        <div class="col-md-5 d-flex justify-content-center">
+                            {{ group_form.users }}
+                            <div class="control-group {%if group_form.users.errors %}error{%endif%}"></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-12 mt-30 text-center">
+                            <button id='upd_grp' class="btn btn-success" type="submit">{% if grp_id %}Mettre à jour{% else %}Créer{% endif %}</button>
+                            &nbsp &nbsp &nbsp
+                            <a class="btn btn-secondary back_btn" href="*">Annuler</a>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div hidden>
+                            <!-- Liste des ID du groupe -->
+                            {{ group_form.group_list }}
+                        </div>
+                    </div>
+                </form>
+            </div>
+    </div>
+
+
+</div>
+
+{% endblock %}

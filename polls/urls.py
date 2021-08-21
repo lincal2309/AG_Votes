@@ -15,15 +15,24 @@ urlpatterns = [
     path("login/", views.login_user, name="login"),
     path("logout/", views.logout_user, name="logout"),
 
-    path("admin_users/", views.admin_users, name="admin_users"),
-    path("load_users/", views.load_users, name="load_users"),
-    path("profile/", views.user_profile, name="create_user"),
-    path("profile/<int:usr_id>", views.user_profile, name="user_profile"),
+    path("admin_users/", views.adm_users, name="adm_users"),
+    path("admin_load_users/", views.adm_load_users, name="adm_load_users"),
+    path("admin_profile/", views.adm_user_profile, name="adm_create_user"),
+    path("admin_rofile/<int:usr_id>", views.adm_user_profile, name="adm_user_profile"),
     path("change_password/", views.change_password, name="change_password"),
-    path("delete_user/<int:usr_id>", views.delete_user, name="delete_user"),
+    path("admin_delete_user/<int:usr_id>", views.adm_delete_user, name="adm_delete_user"),
 
-    path("admin_events/", views.admin_events, name="admin_events"),
-    path("admin_groups/", views.admin_groups, name="admin_groups"),
+    path("admin_events/", views.adm_events, name="adm_events"),
+    path("admin_create_event/", views.adm_event_detail, name="adm_create_event"),
+    path("admin_update_event/<int:evt_id>/", views.adm_event_detail, name="adm_event_detail"),
+    path("admin_adm_delete_event/<int:evt_id>", views.adm_delete_event, name="adm_delete_event"),
+
+    path("admin_groups/", views.adm_groups, name="adm_groups"),
+    path("admin_create_group/", views.adm_group_detail, name="adm_group_detail"),
+    path("admin_update_group/<int:grp_id>/", views.adm_group_detail, name="adm_group_detail"),
+    path("admin_adm_delete_group/<int:grp_id>", views.adm_delete_group, name="adm_delete_group"),
+
+    path("admin_options/", views.adm_options, name="adm_options"),
 
     path("<slug:comp_slug>/", views.company_home, name="company_home"),
 

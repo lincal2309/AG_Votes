@@ -35,7 +35,7 @@ from .pollsmail import PollsMail
 # ===================================
 
 
-def create_user(company, username, group=None, staff=False):
+def create_dummy_user(company, username, group=None, staff=False):
     email = username + "@toto.com"
     last_name = "nom_" + username
     usr = User.objects.create_user(
@@ -49,7 +49,7 @@ def create_user(company, username, group=None, staff=False):
     return usrcomp
 
 
-def create_company(name):
+def create_dummy_company(name):
     return Company.objects.create(
         company_name=name,
         comp_slug=slugify(name),
@@ -104,8 +104,8 @@ def add_dummy_event(company, name="Dummy event", groups=None, new_groups=True):
     if len(groups) > 0:
         # if groups sent and / or created, create results and uservotes
         for group in groups:
-            create_user(company, "user " + group.group_name + " 1", group=group)
-            create_user(company, "user " + group.group_name + " 2", group=group)
+            create_dummy_user(company, "user " + group.group_name + " 1", group=group)
+            create_dummy_user(company, "user " + group.group_name + " 2", group=group)
 
         init_event(event)
 
@@ -117,7 +117,7 @@ def add_dummy_event(company, name="Dummy event", groups=None, new_groups=True):
 
 class TestSetChartData(TestCase):
     def setUp(self):
-        self.company = create_company("Société de test")
+        self.company = create_dummy_company("Société de test")
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -204,12 +204,12 @@ class TestSetChartData(TestCase):
             votes=2,
             group_weight=70,
         )
-        self.usr11 = create_user(self.company, "user11", self.group1)
-        self.usr12 = create_user(self.company, "user12", self.group1)
-        self.usr13 = create_user(self.company, "user13", self.group1)
-        self.usr14 = create_user(self.company, "user14", self.group1)
-        self.usr21 = create_user(self.company, "user21", self.group2)
-        self.usr22 = create_user(self.company, "user22", self.group2)
+        self.usr11 = create_dummy_user(self.company, "user11", self.group1)
+        self.usr12 = create_dummy_user(self.company, "user12", self.group1)
+        self.usr13 = create_dummy_user(self.company, "user13", self.group1)
+        self.usr14 = create_dummy_user(self.company, "user14", self.group1)
+        self.usr21 = create_dummy_user(self.company, "user21", self.group2)
+        self.usr22 = create_dummy_user(self.company, "user22", self.group2)
 
         add_dummy_event(self.company)
 
@@ -268,7 +268,7 @@ class TestSetChartData(TestCase):
 
 class TestPollsMail(TestCase):
     def setUp(self):
-        self.company = create_company("Société de test")
+        self.company = create_dummy_company("Société de test")
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -285,12 +285,12 @@ class TestPollsMail(TestCase):
         self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
         self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
-        self.usr11 = create_user(self.company, "user11", self.group1)
-        self.usr12 = create_user(self.company, "user12", self.group1)
-        self.usr13 = create_user(self.company, "user13", self.group1)
-        self.usr14 = create_user(self.company, "user14")
-        self.usr21 = create_user(self.company, "user21", self.group2)
-        self.usr22 = create_user(self.company, "user22", self.group2)
+        self.usr11 = create_dummy_user(self.company, "user11", self.group1)
+        self.usr12 = create_dummy_user(self.company, "user12", self.group1)
+        self.usr13 = create_dummy_user(self.company, "user13", self.group1)
+        self.usr14 = create_dummy_user(self.company, "user14")
+        self.usr21 = create_dummy_user(self.company, "user21", self.group2)
+        self.usr22 = create_dummy_user(self.company, "user22", self.group2)
 
     def test_ask_proxy_message(self):
         PollsMail(
@@ -333,7 +333,7 @@ class TestPollsMail(TestCase):
 
 class TestAdminActions(TestCase):
     def setUp(self):
-        self.company = create_company("Société de test")
+        self.company = create_dummy_company("Société de test")
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -346,12 +346,12 @@ class TestAdminActions(TestCase):
         self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
 
-        create_user(self.company, "user11", self.group1)
-        create_user(self.company, "user12", self.group1)
-        create_user(self.company, "user13", self.group1)
-        create_user(self.company, "user14")
-        create_user(self.company, "user21", self.group2)
-        create_user(self.company, "user22", self.group2)
+        create_dummy_user(self.company, "user11", self.group1)
+        create_dummy_user(self.company, "user12", self.group1)
+        create_dummy_user(self.company, "user13", self.group1)
+        create_dummy_user(self.company, "user14")
+        create_dummy_user(self.company, "user21", self.group2)
+        create_dummy_user(self.company, "user22", self.group2)
 
         superusr = User.objects.create_superuser(
             username="test", password="test", email="test@test.py"
@@ -397,14 +397,14 @@ class TestAdminActions(TestCase):
 
 class TestModelCompany(TestCase):
     def test_get_company(self):
-        comp = create_company("Société de test")
+        comp = create_dummy_company("Société de test")
         company = Company.get_company("societe-de-test")
         self.assertEqual(comp.id, company.id)
 
 
 class TestModelEvent(TestCase):
     def test_get_event(self):
-        self.company = create_company("Société de test")
+        self.company = create_dummy_company("Société de test")
         event_date = datetime.date(2150, 5, 12)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -416,7 +416,7 @@ class TestModelEvent(TestCase):
         self.assertEqual(self.event, my_event)
 
     def test_get_next_events(self):
-        company = create_company("Société de test")
+        company = create_dummy_company("Société de test")
         passed_date = timezone.now() - datetime.timedelta(days=1)
         future_date = timezone.now() + datetime.timedelta(days=1)
         Event.objects.create(
@@ -437,7 +437,7 @@ class TestModelEvent(TestCase):
         self.assertEqual(next_events[0].event_name, "Evénement futur")
 
     def test_set_current(self):
-        self.company = create_company("Société de test")
+        self.company = create_dummy_company("Société de test")
         event_date = datetime.date(2150, 5, 12)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -453,7 +453,7 @@ class TestModelEvent(TestCase):
 
 class TestModelQuestion(TestCase):
     def setUp(self):
-        self.company = create_company("Société de test")
+        self.company = create_dummy_company("Société de test")
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -577,7 +577,7 @@ class TestModelQuestion(TestCase):
 
 class TestModelEventGroup(TestCase):
     def setUp(self):
-        self.company = create_company("Société de test")
+        self.company = create_dummy_company("Société de test")
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -588,8 +588,8 @@ class TestModelEventGroup(TestCase):
         )
         self.group = EventGroup.objects.create(group_name="Groupe 1", weight=33)
         self.event.groups.add(self.group)
-        self.user_lambda = create_user(self.company, "lambda", group=self.group)
-        self.user_alpha = create_user(self.company, "alpha")
+        self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
+        self.user_alpha = create_dummy_user(self.company, "alpha")
 
     def test_user_in_event(self):
         user_in_evt = EventGroup.user_in_event(self.event.slug, self.user_lambda)
@@ -600,7 +600,7 @@ class TestModelEventGroup(TestCase):
 
 class TestModelUserVote(TestCase):
     def setUp(self):
-        self.company = create_company("Société de test")
+        self.company = create_dummy_company("Société de test")
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -617,8 +617,8 @@ class TestModelUserVote(TestCase):
         )
         self.group = EventGroup.objects.create(group_name="Groupe 1")
         self.event.groups.add(self.group)
-        self.user_lambda = create_user(self.company, "lambda", group=self.group)
-        self.user_alpha = create_user(self.company, "alpha")
+        self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
+        self.user_alpha = create_dummy_user(self.company, "alpha")
         self.choice1 = Choice.objects.create(
             event=self.event, choice_text="Choix 1", choice_no=1
         )
@@ -673,7 +673,7 @@ class TestModelUserVote(TestCase):
 
 class TestModelResult(TestCase):
     def setUp(self):
-        self.company = create_company("Société de test")
+        self.company = create_dummy_company("Société de test")
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -690,8 +690,8 @@ class TestModelResult(TestCase):
         )
         self.group = EventGroup.objects.create(group_name="Groupe 1")
         self.event.groups.add(self.group)
-        self.user_lambda = create_user(self.company, "lambda", group=self.group)
-        self.user_alpha = create_user(self.company, "alpha")
+        self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
+        self.user_alpha = create_dummy_user(self.company, "alpha")
         self.choice1 = Choice.objects.create(
             event=self.event, choice_text="Choix 1", choice_no=1
         )
@@ -738,7 +738,7 @@ class TestModelResult(TestCase):
 
 class TestModelProcuration(TestCase):
     def setUp(self):
-        self.company = create_company("Société de test")
+        self.company = create_dummy_company("Société de test")
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -749,12 +749,12 @@ class TestModelProcuration(TestCase):
         self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
         self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
-        self.usr11 = create_user(self.company, "user11", self.group1)
-        self.usr12 = create_user(self.company, "user12", self.group1)
-        self.usr13 = create_user(self.company, "user13", self.group1)
-        self.usr14 = create_user(self.company, "user14", self.group1)
-        self.usr21 = create_user(self.company, "user21", self.group2)
-        self.usr22 = create_user(self.company, "user22", self.group2)
+        self.usr11 = create_dummy_user(self.company, "user11", self.group1)
+        self.usr12 = create_dummy_user(self.company, "user12", self.group1)
+        self.usr13 = create_dummy_user(self.company, "user13", self.group1)
+        self.usr14 = create_dummy_user(self.company, "user14", self.group1)
+        self.usr21 = create_dummy_user(self.company, "user21", self.group2)
+        self.usr22 = create_dummy_user(self.company, "user22", self.group2)
 
     def test_get_proxy_status_no_proxy(self):
         proxy_list, user_proxy, user_proxy_list = Procuration.get_proxy_status(
@@ -794,8 +794,8 @@ class TestModelProcuration(TestCase):
 
 class TestLoginUser(TestCase):
     def test_login(self):
-        self.company = create_company("Société de test")
-        create_user(self.company, "toto")
+        self.company = create_dummy_company("Société de test")
+        create_dummy_user(self.company, "toto")
         response = self.client.post(
             reverse("polls:login"), {"username": "toto", "password": "toto"}
         )
@@ -812,8 +812,8 @@ class TestLoginUser(TestCase):
         self.assertContains(response, "Utilisateur inconnu")
 
     def test_already_logged_in(self):
-        self.company = create_company("Société de test")
-        user = create_user(self.company, "toto")
+        self.company = create_dummy_company("Société de test")
+        user = create_dummy_user(self.company, "toto")
         self.client.force_login(user.user)
         response = self.client.get(reverse("polls:login"))
         self.assertEqual(response.status_code, 200)
@@ -824,7 +824,7 @@ class TestLoginUser(TestCase):
 class TestIndex(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.company = create_company("Société de test")
+        cls.company = create_dummy_company("Société de test")
         passed_date = timezone.now() - datetime.timedelta(days=1)
         future_date = timezone.now() + datetime.timedelta(days=1)
         Event.objects.create(
@@ -849,7 +849,7 @@ class TestIndex(TestCase):
 
     def test_display_home(self):
         # Display only future events
-        user = create_user(self.company, "toto")
+        user = create_dummy_user(self.company, "toto")
         self.client.force_login(user.user)
 
         # Test with follow=True arg to be able to test htmlo content
@@ -863,9 +863,9 @@ class TestIndex(TestCase):
 
 class TestEvent(TestCase):
     def setUp(self):
-        self.company = create_company("Société de test")
-        self.user_staff = create_user(self.company, "staff", staff=True)
-        self.user_lambda = create_user(self.company, "lambda")
+        self.company = create_dummy_company("Société de test")
+        self.user_staff = create_dummy_user(self.company, "staff", staff=True)
+        self.user_lambda = create_dummy_user(self.company, "lambda")
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -943,7 +943,7 @@ class TestEvent(TestCase):
 
 class TestQuestion(TestCase):
     def setUp(self):
-        self.company = create_company("Société de test")
+        self.company = create_dummy_company("Société de test")
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(
             event_name="Evénement de test",
@@ -953,8 +953,8 @@ class TestQuestion(TestCase):
         )
         self.group = EventGroup.objects.create(group_name="Groupe 1", weight=70)
         self.event.groups.add(self.group)
-        self.user_staff = create_user(self.company, "staff", group=self.group, staff=True)
-        self.user_lambda = create_user(self.company, "lambda", group=self.group)
+        self.user_staff = create_dummy_user(self.company, "staff", group=self.group, staff=True)
+        self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
         self.question1 = Question.objects.create(
             question_text="Question 1", question_no=1, event=self.event
         )

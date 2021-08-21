@@ -1,3 +1,141 @@
+// =====================================
+//           GLOBAL FUNCTIONS
+// =====================================
+
+// Display page management
+$(document).ready(function(event) {
+    if ($('#results').length > 0) {
+        // Results page : create charts if data available
+        let nb_charts = $('#nb_questions').attr('data-nb');
+        for (let chart_num = 1; chart_num <= nb_charts; chart_num++) {
+            let data = JSON.parse(document.getElementById(`${chart_num}`).textContent);
+            let ctx = $(`#chart${chart_num}`);
+            let charts_data = data.chart_data;
+
+            backgroundColor = data.backgroundColor;
+            borderColor = data.borderColor;
+
+            labels = charts_data['labels'];
+            values = charts_data['values'];
+
+            // Design standard chart.js chart
+            var myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '# of Votes',
+                        data: values,
+                        backgroundColor: backgroundColor,
+                        borderColor: borderColor,
+                        hoverBackgroundColor: borderColor,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    },
+                    title: {
+                        display: false,
+                        text: 'Nombre de votes'
+                    }
+                }
+            });
+
+
+        }
+        
+    }
+
+    else if ($('#admin-polls').length > 0) {
+        // Admin page : show admin events options
+        switch(parseInt($("#menu_id").val())) {
+            case 1:
+                adminEvents()
+                break;
+            case 2:
+                adminUsers()
+                break;
+            case 3:
+                adminGroups()
+                break;
+            default:
+                adminEvents()
+        }
+
+        if ($('#display_msg').length > 0) {
+            $('#display_msg').modal('show');
+        }
+
+    }
+
+    else if ($('select').length > 0) {
+        // Unselect any choice within a "select multiple" box
+        console.log("Page avec des select")
+        $('select').removeAttr('required');
+        $('select option').removeAttr('selected');
+    }
+
+})
+
+// Close modals on cancel button
+// As far as only 1 modal can be displayed : all modals can be closed, so we can use the 'modal' class
+$('.close-btn').on('click', function () {
+    $('.modal').modal('hide');
+})
+
+
+// Tooltips
+$(document).ready(function(){
+    $('[data-toggle="tooltip"]').tooltip();
+  });
+
+
+// Go back to previous page
+$('.back_btn').on('click', function(event) {
+    event.preventDefault();
+    history.back();
+});
+
+
+
+// Enable Django CSRF-ready AJAX Calls
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = jQuery.trim(cookies[i]);
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+var csrftoken = getCookie('csrftoken');
+
+function csrfSafeMethod(method) {
+    // these HTTP methods do not require CSRF protection
+    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+}
+$.ajaxSetup({
+    beforeSend: function(xhr, settings) {
+        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+        }
+    }
+});
+
+
+// =====================================
+//      EVENTS MANAGEMENT FUNCTIONS
+// =====================================
 
 // Charts creation
 function create_chart() {
@@ -108,83 +246,6 @@ function create_chart() {
     }
 }
 
-// Display page management
-$(document).ready(function(event) {
-    if ($('#results').length > 0) {
-        // Results page : create charts if data available
-        let nb_charts = $('#nb_questions').attr('data-nb');
-        for (let chart_num = 1; chart_num <= nb_charts; chart_num++) {
-            let data = JSON.parse(document.getElementById(`${chart_num}`).textContent);
-            let ctx = $(`#chart${chart_num}`);
-            let charts_data = data.chart_data;
-
-            backgroundColor = data.backgroundColor;
-            borderColor = data.borderColor;
-
-            labels = charts_data['labels'];
-            values = charts_data['values'];
-
-            // Design standard chart.js chart
-            var myChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: '# of Votes',
-                        data: values,
-                        backgroundColor: backgroundColor,
-                        borderColor: borderColor,
-                        hoverBackgroundColor: borderColor,
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    legend: {
-                        display: true,
-                        position: 'bottom'
-                    },
-                    title: {
-                        display: false,
-                        text: 'Nombre de votes'
-                    }
-                }
-            });
-
-
-        }
-        
-    }
-
-    else if ($('#admin-polls').length > 0) {
-        // Admin page : show admin events options
-        switch(parseInt($("#menu_id").val())) {
-            case 1:
-                adminEvents()
-                break;
-            case 2:
-                adminUsers()
-                break;
-            case 3:
-                adminGroups()
-                break;
-            default:
-                adminEvents()
-        }
-
-        if ($('#display_msg').length > 0) {
-            $('#display_msg').modal('show');
-        }
-
-    }
-
-})
-
-// Close modals on cancel button
-// As far as only 1 modal can be displayed : all modals can be closed, so we can use the 'modal' class
-$('.close-btn').on('click', function () {
-    $('.modal').modal('hide');
-})
-
 
 // Toggle button management
 // Activate or deactivate auto-refresh
@@ -205,47 +266,9 @@ $('#switch').on("mousedown", function (e) {
 })
 
 
-// Tooltips
-$(document).ready(function(){
-    $('[data-toggle="tooltip"]').tooltip();
-  });
-
-
-// Enable Django CSRF-ready AJAX Calls
-function getCookie(name) {
-    var cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        var cookies = document.cookie.split(';');
-        for (var i = 0; i < cookies.length; i++) {
-            var cookie = jQuery.trim(cookies[i]);
-            // Does this cookie string begin with the name we want?
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-var csrftoken = getCookie('csrftoken');
-
-function csrfSafeMethod(method) {
-    // these HTTP methods do not require CSRF protection
-    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
-}
-$.ajaxSetup({
-    beforeSend: function(xhr, settings) {
-        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
-            xhr.setRequestHeader("X-CSRFToken", csrftoken);
-        }
-    }
-});
-
-
-// ==========================
-//      Vote management
-// ==========================
+// =====================================
+//     VOTES MANAGEMENT FUNCTIONS
+// =====================================
 
 var vote_form = $('#vote')
 // Ajax POST request to send user's vote choice
@@ -296,9 +319,9 @@ vote_form.on("submit", function(event) {
 })
 
 
-// ==========================
-//  Proxy buttons management
-// ==========================
+// =====================================
+//      PROXY BUTTONS MANAGEMENT
+// =====================================
 
 // User gives proxy
 var proxy_form = $('#proxy')
@@ -403,9 +426,158 @@ $('#cancel_proxy').on("click", function(event) {
 })
 
 
-// ==================================
+// =====================================
 //      Administration functions
-// ==================================
+// =====================================
+
+// Multiple select box management
+
+// Sort list function
+function sortlist(mylist) {
+    // let lb = $(mylist);
+    let elts = $(mylist).children('option');
+
+    elts.sort(function(a,b) {
+        if (a.text > b.text) return 1;
+        if (a.text < b.text) return -1;
+        return 0;
+    })
+
+    $(mylist).empty().append( elts );
+
+    // arrTexts = new Array();
+    
+    // for(i=0; i<lb.length; i++)  {
+    //     arrTexts[i] = lb.options[i].text;
+    // }
+    
+    // arrTexts.sort();
+    
+    // for(i=0; i<lb.length; i++)  {
+    //     lb.options[i].text = arrTexts[i];
+    //     lb.options[i].value = arrTexts[i];
+    // }
+}
+
+// Send an option from a select to another
+function add_option(source, dest, elt) {
+    let new_option = new Option(elt.text(), elt.val())
+    $(dest).append(new_option);
+    elt.remove();
+    $(new_option).attr("selected", "selected");
+    $(new_option).attr("has_changed", "True");
+
+    sortlist(dest);
+}
+
+// Add all (from source to destination)
+$('#add_all').on("click", function(e) {
+    e.preventDefault();
+    $('#id_users').find('option').removeAttr('selected');
+    $('#id_all_users option').each(function() {
+        add_option('#id_all_users', '#id_users', $(this));
+        $('#id_group_list').val($('#id_group_list').val() + "-" + String($(this).val()))
+    })
+})
+
+// Add selected (from source to destination)
+$('#add_selected').on("click", function(e) {
+    e.preventDefault();
+    $('#id_users').find('option').removeAttr('selected');
+    let values = $('#id_all_users').val();
+
+    $('#id_all_users option').each(function() {
+        if ( values.includes( $(this).val() ) ) {
+            add_option('#id_all_users', '#id_users', $(this));
+            $('#id_group_list').val($('#id_group_list').val() + "-" + String($(this).val()))
+        }
+    })
+})
+
+// Add selected by double click
+$("#id_all_users option").dblclick(function(e) {
+    e.preventDefault();
+    $('#id_users').find('option').removeAttr('selected');
+    add_option('#id_all_users', '#id_users', $(this));
+    $('#id_group_list').val($('#id_group_list').val() + "-" + String($(this).val()))
+})
+
+// Remove all (empty list, back to global list)
+$('#remove_all').on("click", function(e) {
+    e.preventDefault();
+    $('#id_all_users').find('option').removeAttr('selected');
+    $('#id_users option').each(function() {
+        add_option('#id_users', '#id_all_users', $(this));
+        $('#id_group_list').val($('#id_group_list').val().replace(String($(this).val()), ""))
+    })
+})
+
+// Remove selected (from source to destination)
+$('#remove_selected').on("click", function(e) {
+    e.preventDefault();
+    $('#id_all_users').find('option').removeAttr('selected');
+    let values = $('#id_users').val();
+
+    $('#id_users option').each(function() {
+        if ( values.includes( $(this).val() ) ) {
+            add_option('#id_users', '#id_all_users', $(this));
+            $('#id_group_list').val($('#id_group_list').val().replace(String($(this).val()), ""))
+        }
+    })
+})
+
+// Remove selected by double click
+$("#id_users option").dblclick(function(e) {
+    e.preventDefault();
+    $('#id_all_users').find('option').removeAttr('selected');
+    add_option('#id_users', '#id_all_users', $(this));
+    $('#id_group_list').val($('#id_group_list').val().replace(String($(this).val()), ""))
+})
+
+
+// On submit, select all elements to ensure they are sent to the view
+// $('#upd_grp').on("click", function() {
+//     $('#id_all_users option').removeAttr('selected');
+//     $('#id_all_users option').each(function() {
+//         if ($(this).attr('has_changed') && $(this).attr('has_changed') == "True" ) {
+//             $(this).attr('selected', 'selected');
+//         }
+//     });
+
+//     console.log("Group users")
+//     $('#id_users option').attr('selected', 'selected');
+//     $('#id_users option').each(function() {
+//         if ($(this).attr('has_changed') && $(this).attr('has_changed') == "True" ) {
+//             // $(this).attr('selected', 'selected');
+//         }
+//     })
+// })
+
+
+// Expand / Collapse blocks
+$('.collapse-group').on("click", function(e) {
+    e.preventDefault();
+    if ($(this).hasClass("expand-group")) {
+        $('.grp-content').removeClass("hidden");
+        $('#btn_grp').removeClass("fa-chevron-down").addClass("fa-chevron-up");
+        $(this).removeClass("expand-group").addClass("collapse-group");
+    }
+    else if ($(this).hasClass("collapse-group")) {
+        $('.grp-content').addClass("hidden");
+        $('#btn_grp').addClass("fa-chevron-down").removeClass("fa-chevron-up");
+        $(this).addClass("expand-group").removeClass("collapse-group");
+    }
+})
+
+// $('.collapse-group').on("click", function(e) {
+//     e.preventDefault();
+//     console.log("Masquer");
+//     $('.grp-content').addClass("hidden");
+//     // $('.grp-content').hide();
+//     $('#btn_grp').addClass("fa-chevron-down").removeClass("fa-chevron-up");
+//     $(this).addClass("expand-group").removeClass("collapse-group");
+// })
+
 
 function adminEvents() {
     $('#menu-events').addClass("underlined");
@@ -428,22 +600,43 @@ function adminGroups() {
 // Delete user modal display
 $('.delete-user').on("click", function() {
     dlte_usr = $(this).attr("data-usr-name") + " " + $(this).attr("data-usr-first-name");
-    mdl_action = $('#form_dlt_usr').attr("action");
+    // mdl_action = $('#form_dlt_usr').attr("action");
     $('#dlte-confirm').html("Voulez-vous supprimer l'utilisateur <strong>" + dlte_usr + "</strong> ?");
     $('#form_dlt_usr').attr("action", $('#form_dlt_usr').attr("action").replace("0", $(this).attr("data-usr-id")));
 })
 
-$('#close_dlte').on("click", function(event) {
+$('#close_dlte_usr').on("click", function(event) {
     event.preventDefault();
-    $('#delete-user').modal('hide');
+    $('#delete_usr').modal('hide');
 })
 
-// ==========================
-//     Various functions
-// ==========================
 
-// Go back to previous page
-$('.back_btn').on('click', function(event) {
+
+// Delete event modal display
+$('.delete-evt').on("click", function() {
+    // dlte_usr = $(this).attr("data-usr-name") + " " + $(this).attr("data-usr-first-name");
+    // mdl_action = $('#form_dlt_grp').attr("action");
+    $('#dlte-evt-confirm').html("Voulez-vous supprimer l'événement' <strong>" + $(this).attr("data-evt-name") + "</strong> ?");
+    $('#form_dlt_evt').attr("action", $('#form_dlt_evt').attr("action").replace("0", $(this).attr("data-evt-id")));
+})
+
+$('#close_dlte_evt').on("click", function(event) {
     event.preventDefault();
-    history.back();
-});
+    $('#delete_evt').modal('hide');
+})
+
+
+
+// Delete group modal display
+$('.delete-grp').on("click", function() {
+    // dlte_usr = $(this).attr("data-usr-name") + " " + $(this).attr("data-usr-first-name");
+    // mdl_action = $('#form_dlt_grp').attr("action");
+    $('#dlte-grp-confirm').html("Voulez-vous supprimer le groupe <strong>" + $(this).attr("data-grp-name") + "</strong> ?");
+    $('#form_dlt_grp').attr("action", $('#form_dlt_grp').attr("action").replace("0", $(this).attr("data-grp-id")));
+})
+
+$('#close_dlte_grp').on("click", function(event) {
+    event.preventDefault();
+    $('#delete_grp').modal('hide');
+})
+

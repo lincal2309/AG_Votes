@@ -2,6 +2,15 @@
   margin-top: 20%;
 }
 
+.navbar-brand {
+  vertical-align: middle;
+}
+
+select {
+  width: 100%;
+  min-height: 300px;
+}
+
 ul.list_msg {
   list-style: none;
 }
@@ -187,4 +196,13 @@ a .btn-secondary.disabled, a .btn-secondary:disabled {
 .is_admin {
   color: green;
   font-weight: bold;
+}
+
+.hidden {
+  display: none;
+}
+
+.card-header {
+  text-align: left;
+  margin-left: 20px;
 }

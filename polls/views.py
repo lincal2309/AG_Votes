@@ -16,14 +16,16 @@ from django.core.files import File
 # from django.forms import inlineformset_factory
 
 from django.urls import reverse_lazy, resolve
-# from django.views.generic.edit import FormView
+from django.views.generic.edit import FormView
+from django.views.generic import DetailView
 # from django.views.generic.list import ListView
+from django.core.exceptions import ValidationError
 
 import openpyxl
 
 import re
 
-from .forms import UserBaseForm, UserCompForm, UploadFileForm
+from .forms import UserBaseForm, UserCompForm, UploadFileForm, GroupDetail, EventDetail
 from .tools import define_password
 
 import json
@@ -53,11 +55,17 @@ border_colors = settings.BORDER_COLORS
 
 
 def init_event(event):
+    """
+    Initialize an event and set it as current
+    """
     UserVote.init_uservotes(event)
     event.set_current()
 
 
 def set_chart_data(event, evt_group_list, question_no):
+    """
+    Define data to display related charts
+    """
 
     # Initialize charts variables
     group_data = {}
@@ -153,6 +161,9 @@ def set_chart_data(event, evt_group_list, question_no):
 
 
 def user_is_admin(comp_slug, current_user):
+    """
+    Check whether current user has admin access or not (for his company)
+    """
     access_admin = False
     if current_user.is_authenticated and UserComp.objects.filter(user=current_user):
         # Checks that user is connected and UserComp exists for him
@@ -171,8 +182,10 @@ def user_is_admin(comp_slug, current_user):
 @user_passes_test(lambda u: u.is_superuser)
 def new_user(request):
     # ================================================
-    # For development purposes only - superuser only
+    # View to create users - for development purposes
+    # Superuser only (poor controls)
     # ================================================
+
     error = False
 
     if request.method == "POST":
@@ -242,6 +255,9 @@ def index(request):
 @login_required
 def company_home(request, comp_slug):
     """ Company's home page """
+    # For superuser (no dedicated company), sets the session variable to the selected company
+    if request.user.is_superuser:
+        request.session['comp_slug'] = comp_slug
     # Display event list
     company = Company.get_company(comp_slug)
     next_event_list = Event.get_next_events(company)
@@ -417,15 +433,17 @@ def cancel_proxy(request):
 #      Administration views & actions
 # ========================================
 
+# Common functions
+
 def create_new_user(comp_slug, user_data):
     ''' Function used to create new user '''
+
     username = user_data["username"]
     # password = user_form.cleaned_data["password"]
     if User.objects.filter(username=username):
         user_exists = True
     else:
         # Save new user first
-        #   Use create_user method (instead of form.save()) to include password validation
         new_pass = username.lower()
         new_user = User.objects.create_user(
             username=username,
@@ -434,10 +452,7 @@ def create_new_user(comp_slug, user_data):
             first_name=user_data["first_name"],
             email=user_data["email"]
             )
-        # new_user.save()
-        # Save UserComp
-        #   - create the object without saving
-        #   - add user and finally validate
+
         company = Company.get_company(comp_slug)
         usr_comp = UserComp.create_usercomp(
             user=new_user, 
@@ -448,23 +463,105 @@ def create_new_user(comp_slug, user_data):
     return new_user, usr_comp
 
 
+# Event management
+
 @login_required
-def admin_events(request):
+def adm_events(request):
     '''
-        Manage events creation and options
+        Manage events
     '''
     current_user = request.user
     access_admin = user_is_admin(request.session['comp_slug'], current_user)
 
-    if access_admin:
-        return render(request, "polls/admin_events.html")
+    if access_admin or current_user.is_superuser:
+        company = Company.get_company(request.session['comp_slug'])
+        next_events = Event.get_next_events(company)
+        old_events = Event.get_old_events(company)
+        return render(request, "polls/adm_events.html", locals())
     else:
         # User is not authorized to go to the page : back to home page
         return redirect("polls:index")
 
 
 @login_required
-def admin_users(request):
+def adm_event_detail(request, evt_id=0):
+    '''
+        Manage events creation and options
+    '''
+    print("===== Infos ")
+    company = Company.get_company(request.session['comp_slug'])
+
+    group_list = list(EventGroup.objects.filter(company=company).order_by('group_name').values())
+    
+    print(group_list)
+
+    if evt_id > 0:
+        current_event = Event.objects.get(id=evt_id)
+        event_form = EventDetail(request.POST or None, instance=current_event)
+
+        event_groups = list(EventGroup.objects.filter(company=company, event__id=evt_id).order_by('group_name').values())
+        print(event_groups)
+        for grp in group_list:
+            if any(g["id"] == grp["id"] for g in event_groups):
+                grp["in_event"] = True
+            else:
+                grp["in_event"] = False
+        print(group_list)
+    else:
+        event_form = EventDetail(request.POST or None)
+        # company = Company.get_company(request.session['comp_slug'])
+        # group_form.fields['all_users'].queryset= UserComp.objects.\
+        #                                             filter(company=company).\
+        #                                             order_by('user__last_name', 'user__first_name')
+
+    event_form.fields['groups'].queryset = EventGroup.objects.\
+                                                        filter(company=company).\
+                                                        order_by('group_name')
+
+    # print(event_form.fields['groups'])
+    
+    if request.method == 'POST':
+        if event_form.is_valid():
+            # event_form.save()
+            print("=== Retour POST :")
+            send_grp_list = request.POST.getlist("group_list")
+            print(request.POST)
+            if evt_id == 0:
+                # Create empty group
+                pass
+                # group_data = {
+                #     "company": company,
+                #     "group_name": group_form.cleaned_data["group_name"],
+                #     "weight": group_form.cleaned_data["weight"],
+                # }
+                # new_group = EventGroup.create_group(group_data)
+            else:
+                # Update group
+                # new_group = event_form.save()
+                pass
+
+        else:
+            print("****** FORMULAIRE NON VALIDE *******")
+            print(event_form.errors)
+
+    return render(request, "polls/adm_event_detail.html", locals())
+
+
+@login_required
+def adm_delete_event(request, evt_id):
+    del_evt = Event.objects.get(pk=evt_id)
+    msg = "Evénement {0} du {1} supprimé.".format(del_evt.event_name, del_evt.event_date)
+
+    Event.objects.filter(pk=evt_id).delete()
+
+    messages.success(request, msg)
+    return redirect("polls:adm_events")
+
+
+# Users management
+
+@login_required
+def adm_users(request):
     '''
         Manage users
     '''
@@ -472,7 +569,7 @@ def admin_users(request):
     current_user = request.user
     access_admin = user_is_admin(comp_slug, current_user)
 
-    if access_admin:
+    if access_admin or current_user.is_superuser:
         # Company's users list
         company = Company.get_company(comp_slug)
         user_list = UserComp.objects.order_by('user__last_name').filter(company=company)
@@ -484,13 +581,14 @@ def admin_users(request):
             'user_list': user_list,
             'upload_form': upload_form
         }
-        return render(request, "polls/admin_users.html", data)
+        return render(request, "polls/adm_users.html", data)
     else:
         # User is not authorized to go to the page : back to home page
         return redirect("polls:index")
 
+
 @login_required
-def user_profile(request, usr_id=0):
+def adm_user_profile(request, usr_id=0):
     if usr_id > 0:
         current_user = User.objects.get(pk=usr_id)
         user_form = UserBaseForm(request.POST or None, instance=current_user)
@@ -529,9 +627,14 @@ def user_profile(request, usr_id=0):
         
                 messages.success(request, msg)
 
-            return render(request, "polls/user_profile.html", locals())
+            if usr_id == 0 or upd_user != request.user:
+                # Update made at admin level : back to user list
+                return redirect('polls:adm_users')
+            else:
+                # User's profile view : stay on the page
+                return render(request, "polls/adm_user_profile.html", locals())
 
-    return render(request, "polls/user_profile.html", locals())
+    return render(request, "polls/adm_user_profile.html", locals())
 
 
 @login_required
@@ -542,7 +645,7 @@ def change_password(request):
             user = pwd_form.save()
             update_session_auth_hash(request, user)  # Important!
             messages.success(request, 'Mot de passe modifié avec succès.')
-            return redirect('polls:user_profile', usr_id=request.user.id)
+            return redirect('polls:adm_user_profile', usr_id=request.user.id)
         else:
             messages.error(request, 'Veuillez corriger les erreurs ci-dessous.')
     else:
@@ -553,7 +656,7 @@ def change_password(request):
 
 
 @login_required
-def delete_user(request, usr_id):
+def adm_delete_user(request, usr_id):
     del_usr = User.objects.get(pk=usr_id)
     msg = "Utilisateur {0} {1} supprimé.".\
             format(del_usr.last_name, del_usr.first_name)
@@ -561,11 +664,11 @@ def delete_user(request, usr_id):
     User.objects.filter(pk=usr_id).delete()
 
     messages.success(request, msg)
-    return redirect("polls:admin_users")
+    return redirect("polls:adm_users")
 
 
 @login_required
-def load_users(request):
+def adm_load_users(request):
     if request.method == 'POST':
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
@@ -586,7 +689,7 @@ def load_users(request):
                 index_list = [titles.index(elt) for elt in elt_list]
             except:
                 messages.error(request, "Chargement du fichier impossible : la structure ne correspond pas à ce qui est attendu")
-                return redirect("polls:admin_users")
+                return redirect("polls:adm_users")
 
             nb_lines = 0
             nb_warn = 0
@@ -682,19 +785,102 @@ def load_users(request):
             for warn_msg in warn_messages:
                 messages.warning(request, warn_msg)
 
-            return redirect("polls:admin_users")
+            return redirect("polls:adm_users")
 
+
+# Groups management
 
 @login_required
-def admin_groups(request):
+def adm_groups(request):
     '''
         Manage users groups
     '''
     current_user = request.user
-    access_admin = user_is_admin(request.session['comp_slug'], current_user)
+    comp_slug = request.session['comp_slug']
+    access_admin = user_is_admin(comp_slug, current_user)
 
-    if access_admin:
-        return render(request, "polls/admin_groups.html")
+    if access_admin or current_user.is_superuser:
+        company = Company.get_company(comp_slug)
+        # user_list = UserComp.get_users_in_comp(comp_slug)
+        group_list = EventGroup.objects.filter(company__comp_slug=comp_slug).order_by('group_name')
+
+        return render(request, "polls/adm_groups.html", locals())
     else:
         # User is not authorized to go to the page : back to home page
         return redirect("polls:index")
+
+
+@login_required
+def adm_group_detail(request, grp_id=0):
+    if grp_id > 0:
+        current_group = EventGroup.objects.get(id=grp_id)
+        group_form = GroupDetail(request.POST or None, instance=current_group)
+    else:
+        group_form = GroupDetail(request.POST or None)
+        company = Company.get_company(request.session['comp_slug'])
+        group_form.fields['all_users'].queryset= UserComp.objects.\
+                                                    filter(company=company).\
+                                                    order_by('user__last_name', 'user__first_name')
+
+
+    if request.method == 'POST':
+        # Convert the string in a list of user IDs
+        usr_list = [int(elt) for elt in request.POST['group_list'].split('-') if elt != ""]
+
+        group_form.fields['users'].queryset = UserComp.objects.filter(id__in=usr_list).\
+                                                        order_by('user__last_name', 'user__first_name')
+        group_form.fields['all_users'].queryset = UserComp.objects.exclude(id__in=usr_list)
+
+        if group_form.is_valid():
+            if grp_id == 0:
+                # Create empty group
+                group_data = {
+                    "company": company,
+                    "group_name": group_form.cleaned_data["group_name"],
+                    "weight": group_form.cleaned_data["weight"],
+                }
+                new_group = EventGroup.create_group(group_data)
+            else:
+                # Update group
+                new_group = group_form.save()
+
+                # Remove all users
+                group_usr_list = UserComp.objects.filter(eventgroup=new_group)
+                for usr in group_usr_list:
+                    new_group.users.remove(usr)
+
+            # Common part for create and update : add users according to new/updated list
+            for usr in usr_list:
+                new_group.users.add(usr)
+            new_group.save()
+
+            # Update form according to latest changes
+            group_form.fields['all_users'].queryset = UserComp.objects.\
+                                                            exclude(id__in=usr_list).\
+                                                            order_by('user__last_name', 'user__first_name')
+            group_form.fields['group_list'].initial = "-".join([str(elt.id) for elt in new_group.users.all()])
+        else:
+            print("****** FORMULAIRE NON VALIDE *******")
+            print(group_form.errors)
+
+    return render(request, "polls/adm_group_detail.html", locals())
+
+@login_required
+def adm_delete_group(request, grp_id):
+    del_grp = EventGroup.objects.get(pk=grp_id)
+    msg = "Groupe {0} supprimé.".format(del_grp.group_name)
+
+    EventGroup.objects.filter(pk=grp_id).delete()
+
+    messages.success(request, msg)
+    return redirect("polls:adm_groups")
+
+
+# Company settings management
+
+@login_required
+def adm_options(request):
+    '''
+        Manage Company options
+    '''
+    return render(request, "polls/adm_options.html", locals())

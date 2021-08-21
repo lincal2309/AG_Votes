@@ -38,7 +38,7 @@
         <header class="main-header">
             <!-- Header Navbar -->
             {% block nav_bar %}
-            <nav class="navbar navbar-expand-md navbar-light fixed-top bg-light">
+            <nav class="navbar navbar-expand-md navbar-light fixed-top bg-light align-items-center">
                 {% block logo %}
                 <a href="{% url 'polls:index' %}" class="logo">
                     {% if user.is_superuser %}
@@ -67,16 +67,19 @@
                             <ul class="dropdown-menu dropdown-menu-right">
                                 <!-- Menu Footer-->
                                 <li class="user-footer">
-                                    <a href="{% url 'polls:user_profile' user.id %}" class="btn btn-default btn-flat">Profil</a>
+                                    <a href="{% url 'polls:adm_user_profile' user.id %}" class="btn btn-default btn-flat">Profil</a>
                                 </li>
 
                                 {% if user.usercomp.is_admin %}
                                     <li class="user-footer">
-                                        <a href="{% url 'polls:admin_events' %}" class="btn btn-default btn-flat">Administration</a>
+                                        <a href="{% url 'polls:adm_events' %}" class="btn btn-default btn-flat">Administration</a>
                                     </li>
                                 {% endif %}
 
                                 {% if user.is_superuser %}
+                                    <li class="user-footer">
+                                        <a href="{% url 'polls:adm_events' %}" class="btn btn-default btn-flat">Administration {{ request.session.comp_slug }}</a>
+                                    </li>
                                     <li class="user-footer">
                                         <!-- Allows to create users for testing purposes -->
                                         <a href="{% url 'polls:sign_up' %}" class="btn btn-default btn-flat">Création user</a>

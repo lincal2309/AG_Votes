@@ -28,6 +28,16 @@ class CompanyAdmin(admin.ModelAdmin):
     fieldsets = [
         (None, {"fields": ["company_name", "comp_slug", "logo"]}),
         (
+            "Propriétés générales de l'application",
+            {
+                "fields": [
+                    "use_groups",
+                    "rule",
+                    "upd_rule"
+                ]
+            },
+        ),
+        (
             "Informations administratives",
             {
                 "fields": [
@@ -168,7 +178,7 @@ class EventAdmin(admin.ModelAdmin):
 
 
 class EventGroupAdmin(admin.ModelAdmin):
-    fields = ["group_name", "weight", "users"]
+    fields = ["group_name", "weight", "company", "users"]
     filter_horizontal = ("users",)
 
 
@@ -185,7 +195,7 @@ class UserVoteAdmin(admin.ModelAdmin):
 
 
 class UserCompAdmin(admin.ModelAdmin):
-    list_display = ("user", "company", "is_admin")
+    list_display = ("user", "company", "is_admin", "id")
 
     def usercomp_label(self, obj):
         return "Utilisateur %s rattaché à la société %s" % (

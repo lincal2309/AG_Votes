@@ -1,0 +1,30 @@
+{% extends './base.html' %}
+
+{% load static %}
+
+{% block extra_js%}
+    <script src="http://malsup.github.com/jquery.form.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    {% include "./adm_head.html" %}
+
+    <div class="col-md-9">
+        <!-- Right panel : admin actions
+                1 bloc for each menu item, diplayed or hidden according to user's choice -->
+        <input type="hidden" id="menu_id" value="4" /> <!-- Hidden value to store the current selected menu -->
+
+        <div class="row">
+            <div class="col-sm-12 align-items-center text-center">
+                <h4 id="admin-users-details" class="mt-5">Préférences générales</h4>
+            </div>
+        </div>
+
+    </div>
+
+
+</div>
+
+{% endblock %}
