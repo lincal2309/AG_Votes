@@ -107,11 +107,6 @@ $(document).ready(function(event) {
             }
         })
     }
-
-    if ($('#to_disable').length > 0) {
-        // For user profile, disable username if it is not for creation
-        $('#id_username').prop('disabled', true)
-    }
 })
 
 // Close modals on cancel button

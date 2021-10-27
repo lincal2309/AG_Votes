@@ -7,19 +7,19 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
-from django.db.models import Count, Sum
-from django.conf import settings
-# from django.contrib.auth.password_validation import validate_password
+from django.db.models import Sum
 from django.contrib import messages
+# from django.conf import settings
+# from django.contrib.auth.password_validation import validate_password
 # from django.core.exceptions import ValidationError
-from django.core.files import File
+# from django.core.files import File
 # from django.forms import inlineformset_factory
 
-from django.urls import reverse_lazy, resolve
-from django.views.generic.edit import FormView
-from django.views.generic import DetailView
+# from django.urls import reverse_lazy, resolve
+# from django.views.generic.edit import FormView
+# from django.views.generic import DetailView
 # from django.views.generic.list import ListView
-from django.core.exceptions import ValidationError
+# from django.core.exceptions import ValidationError
 
 import openpyxl
 
@@ -35,7 +35,9 @@ from .forms import (
     CompanyForm
 )
 
-from .tools import define_password
+# from .tools import define_password
+from .tools import set_chart_data, init_event, user_is_admin
+
 from .pollsmail import PollsMail
 
 import json
@@ -54,134 +56,9 @@ from .models import (
 
 from pprint import pprint
 
-debug = settings.DEBUG
-background_colors = settings.BACKGROUND_COLORS
-border_colors = settings.BORDER_COLORS
-
-
-# =======================
-#    Global functions
-# =======================
-
-
-def init_event(event):
-    """
-    Initialize an event and set it as current
-    """
-    UserVote.init_uservotes(event)
-    event.set_current()
-
-
-def set_chart_data(event, evt_group_list, question_no):
-    """
-    Define data to display related charts
-    """
-
-    # Initialize charts variables
-    group_data = {}
-    nb_groups = 0
-
-    # Initialize global results data
-    global_choice_list = Choice.get_choice_list(event.slug).values("choice_text")
-    group_vote = {}
-    global_total_votes = 0
-    global_nb_votes = 0
-    for choice in global_choice_list:
-        group_vote[choice["choice_text"]] = 0
-
-    # Gather votes info for each group
-    for evt_group in evt_group_list:
-        nb_groups += 1
-        total_votes = EventGroup.objects.filter(id=evt_group.id).aggregate(
-            Count("users")
-        )["users__count"]
-
-        result_list = Result.get_vote_list(event, evt_group, question_no).values(
-            "choice__choice_text", "votes", "group_weight"
-        )
-
-        labels = [choice["choice__choice_text"] for choice in result_list]
-        values = [choice["votes"] for choice in result_list]
-        nb_votes = sum(values)
-
-        chart_nb = "chart" + str(nb_groups)
-        group_data[chart_nb] = {
-            "nb_votes": nb_votes,
-            "total_votes": total_votes,
-            "labels": labels,
-            "values": values,
-        }
-
-        # Calculate aggregate results
-        # Use if / elif to ease adding future rules
-        global_total_votes += total_votes
-        global_nb_votes += nb_votes
-        weight = result_list[0]["group_weight"]
-        if event.rule == "MAJ":
-            # A MODIFIER : cas d'égalité, pas de valeur... (règles à définir)
-            max_val = values.index(max(values))
-            group_vote[labels[max_val]] += weight
-        elif event.rule == "PROP":
-            # Calculate totals per choice, including group's weight
-            # Addition of each group's result
-            for i, choice in enumerate(labels):
-                if choice in group_vote:
-                    group_vote[choice] += values[i] * weight / 100
-
-    if event.rule == "PROP":
-        # Calculate percentage for each choice
-        total_votes = 0
-        for val in group_vote.values():
-            total_votes += val
-        # Calculate global results only if at least 1 vote
-        if total_votes > 0:
-            for choice, value in group_vote.items():
-                group_vote[choice] = round((value / total_votes) * 100, 2)
-
-    # Setup global info for charts
-    global_labels = []
-    global_values = []
-    for label, value in group_vote.items():
-        global_labels.append(label)
-        global_values.append(value)
-
-    group_data["global"] = {
-        "nb_votes": global_nb_votes,
-        "total_votes": global_total_votes,
-        "labels": global_labels,
-        "values": global_values,
-    }
-
-    chart_background_colors = background_colors
-    chart_border_colors = border_colors
-
-    # Extends color lists to fit with nb values to display
-    while len(chart_background_colors) < nb_votes:
-        chart_background_colors += background_colors
-        chart_border_colors += border_colors
-
-    data = {
-        "chart_data": group_data,
-        "nb_charts": nb_groups,
-        "backgroundColor": chart_background_colors,
-        "borderColor": chart_border_colors,
-    }
-
-    return data
-
-
-def user_is_admin(comp_slug, current_user):
-    """
-    Check whether current user has admin access or not (for his company)
-    """
-    access_admin = False
-    if current_user.is_authenticated and UserComp.objects.filter(user=current_user):
-        # Checks that user is connected and UserComp exists for him
-        if current_user.usercomp.company.comp_slug == comp_slug and current_user.usercomp.is_admin:
-            # The user needs to belong to the company and have admin role
-            access_admin = True
-
-    return access_admin
+# debug = settings.DEBUG
+# background_colors = settings.BACKGROUND_COLORS
+# border_colors = settings.BORDER_COLORS
 
 
 # =======================
@@ -503,7 +380,7 @@ def adm_users(request, comp_slug):
     # Prepare form to upload users from file
     
     if company.use_groups: upload_form = UploadFileForm(initial={'use_groups': True})
-    else: UploadFileForm()
+    else: upload_form = UploadFileForm()
 
     data = {
         'user_list': user_list,
@@ -516,19 +393,14 @@ def adm_users(request, comp_slug):
 def adm_user_profile(request, comp_slug, usr_id=0):
     '''User profile page'''
     access_admin = user_is_admin(comp_slug, request.user)
-    print("form in view - POST")
-    print(request.POST)
 
     if usr_id > 0:
         # A user exists : access only for the user himself of company admins
         profile_user = User.objects.get(pk=usr_id)
-        print(profile_user)
         if access_admin or profile_user == request.user:
             user_form = UserBaseForm(request.POST or None, instance=profile_user)
             usercomp_form = UserCompForm(request.POST or None, instance=profile_user.usercomp)
-            # print(user_form['id'])
-            user_form['username'].disabled = True
-            print(user_form['username'])
+            user_form.fields['username'].disabled = True   # Disable updates of the field
 
         else:
             return redirect("polls:index")
@@ -540,18 +412,8 @@ def adm_user_profile(request, comp_slug, usr_id=0):
         else:
             return redirect("polls:index")
 
-    print("form initialized")
-    print(user_form)
-
-
     if request.method == 'POST':
-        for field in user_form:
-            print("Field Error:", field.name, field.errors)
-        print("Valid ?")
-        print(user_form.is_valid())
-
         if user_form.is_valid() and usercomp_form.is_valid():
-            print("valid")
             if usr_id == 0:
                 # New user
                 user_data = {
@@ -568,7 +430,6 @@ def adm_user_profile(request, comp_slug, usr_id=0):
                 messages.success(request, msg)
             else:
                 # Update user
-                print("update")
                 upd_user = user_form.save()
                 usercomp_form.save()
 

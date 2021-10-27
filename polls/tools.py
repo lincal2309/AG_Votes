@@ -4,9 +4,10 @@
 import random
 # from django.conf import settings
 
+from django.conf import settings
 from django.utils import timezone
 import datetime
-from django.conf import settings
+from django.db.models import Count
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -23,11 +24,11 @@ from .models import (
     UserComp,
 )
 
-from django.utils.text import slugify
 
+debug = settings.DEBUG
+background_colors = settings.BACKGROUND_COLORS
+border_colors = settings.BORDER_COLORS
 
-
-# debug = settings.DEBUG
 
 # Generate secured password
 pass_length = 10
@@ -46,92 +47,126 @@ def define_password():
     return result
 
 
+# =======================
+#    Global functions
+# =======================
 
 
-# ===================================
-#  Global functions used for testing
-# ===================================
+def init_event(event):
+    """
+    Initialize an event and set it as current
+    """
+    UserVote.init_uservotes(event)
+    event.set_current()
 
 
-def create_dummy_user(company, username, group=None, staff=False, admin=False):
-    email = username + "@toto.com"
-    last_name = "nom_" + username
-    usr = User.objects.create_user(
-        username=username,
-        password=username,
-        is_superuser=staff,
-        is_staff=staff,
-        email=email,
-        last_name=last_name
-    )
-    usrcomp = UserComp.objects.create(company=company, user=usr, is_admin=admin)
-    usrcomp.save()
+def set_chart_data(event, evt_group_list, question_no):
+    """
+    Define data to display related charts
+    """
 
-    if group:
-        group.users.add(usrcomp)
-    return usrcomp
+    # Initialize charts variables
+    group_data = {}
+    nb_groups = 0
+
+    # Initialize global results data
+    global_choice_list = Choice.get_choice_list(event.slug).values("choice_text")
+    group_vote = {}
+    global_total_votes = 0
+    global_nb_votes = 0
+    for choice in global_choice_list:
+        group_vote[choice["choice_text"]] = 0
+
+    # Gather votes info for each group
+    for evt_group in evt_group_list:
+        nb_groups += 1
+        total_votes = EventGroup.objects.filter(id=evt_group.id).aggregate(
+            Count("users")
+        )["users__count"]
+
+        result_list = Result.get_vote_list(event, evt_group, question_no).values(
+            "choice__choice_text", "votes", "group_weight"
+        )
+
+        labels = [choice["choice__choice_text"] for choice in result_list]
+        values = [choice["votes"] for choice in result_list]
+        nb_votes = sum(values)
+
+        chart_nb = "chart" + str(nb_groups)
+        group_data[chart_nb] = {
+            "nb_votes": nb_votes,
+            "total_votes": total_votes,
+            "labels": labels,
+            "values": values,
+        }
+
+        # Calculate aggregate results
+        # Use if / elif to ease adding future rules
+        global_total_votes += total_votes
+        global_nb_votes += nb_votes
+        weight = result_list[0]["group_weight"]
+        if event.rule == "MAJ":
+            # A MODIFIER : cas d'égalité, pas de valeur... (règles à définir)
+            max_val = values.index(max(values))
+            group_vote[labels[max_val]] += weight
+        elif event.rule == "PROP":
+            # Calculate totals per choice, including group's weight
+            # Addition of each group's result
+            for i, choice in enumerate(labels):
+                if choice in group_vote:
+                    group_vote[choice] += values[i] * weight / 100
+
+    if event.rule == "PROP":
+        # Calculate percentage for each choice
+        total_votes = 0
+        for val in group_vote.values():
+            total_votes += val
+        # Calculate global results only if at least 1 vote
+        if total_votes > 0:
+            for choice, value in group_vote.items():
+                group_vote[choice] = round((value / total_votes) * 100, 2)
+
+    # Setup global info for charts
+    global_labels = []
+    global_values = []
+    for label, value in group_vote.items():
+        global_labels.append(label)
+        global_values.append(value)
+
+    group_data["global"] = {
+        "nb_votes": global_nb_votes,
+        "total_votes": global_total_votes,
+        "labels": global_labels,
+        "values": global_values,
+    }
+
+    chart_background_colors = background_colors
+    chart_border_colors = border_colors
+
+    # Extends color lists to fit with nb values to display
+    while len(chart_background_colors) < nb_votes:
+        chart_background_colors += background_colors
+        chart_border_colors += border_colors
+
+    data = {
+        "chart_data": group_data,
+        "nb_charts": nb_groups,
+        "backgroundColor": chart_background_colors,
+        "borderColor": chart_border_colors,
+    }
+
+    return data
 
 
-def create_dummy_company(name):
-    return Company.objects.create(
-        company_name=name,
-        comp_slug=slugify(name),
-        logo=SimpleUploadedFile(name='logo.jpg', content=b'content', content_type='image/jpeg'),
-        statut="SARL",
-        siret="0123456789",
-        # street_num=1,
-        # street_cplt='',
-        address1="Rue des fauvettes",
-        # address2='',
-        zip_code="99456",
-        city='Somewhere',
-        host="smtp.gmail.com",
-        port=587,
-        hname="test@polls.com",
-        fax="toto",
-    )
+def user_is_admin(comp_slug, current_user):
+    """
+    Check whether current user has admin access or not (for his company)
+    """
+    access_admin = False
+    if current_user.is_authenticated and UserComp.objects.filter(user=current_user):
+        # Checks that user is connected and UserComp exists for him
+        if current_user.usercomp.company.comp_slug == comp_slug and current_user.usercomp.is_admin:
+            # The user needs to belong to the company and have admin role
+            access_admin = True
 
-# def add_dummy_event(company, name="Dummy event", groups=None, new_groups=True):
-#     # Create dummy event and add group if any
-#     # Allows to test case were more than 1 event is in the database
-#     event_date = timezone.now() + datetime.timedelta(days=1)
-#     event = Event.objects.create(
-#         company=company,
-#         event_name=name,
-#         event_date=event_date,
-#         slug=slugify(name + str(event_date)),
-#     )
-#     Question.objects.create(
-#         question_text="Dummy quest 1", question_no=1, event=event
-#     )
-#     Question.objects.create(
-#         question_text="Dummy quest 2", question_no=2, event=event
-#     )
-#     Choice.objects.create(
-#         event=event, choice_text="Dummy choice 1", choice_no=1
-#     )
-#     Choice.objects.create(
-#         event=event, choice_text="Dummy choice 2", choice_no=2
-#     )
-    
-#     if groups is not None:
-#         # Add groups to event if any
-#         for group in groups:
-#             event.groups.add(group)
-#     else:
-#         groups = []
-
-#     if new_groups:
-#         # Create dummy groups if requested
-#         group1 = EventGroup.objects.create(group_name="Dummy group 1", weight=30)
-#         group2 = EventGroup.objects.create(group_name="Dummy group 2", weight=70)
-#         event.groups.add(group1, group2)
-#         groups += [group1, group2]
-
-#     if len(groups) > 0:
-#         # if groups sent and / or created, create results and uservotes
-#         for group in groups:
-#             create_dummy_user(company, "user " + group.group_name + " 1", group=group)
-#             create_dummy_user(company, "user " + group.group_name + " 2", group=group)
-
-#         init_event(event)
+    return access_admin

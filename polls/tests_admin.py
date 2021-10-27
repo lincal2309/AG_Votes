@@ -9,10 +9,10 @@ from django.test import TestCase
 from django.shortcuts import reverse
 from django.contrib.auth.models import User
 
-from .tools import (
+from .tools_tests import (
     create_dummy_user,
     create_dummy_company,
-    # add_dummy_event,
+    add_dummy_event,
 )
 
 from .models import (
@@ -128,6 +128,11 @@ class TestAdmUsers(TestCase):
         for usr in response.context['user_list']:
             if usr.is_admin: i += 1
         self.assertEqual(i, 2)
+
+    def test_delete_user(self):
+        url = reverse("polls:adm_delete_user", args=[self.user13.id])
+        response = self.client.get(url)
+
 
 
 class TestUserProfile(TestCase):

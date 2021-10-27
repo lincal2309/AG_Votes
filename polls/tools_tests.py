@@ -5,6 +5,7 @@
 from django.utils import timezone
 import datetime
 from django.conf import settings
+from django.utils.text import slugify
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -21,7 +22,8 @@ from .models import (
     UserComp,
 )
 
-from django.utils.text import slugify
+from .tools import init_event
+
 
 
 def create_dummy_user(company, username, group=None, staff=False, admin=False):
