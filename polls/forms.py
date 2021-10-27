@@ -12,34 +12,46 @@ from .models import (
 )
 
 
-# Form used for login view
+# Login view
 class UserForm(forms.Form):
     username = forms.CharField(label="Nom d'utilisateur", max_length=30)
     password = forms.CharField(label="Mot de passe", widget=forms.PasswordInput)
 
 
-# Forms for user management
+# User management
 class UserBaseForm(forms.ModelForm):
-    # Create user form
+    # Create user
     class Meta:
         model = User
-        fields = ['last_name', 'first_name', 'username', 'email']
+        fields = ['username', 'last_name', 'first_name', 'email']
 
 class UserCompForm(forms.ModelForm):
     class Meta:
         model = UserComp
         fields = ['phone_num', 'is_admin']
 
+
+# Form to upload an excel file to create many users at once
 class UploadFileForm(forms.Form):
-    # Form to upload an excel file to create many users at once
     file = forms.FileField(label="Fichier", validators=[FileExtensionValidator(['xls', 'xlsx'], message=("Seuls les fichiers *.xls et *.xlsx sont pris en charge"))])
     sheet = forms.CharField(label="Onglet", max_length=30, initial="Feuil1")
-    use_groups = forms.BooleanField(label="Utiliser les groupes", initial=True)
+    use_groups = forms.BooleanField(label="Utiliser les groupes", initial=False)
 
 
+# Company management
+class CompanyForm(forms.ModelForm):
+    class Meta:
+        model = Company
+        exclude = []
+
+    def __init__(self, *args, **kwags):
+        # Disable two mandatory fields to avoid updating them in the form and allo form validation
+        super().__init__(*args, **kwags)
+        self.fields['company_name'].disabled = True
+        self.fields['comp_slug'].disabled = True
 
 
-# Form for event management
+# Event management
 class EventDetail(forms.ModelForm):
     groups = forms.ModelMultipleChoiceField(
         label = "Liste des groupes",
@@ -66,7 +78,7 @@ class EventDetail(forms.ModelForm):
 
 
 
-# Form for group management
+# Group management
 class GroupDetail(forms.ModelForm):
     users = forms.ModelMultipleChoiceField(
         label="Dans le groupe",

@@ -7,7 +7,7 @@
     <div class="container">
         <div class="row">
             <div class="col-lg-12 align-items-center text-center">
-                <form action="{% url 'polls:change_password' %}" method="post">
+                <form action="{% url 'polls:change_password' comp_slug %}" method="post">
                     {% csrf_token %}
 
                     {{ pwd_form.as_p }}

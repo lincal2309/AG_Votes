@@ -19,7 +19,7 @@ class Company(models.Model):
     comp_slug = models.SlugField("slug")
     logo = models.ImageField(upload_to="img/", null=True, blank=True)
     use_groups = models.BooleanField("utilise les groupes", default=False)   # Company uses groups or not
-    rules = [("MAJ", "Majorité"), ("PROP", "Proportionnelle")]   # Default management rule
+    rules = [("MAJ", "Majorité"), ("PROP", "Proportionnelle")]
     rule = models.CharField(
         "mode de scrutin", max_length=5, choices=rules, default="MAJ"
     )

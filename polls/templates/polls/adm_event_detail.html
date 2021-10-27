@@ -14,9 +14,9 @@
             <div class="col-sm-12 mt-30">
 
                 {% if evt_id %}
-                <form action="{% url 'polls:adm_event_detail' evt_id %}" method="post">
+                <form action="{% url 'polls:adm_event_detail' company.comp_slug evt_id %}" method="post">
                 {% else %}
-                <form action="{% url 'polls:adm_create_event' %}" method="post">
+                <form action="{% url 'polls:adm_create_event' company.comp_slug %}" method="post">
                 {% endif %}
                     {% csrf_token %}
 

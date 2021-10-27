@@ -9,15 +9,35 @@
             <div class="col-lg-10 align-items-center text-center">
                 <h2>Bienvenue dans l'application de votes électroniques</h2>
                 {% if user.is_superuser %}
-                    <h3>Liste des entreprises</h3>
-                    {% for company in comp_list %}
-                        {% if company.logo is not NULL %}
-                        <div class="logo-lg head-text-color">
-                            <img src="{{ company.logo.url }}" height=50>
+                <div class="row mt-3 align-items-center">
+                    <div class="col-sm-12 mt-5 align-items-center">
+                        <h4><a href="/admin/">Administration générale</a></h4>
+                        <h5 class="pt-2"><a href="{% url 'polls:sign_up' %}">Création user (simplifiée)</a></h5>
+                    </div>
+                </div>
+
+                <h3 class="mt-5 align-items-center text-center underlined">Liste des entreprises</h3>
+                    <div class="row pt-3">
+                        <div class="col-md-3"></div>
+                        <div class="col-md-8">
+                            <table>
+                                {% for company in comp_list %}
+                                <tr class="mt-2">
+                                    <td width="20%">
+                                        {% if company.logo is not NULL %}
+                                        <div class="logo-lg head-text-color">
+                                            <img src="{{ company.logo.url }}" height=50>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td width="50%"><h5><a href="{% url 'polls:company_home' company.comp_slug %}"> {{ company.company_name }} </a></h5></td>
+                                    <td width="30%"><h5><a href="{% url 'polls:adm_events' company.comp_slug %}"> Administration </a></h5></td>
+                                </tr>
+                                {% endfor %}
+                            </table>
                         </div>
-                        {% endif %}
-                        <h4><a href="{% url 'polls:company_home' company.comp_slug %}"> {{ company.company_name }} </a></h4>
-                    {% endfor %}
+                    </div>
+
                 {% elif not user.is_autenticated %}
                     <a class="btn btn-secondary mt-30 pb-2" type="button" href="{% url 'polls:login' %}">Se connecter</a>
                 {% endif %}

@@ -60,40 +60,25 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarCollapse">
                     {% if user.is_authenticated %}
-                        <li class="dropdown user user-menu mr-5 ml-auto">
-                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                                <span class="hidden-xs">{% firstof request.user.get_short_name request.user.get_username %}</span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-right">
-                                <!-- Menu Footer-->
-                                <li class="user-footer">
-                                    <a href="{% url 'polls:adm_user_profile' user.id %}" class="btn btn-default btn-flat">Profil</a>
-                                </li>
+                        <div class="dropdown user user-menu mr-3 ml-auto">
+                            {% if comp_slug %}
+                                <a href="{% url 'polls:adm_user_profile' comp_slug user.id %}" data-toggle="tooltip" title="Accéder au profil">{% firstof request.user.get_short_name request.user.get_username %}</a>
+                            {% else %}
+                                <a href="#">{% firstof request.user.get_short_name request.user.get_username %}</a>
+                            {% endif %}
+                            &nbsp &nbsp
+                            {% if user.usercomp.is_admin %}
+                                <a href="{% url 'polls:adm_events' comp_slug %}">Administration</a>
+                                &nbsp &nbsp
+                            {% endif %}
 
-                                {% if user.usercomp.is_admin %}
-                                    <li class="user-footer">
-                                        <a href="{% url 'polls:adm_events' %}" class="btn btn-default btn-flat">Administration</a>
-                                    </li>
-                                {% endif %}
+                            {% if user.is_superuser and comp_slug %}
+                                <a href="{% url 'polls:adm_events' company.comp_slug %}">Admin {{ request.session.comp_slug }}</a>
+                                &nbsp &nbsp
+                            {% endif %}
 
-                                {% if user.is_superuser %}
-                                    <li class="user-footer">
-                                        <a href="{% url 'polls:adm_events' %}" class="btn btn-default btn-flat">Administration {{ request.session.comp_slug }}</a>
-                                    </li>
-                                    <li class="user-footer">
-                                        <!-- Allows to create users for testing purposes -->
-                                        <a href="{% url 'polls:sign_up' %}" class="btn btn-default btn-flat">Création user</a>
-                                    </li>
-                                    <li class="user-footer">
-                                        <a href="/admin/" class="btn btn-default btn-flat">Administration générale</a>
-                                    </li>
-                                {% endif %}
-
-                                <li class="user-footer">
-                                    <a href="{% url 'polls:logout' %}" class="btn btn-default btn-flat">Déconnexion</a>
-                                </li>
-                            </ul>
-                        </li>
+                            <a href="{% url 'polls:logout' %}"><span class="fa fa-power-off" style="color: #700909;" data-toggle="tooltip" title="Déconnexion"></span></a>
+                        </div>
                     {% endif %}
                 </div>
             </nav>

@@ -61,6 +61,9 @@ $(document).ready(function(event) {
             case 3:
                 adminGroups()
                 break;
+            case 4:
+                adminOptions()
+                break;
             default:
                 adminEvents()
         }
@@ -73,11 +76,42 @@ $(document).ready(function(event) {
 
     else if ($('select').length > 0) {
         // Unselect any choice within a "select multiple" box
-        console.log("Page avec des select")
         $('select').removeAttr('required');
         $('select option').removeAttr('selected');
     }
 
+    if ($('#admin-options').length > 0) {
+        // For admin options, enable or disable options according to displayed values
+        if ($('#id_use_groups').prop('checked')) {
+            $('#id_rule').prop('disabled', false)
+            $('#id_upd_rule').prop('disabled', false)
+        } else {
+            $('#id_rule').prop('disabled', true)
+            $('#id_upd_rule').prop('disabled', true)
+        }
+
+        // Hide mail server password
+        $('#id_fax').attr('type', 'password');
+
+        $('#toggle_mail_mdp').on('click', function() {
+            if ($('#id_fax').attr('type') === 'password') {
+                $('#id_fax').attr('type', '');
+                $('#toggle_mail_mdp span').attr('title', 'Masquer').attr('data-original-title', '')
+                var text = $('#toggle_mail_mdp').html()
+                $('#toggle_mail_mdp').html(text.replace('Voir', 'Masquer'))
+            } else {
+                $('#id_fax').attr('type', 'password');
+                $('#toggle_mail_mdp span').attr('title', 'Afficher').attr('data-original-title', '')
+                var text = $('#toggle_mail_mdp').html()
+                $('#toggle_mail_mdp').html(text.replace('Masquer', 'Voir'))
+            }
+        })
+    }
+
+    if ($('#to_disable').length > 0) {
+        // For user profile, disable username if it is not for creation
+        $('#id_username').prop('disabled', true)
+    }
 })
 
 // Close modals on cancel button
@@ -583,18 +617,28 @@ function adminEvents() {
     $('#menu-events').addClass("underlined");
     $('#menu-users').removeClass("underlined");
     $('#menu-groups').removeClass("underlined");
+    $('#menu-options').removeClass("underlined");
 }
 
 function adminUsers() {
     $('#menu-events').removeClass("underlined");
     $('#menu-users').addClass("underlined");
     $('#menu-groups').removeClass("underlined");
+    $('#menu-options').removeClass("underlined");
 }
 
 function adminGroups() {
     $('#menu-events').removeClass("underlined");
     $('#menu-users').removeClass("underlined");
     $('#menu-groups').addClass("underlined");
+    $('#menu-options').removeClass("underlined");
+}
+
+function adminOptions() {
+    $('#menu-events').removeClass("underlined");
+    $('#menu-users').removeClass("underlined");
+    $('#menu-groups').removeClass("underlined");
+    $('#menu-options').addClass("underlined");
 }
 
 // Delete user modal display
@@ -640,3 +684,14 @@ $('#close_dlte_grp').on("click", function(event) {
     $('#delete_grp').modal('hide');
 })
 
+
+// Enable or disable options according to users's choice to use groups or not
+$('#id_use_groups').on("change", function() {
+    if (this.checked) {
+        $('#id_rule').prop('disabled', false)
+        $('#id_upd_rule').prop('disabled', false)
+    } else {
+        $('#id_rule').prop('disabled', true)
+        $('#id_upd_rule').prop('disabled', true)
+    }
+})

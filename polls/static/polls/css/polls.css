@@ -57,11 +57,26 @@ li.warning::before {
 }
 
 .bg-light {
-    background-color: lightgrey !important;
+  background-color: lightgrey !important;
+}
+
+.btn-success {
+    background-color: rgb(116, 177, 75) !important;
+    border-color: #7EB559 !important;
   }
 
+.btn-secondary {
+  background-color: #BFBFBF !important;
+  border-color: #BFBFBF !important;
+}
+
+.btn-primary {
+  background-color: rgb(73, 130, 230) !important;
+  border-color: rgb(73, 130, 230) !important;
+}
+
 .btn {
-    border-radius: 20px;
+    border-radius: 15px;
 }
 
 .btn-grey {
@@ -194,7 +209,7 @@ a .btn-secondary.disabled, a .btn-secondary:disabled {
 }
 
 .is_admin {
-  color: green;
+  /* color: green; */
   font-weight: bold;
 }
 
@@ -205,4 +220,9 @@ a .btn-secondary.disabled, a .btn-secondary:disabled {
 .card-header {
   text-align: left;
   margin-left: 20px;
+}
+
+
+#toggle_mail_mdp {
+  cursor: default;
 }

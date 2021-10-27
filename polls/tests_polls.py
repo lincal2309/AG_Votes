@@ -15,6 +15,12 @@ from unittest import mock
 import os
 import datetime
 
+from .tools import (
+    create_dummy_user,
+    create_dummy_company,
+    add_dummy_event,
+)
+
 from .models import (
     Company,
     Event,
@@ -26,88 +32,22 @@ from .models import (
     Procuration,
     UserComp,
 )
+
+from .forms import (
+    UserForm,
+    UserBaseForm,
+    UserCompForm,
+    UploadFileForm,
+    GroupDetail,
+    EventDetail,
+    CompanyForm
+)
+
 from .views import set_chart_data, init_event
 from .pollsmail import PollsMail
 
 
-# ===================================
-#  Global functions used for testing
-# ===================================
 
-
-def create_dummy_user(company, username, group=None, staff=False):
-    email = username + "@toto.com"
-    last_name = "nom_" + username
-    usr = User.objects.create_user(
-        username=username, password=username, is_staff=staff, email=email, last_name=last_name
-    )
-    usrcomp = UserComp.objects.create(company=company, user=usr)
-    usrcomp.save()
-
-    if group:
-        group.users.add(usrcomp)
-    return usrcomp
-
-
-def create_dummy_company(name):
-    return Company.objects.create(
-        company_name=name,
-        comp_slug=slugify(name),
-        logo="logo.png",
-        statut="SARL",
-        siret="0123456789",
-        address1="Rue des fauvettes",
-        zip_code="99456",
-        host="smtp.gmail.com",
-        port=587,
-        hname="test@polls.com",
-        fax="toto",
-    )
-
-def add_dummy_event(company, name="Dummy event", groups=None, new_groups=True):
-    # Create dummy event and add group if any
-    # Allows to test case were more than 1 event is in the database
-    event_date = timezone.now() + datetime.timedelta(days=1)
-    event = Event.objects.create(
-        company=company,
-        event_name=name,
-        event_date=event_date,
-        slug=slugify(name + str(event_date)),
-    )
-    Question.objects.create(
-        question_text="Dummy quest 1", question_no=1, event=event
-    )
-    Question.objects.create(
-        question_text="Dummy quest 2", question_no=2, event=event
-    )
-    Choice.objects.create(
-        event=event, choice_text="Dummy choice 1", choice_no=1
-    )
-    Choice.objects.create(
-        event=event, choice_text="Dummy choice 2", choice_no=2
-    )
-    
-    if groups is not None:
-        # Add groups to event if any
-        for group in groups:
-            event.groups.add(group)
-    else:
-        groups = []
-
-    if new_groups:
-        # Create dummy groups if requested
-        group1 = EventGroup.objects.create(group_name="Dummy group 1", weight=30)
-        group2 = EventGroup.objects.create(group_name="Dummy group 2", weight=70)
-        event.groups.add(group1, group2)
-        groups += [group1, group2]
-
-    if len(groups) > 0:
-        # if groups sent and / or created, create results and uservotes
-        for group in groups:
-            create_dummy_user(company, "user " + group.group_name + " 1", group=group)
-            create_dummy_user(company, "user " + group.group_name + " 2", group=group)
-
-        init_event(event)
 
 
 # ===================================
@@ -326,6 +266,7 @@ class TestPollsMail(TestCase):
         self.assertEqual(mail.outbox[0].subject, "Invitation et ordre du jour")
 
 
+
 # ===================================
 #        Test admin actions
 # ===================================
@@ -388,6 +329,7 @@ class TestAdminActions(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(mail.outbox), 5)
         self.assertEqual(mail.outbox[0].subject, "Invitation et ordre du jour")
+
 
 
 # ===================================
@@ -787,6 +729,7 @@ class TestModelProcuration(TestCase):
         self.assertEqual(len(proxy_list), 0)
 
 
+
 # ===================================
 #            Test views
 # ===================================
@@ -825,6 +768,7 @@ class TestIndex(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.company = create_dummy_company("Société de test")
+        cls.company2 = create_dummy_company("Une autre société de test")
         passed_date = timezone.now() - datetime.timedelta(days=1)
         future_date = timezone.now() + datetime.timedelta(days=1)
         Event.objects.create(
@@ -852,7 +796,7 @@ class TestIndex(TestCase):
         user = create_dummy_user(self.company, "toto")
         self.client.force_login(user.user)
 
-        # Test with follow=True arg to be able to test htmlo content
+        # Test with follow=True arg to be able to test html content
         # Thus, status code will be 200 instead of 302 for a redirection
         response = self.client.get(reverse("polls:index"), follow=True)
         self.assertEqual(response.status_code, 200)
@@ -860,11 +804,26 @@ class TestIndex(TestCase):
         self.assertContains(response, "Prévu le")
         self.assertNotContains(response, "Aucun")
 
+    def test_display_home_superuser(self):
+        # Display list of companies
+        self.user_su = create_dummy_user(self.company, "superuser", staff=True)
+        self.client.force_login(self.user_su.user)
+
+        response = self.client.get(reverse("polls:index"))
+        self.assertEqual(self.user_su.user.is_superuser, True)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Prochain")
+        self.assertNotContains(response, "Prévu le")
+        self.assertContains(response, "Administration générale")
+        self.assertContains(response, "Création")
+        self.assertContains(response, "entreprises")
+        self.assertContains(response, "Société")
+
 
 class TestEvent(TestCase):
     def setUp(self):
         self.company = create_dummy_company("Société de test")
-        self.user_staff = create_dummy_user(self.company, "staff", staff=True)
+        self.user_staff = create_dummy_user(self.company, "staff", admin=True)
         self.user_lambda = create_dummy_user(self.company, "lambda")
         event_date = timezone.now() + datetime.timedelta(days=1)
         self.event = Event.objects.create(
@@ -953,7 +912,7 @@ class TestQuestion(TestCase):
         )
         self.group = EventGroup.objects.create(group_name="Groupe 1", weight=70)
         self.event.groups.add(self.group)
-        self.user_staff = create_dummy_user(self.company, "staff", group=self.group, staff=True)
+        self.user_staff = create_dummy_user(self.company, "staff", group=self.group, admin=True)
         self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
         self.question1 = Question.objects.create(
             question_text="Question 1", question_no=1, event=self.event

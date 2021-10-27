@@ -29,7 +29,7 @@
                             {{ grp.group_name }} {{ grp.weight }}
 
                             <!-- Update buttons -->
-                            <a type="button" class="update-user btn btn-sm" href="{% url 'polls:adm_group_detail' grp.id %}">
+                            <a type="button" class="update-user btn btn-sm" href="{% url 'polls:adm_group_detail' company.comp_slug grp.id %}">
                                 <span class="fa fa-pencil" style="color: #339af0;" data-toggle="tooltip" title="Modifier"></span>
                             </a>
 
@@ -47,7 +47,7 @@
 
                 <div class="text-center">
                     <!-- Create button -->
-                    <a type="button" class="create-grp btn btn-primary" href="{% url 'polls:adm_group_detail' %}">Nouveau groupe</a>
+                    <a type="button" class="create-grp btn btn-primary" href="{% url 'polls:adm_group_detail' company.comp_slug %}">Nouveau groupe</a>
                 </div>
 
                 <div>
@@ -59,7 +59,7 @@
                                 <div class="modal-body text-center">
                                     <p id="dlte-grp-confirm">Voulez-vous supprimer le groupe ?</p>
 
-                                    <form id="form_dlt_grp" action="{% url 'polls:adm_delete_group' 0 %}" method="post">
+                                    <form id="form_dlt_grp" action="{% url 'polls:adm_delete_group' company.comp_slug 0 %}" method="post">
                                         {% csrf_token %}
                                         <button class="btn btn-primary" type="submit">Supprimer</button>
                                         &nbsp &nbsp &nbsp

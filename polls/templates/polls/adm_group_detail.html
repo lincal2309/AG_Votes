@@ -18,9 +18,9 @@
         <div class="row">
             <div class="col-sm-12 mt-30">
                 {% if grp_id %}
-                <form action="{% url 'polls:adm_group_detail' grp_id %}" method="post">
+                <form action="{% url 'polls:adm_group_detail' company.comp_slug grp_id %}" method="post">
                 {% else %}
-                <form action="{% url 'polls:adm_group_detail' %}" method="post">
+                <form action="{% url 'polls:adm_group_detail' company.comp_slug %}" method="post">
                 {% endif %}
                     {% csrf_token %}
                     <div class="row">

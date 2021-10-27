@@ -33,7 +33,7 @@
                             {{ event.event_date|date:"d/m/Y" }} : {{ event.event_name }}
 
                             <!-- Update buttons -->
-                            <a type="button" class="update-evt btn btn-sm" href="{% url 'polls:adm_event_detail' event.id %}">
+                            <a type="button" class="update-evt btn btn-sm" href="{% url 'polls:adm_event_detail' company.comp_slug event.id %}">
                                 <span class="fa fa-pencil" style="color: #339af0;" data-toggle="tooltip" title="Modifier"></span>
                             </a>
 
@@ -51,7 +51,7 @@
 
                 <div class="text-center">
                     <!-- Create button -->
-                    <a type="button" class="create-evt btn btn-primary" href="{% url 'polls:adm_create_event' %}">Nouvel événement</a>
+                    <a type="button" class="create-evt btn btn-primary" href="{% url 'polls:adm_create_event' company.comp_slug %}">Nouvel événement</a>
                 </div>
 
                 <div class="row">
@@ -65,7 +65,7 @@
                             {{ event.event_date|date:"d/m/Y" }} : {{ event.event_name }}
 
                             <!-- Update buttons -->
-                            <a type="button" class="update-evt btn btn-sm" href="{% url 'polls:adm_event_detail' event.id %}">
+                            <a type="button" class="update-evt btn btn-sm" href="{% url 'polls:adm_event_detail' company.comp_slug event.id %}">
                                 <span class="fa fa-pencil" style="color: #339af0;" data-toggle="tooltip" title="Modifier"></span>
                             </a>
 
@@ -90,7 +90,7 @@
                                 <div class="modal-body text-center">
                                     <p id="dlte-evt-confirm">Voulez-vous supprimer l'événement ?</p>
 
-                                    <form id="form_dlt_evt" action="{% url 'polls:adm_delete_event' 0 %}" method="post">
+                                    <form id="form_dlt_evt" action="{% url 'polls:adm_delete_event' company.comp_slug 0 %}" method="post">
                                         {% csrf_token %}
                                         <button class="btn btn-primary" type="submit">Supprimer</button>
                                         &nbsp &nbsp &nbsp

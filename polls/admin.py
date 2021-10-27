@@ -174,7 +174,7 @@ class EventAdmin(admin.ModelAdmin):
             if EventGroup.user_in_event(event.slug, request.user):
                 user_can_vote = True
 
-    reinit_event.short_description = "Réinitialiser l'événement"
+    reinit_event00 = "Réinitialiser l'événement"
 
 
 class EventGroupAdmin(admin.ModelAdmin):
