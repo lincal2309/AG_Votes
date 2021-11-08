@@ -21,7 +21,7 @@ from .models import (
     Question,
     Choice,
     UserVote,
-    EventGroup,
+    UserGroup,
     Result,
     Procuration,
     UserComp,
@@ -236,7 +236,7 @@ class TestAdmGroups(TestCase):
 
         user_list = [self.usr11.id, self.usr12.id, self.usr13.id, self.usr14.id]
         users = UserComp.objects.filter(id__in=user_list)
-        self.group1 = EventGroup.create_group({
+        self.group1 = UserGroup.create_group({
             "company": self.company,
             "group_name": "Groupe 1",
             "weight": 40,
@@ -245,7 +245,7 @@ class TestAdmGroups(TestCase):
 
         user_list = [self.usr21.id, self.usr22.id]
         users = UserComp.objects.filter(id__in=user_list)
-        self.group2 = EventGroup.create_group({
+        self.group2 = UserGroup.create_group({
             "company": self.company,
             "group_name": "Groupe 2",
             "weight": 60,
@@ -289,9 +289,9 @@ class TestAdmGroups(TestCase):
             "users_in_group": users}
         )
         self.assertEqual(response.status_code, 200)
-        new_group = EventGroup.objects.get(group_name="Nouveau Groupe")
+        new_group = UserGroup.objects.get(group_name="Nouveau Groupe")
         self.assertEqual(new_group.id, 3)
-        group_users = UserComp.objects.filter(eventgroup__id=new_group.id)
+        group_users = UserComp.objects.filter(usergroup__id=new_group.id)
         self.assertEqual(len(group_users), 2)
         self.assertIn(self.usr11, group_users)
         self.assertEqual(group_users[0].id, self.usr11.id)
@@ -306,8 +306,8 @@ class TestAdmGroups(TestCase):
             "users_in_group": []}
         )
         self.assertEqual(response.status_code, 200)
-        new_group = EventGroup.objects.get(group_name="Groupe Vide")
-        group_users = UserComp.objects.filter(eventgroup__id=new_group.id)
+        new_group = UserGroup.objects.get(group_name="Groupe Vide")
+        group_users = UserComp.objects.filter(usergroup__id=new_group.id)
         self.assertEqual(len(group_users), 0)
 
 
@@ -344,11 +344,11 @@ class TestAdmGroups(TestCase):
 
     def test_adm_delete_group(self):
         test_group_id = self.group1.id
-        grp = EventGroup.objects.get(group_name="Groupe 1")
+        grp = UserGroup.objects.get(group_name="Groupe 1")
         self.assertEqual(grp.id, test_group_id)
 
         url = reverse("polls:adm_delete_group", args=[self.company.comp_slug, test_group_id])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 302)
-        with self.assertRaises(EventGroup.DoesNotExist):
-            EventGroup.objects.get(id=test_group_id)
+        with self.assertRaises(UserGroup.DoesNotExist):
+            UserGroup.objects.get(id=test_group_id)

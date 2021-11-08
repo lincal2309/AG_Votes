@@ -18,7 +18,7 @@ from .models import (
     Question,
     Choice,
     UserVote,
-    EventGroup,
+    UserGroup,
     Result,
     Procuration,
     UserComp,
@@ -80,7 +80,7 @@ def set_chart_data(event, evt_group_list, question_no):
     # Gather votes info for each group
     for evt_group in evt_group_list:
         nb_groups += 1
-        total_votes = EventGroup.objects.filter(id=evt_group.id).aggregate(
+        total_votes = UserGroup.objects.filter(id=evt_group.id).aggregate(
             Count("users")
         )["users__count"]
 

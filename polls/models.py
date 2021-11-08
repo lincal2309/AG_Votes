@@ -86,7 +86,7 @@ class UserComp(models.Model):
         return user_list
 
 
-class EventGroup(models.Model):
+class UserGroup(models.Model):
     """
     Groups of users
     The link with events is supported by the Event
@@ -98,7 +98,7 @@ class EventGroup(models.Model):
     users = models.ManyToManyField(UserComp, verbose_name="utilisateurs", blank=True)
     group_name = models.CharField("nom", max_length=100)
     weight = models.IntegerField("poids", default=0)
-    # hidden = models.BooleanField(default=False)
+    hidden = models.BooleanField(default=False)
 
     def __str__(self):
         return self.group_name
@@ -109,11 +109,14 @@ class EventGroup(models.Model):
 
     @classmethod
     def create_group(cls, group_info, user=None, user_list=[]):
-        new_group = EventGroup(
+        hidden = False
+        if "hidden" in group_info: hidden = group_info["hidden"]
+        
+        new_group = UserGroup(
             company=group_info["company"],
             group_name=group_info["group_name"],
             weight=group_info["weight"],
-            # hidden=group_info["hidden"]
+            hidden=hidden
             )
         new_group.save()
 
@@ -133,7 +136,7 @@ class EventGroup(models.Model):
     def user_in_event(cls, event_slug, user):
         """ Checks whether a user belongs to the group linked to the event or not """
         user_in_group = False
-        if len(user.eventgroup_set.filter(event__slug=event_slug)) > 0:
+        if len(user.usergroup_set.filter(event__slug=event_slug)) > 0:
             user_in_group = True
         return user_in_group
 
@@ -147,7 +150,7 @@ class Event(models.Model):
     company = models.ForeignKey(
         Company, on_delete=models.CASCADE, verbose_name="société"
     )
-    groups = models.ManyToManyField(EventGroup, verbose_name="groupes", blank=True)
+    groups = models.ManyToManyField(UserGroup, verbose_name="groupes", blank=True)
     rules = [("MAJ", "Majorité"), ("PROP", "Proportionnelle")]
     event_name = models.CharField("nom", max_length=200)
     event_date = models.DateField("date de l'événement")
@@ -232,7 +235,7 @@ class Question(models.Model):
     def get_results(self):
         """ Calculates votes' results for a question """
         # Calcultate global results for the question
-        evt_group_list = EventGroup.get_list(self.event.slug)
+        evt_group_list = UserGroup.get_list(self.event.slug)
 
         # Initialize global results data
         global_choice_list = Choice.get_choice_list(self.event.slug).values(
@@ -245,7 +248,7 @@ class Question(models.Model):
 
         # Gather votes info for each group
         for evt_group in evt_group_list:
-            total_votes = EventGroup.objects.filter(id=evt_group.id).aggregate(
+            total_votes = UserGroup.objects.filter(id=evt_group.id).aggregate(
                 Count("users")
             )["users__count"]
 
@@ -389,10 +392,10 @@ class UserVote(models.Model):
             to define each user rights to vote
         """
         event_user_list = [
-            user for user in UserComp.objects.filter(eventgroup__event=event)
+            user for user in UserComp.objects.filter(usergroup__event=event)
         ]
         question_list = Question.get_question_list(event)
-        user_group_list = EventGroup.objects.filter(event=event)
+        user_group_list = UserGroup.objects.filter(event=event)
         event_choice_list = Choice.get_choice_list(event.slug)
         for question in question_list:
             for event_user in event_user_list:
@@ -411,7 +414,7 @@ class UserVote(models.Model):
                 for usr_group in user_group_list:
                     Result.objects.create(
                         event=event,
-                        eventgroup=usr_group,
+                        usergroup=usr_group,
                         choice=event_choice,
                         question=question,
                         group_weight=usr_group.weight,
@@ -437,8 +440,8 @@ class Result(models.Model):
     Results are strored for each group
     """
     event = models.ForeignKey(Event, on_delete=models.CASCADE, verbose_name="événement")
-    eventgroup = models.ForeignKey(
-        EventGroup, on_delete=models.CASCADE, verbose_name="groupe d'utilisateurs"
+    usergroup = models.ForeignKey(
+        UserGroup, on_delete=models.CASCADE, verbose_name="groupe d'utilisateurs"
     )
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     choice = models.ForeignKey(Choice, on_delete=models.CASCADE, verbose_name="choix")
@@ -448,7 +451,7 @@ class Result(models.Model):
     def __str__(self):
         return (
             "Votes du groupe "
-            + self.eventgroup.group_name
+            + self.usergroup.group_name
             + " pour le choix "
             + str(self.choice.choice_no)
             + " de la question "
@@ -463,8 +466,8 @@ class Result(models.Model):
     def add_vote(cls, user, event_slug, question_no, choice_id):
         res = cls.objects.get(
             event__slug=event_slug,
-            eventgroup__users=user,
-            eventgroup__event__slug=event_slug,
+            usergroup__users=user,
+            usergroup__event__slug=event_slug,
             question__question_no=question_no,
             choice__id=choice_id,
         )
@@ -475,8 +478,8 @@ class Result(models.Model):
     def get_vote_list(cls, event, evt_group, question_no):
         return cls.objects.filter(
             event=event,
-            eventgroup=evt_group,
-            eventgroup__event=event,
+            usergroup=evt_group,
+            usergroup__event=event,
             question__question_no=question_no,
         ).order_by("choice__choice_no")
 
@@ -534,7 +537,7 @@ class Procuration(models.Model):
                 int(proxy["user__id"]) for proxy in cls.objects.all().values("user__id")
             ]
             proxy_list = (
-                UserComp.objects.filter(eventgroup__users=user)
+                UserComp.objects.filter(usergroup__users=user)
                 .exclude(id=user.id)
                 .exclude(id__in=id_list)
                 .order_by("user__last_name")

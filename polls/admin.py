@@ -15,7 +15,7 @@ from .models import (
     Question,
     Choice,
     UserVote,
-    EventGroup,
+    UserGroup,
     Result,
     Procuration,
     UserComp,
@@ -105,7 +105,7 @@ class EventAdmin(admin.ModelAdmin):
         for event in queryset:
             # Check total groups' weight is 100
             if (
-                EventGroup.objects.filter(event=event).aggregate(Sum("weight"))[
+                UserGroup.objects.filter(event=event).aggregate(Sum("weight"))[
                     "weight__sum"
                 ]
                 != 100
@@ -171,13 +171,13 @@ class EventAdmin(admin.ModelAdmin):
             nb_questions = len(question_list)
 
             user_can_vote = False
-            if EventGroup.user_in_event(event.slug, request.user):
+            if UserGroup.user_in_event(event.slug, request.user):
                 user_can_vote = True
 
     reinit_event00 = "Réinitialiser l'événement"
 
 
-class EventGroupAdmin(admin.ModelAdmin):
+class UserGroupAdmin(admin.ModelAdmin):
     fields = ["group_name", "weight", "company", "users"]
     filter_horizontal = ("users",)
 
@@ -206,12 +206,12 @@ class UserCompAdmin(admin.ModelAdmin):
     usercomp_label.short_description = "Utilisateurs par société"
 
 class ResultAdmin(admin.ModelAdmin):
-    list_display = ("event_label", "eventgroup", "question", "choice", "votes")
-    ordering = ("eventgroup", "question", "choice")
+    list_display = ("event_label", "usergroup", "question", "choice", "votes")
+    ordering = ("usergroup", "question", "choice")
 
     def event_label(self, obj):
         event = Event.objects.get(
-            groups=obj.eventgroup, question=obj.question, choice=obj.choice
+            groups=obj.usergroup, question=obj.question, choice=obj.choice
         )
         return event.event_name
 
@@ -238,6 +238,6 @@ class ProcurationAdmin(admin.ModelAdmin):
 
 admin.site.register(Company, CompanyAdmin)
 admin.site.register(Event, EventAdmin)
-admin.site.register(EventGroup, EventGroupAdmin)
+admin.site.register(UserGroup, UserGroupAdmin)
 admin.site.register(Result, ResultAdmin)
 admin.site.register(UserComp, UserCompAdmin)

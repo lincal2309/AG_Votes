@@ -48,7 +48,7 @@ from .models import (
     Question,
     Choice,
     UserVote,
-    EventGroup,
+    UserGroup,
     Result,
     Procuration,
     UserComp,
@@ -174,7 +174,7 @@ def event(request, comp_slug, event_slug):
 
     # Check if connected user is part of the event and is authorized to vote
     user_can_vote = False
-    if EventGroup.user_in_event(event_slug, request.user.usercomp):
+    if UserGroup.user_in_event(event_slug, request.user.usercomp):
         user_can_vote = True
 
         # Get user's proxy status
@@ -193,7 +193,7 @@ def question(request, comp_slug, event_slug, question_no):
     # Necessary info for the template
     # company = Company.get_company(comp_slug)
     event = Event.get_event(comp_slug, event_slug)
-    evt_group_list = EventGroup.get_list(event_slug)
+    evt_group_list = UserGroup.get_list(event_slug)
     question = Question.get_question(event, question_no)
     choice_list = Choice.get_choice_list(event_slug)
     last_question = False
@@ -202,7 +202,7 @@ def question(request, comp_slug, event_slug, question_no):
     if request.user.is_staff and not event.current:
         # Event can be launched only if total groups' weight == 100
         if (
-            EventGroup.objects.filter(event=event).aggregate(Sum("weight"))[
+            UserGroup.objects.filter(event=event).aggregate(Sum("weight"))[
                 "weight__sum"
             ]
             != 100
@@ -248,7 +248,7 @@ def get_chart_data(request):
     question_no = int(request.GET["question_no"])
 
     event = Event.get_event(comp_slug, event_slug)
-    evt_group_list = EventGroup.get_list(event_slug)
+    evt_group_list = UserGroup.get_list(event_slug)
 
     data = set_chart_data(event, evt_group_list, question_no)
 
@@ -623,7 +623,7 @@ def adm_event_detail(request, comp_slug, evt_id=0):
     print("===== Infos ")
     company = Company.get_company(request.session['comp_slug'])
 
-    group_list = list(EventGroup.objects.filter(company=company).order_by('group_name').values())
+    group_list = list(UserGroup.objects.filter(company=company).order_by('group_name').values())
     
     print(group_list)
 
@@ -631,7 +631,7 @@ def adm_event_detail(request, comp_slug, evt_id=0):
         current_event = Event.objects.get(id=evt_id)
         event_form = EventDetail(request.POST or None, instance=current_event)
 
-        event_groups = list(EventGroup.objects.filter(company=company, event__id=evt_id).order_by('group_name').values())
+        event_groups = list(UserGroup.objects.filter(company=company, event__id=evt_id).order_by('group_name').values())
         print(event_groups)
         for grp in group_list:
             if any(g["id"] == grp["id"] for g in event_groups):
@@ -646,7 +646,7 @@ def adm_event_detail(request, comp_slug, evt_id=0):
         #                                             filter(company=company).\
         #                                             order_by('user__last_name', 'user__first_name')
 
-    event_form.fields['groups'].queryset = EventGroup.objects.\
+    event_form.fields['groups'].queryset = UserGroup.objects.\
                                                         filter(company=company).\
                                                         order_by('group_name')
 
@@ -666,7 +666,7 @@ def adm_event_detail(request, comp_slug, evt_id=0):
                 #     "group_name": group_form.cleaned_data["group_name"],
                 #     "weight": group_form.cleaned_data["weight"],
                 # }
-                # new_group = EventGroup.create_group(group_data)
+                # new_group = UserGroup.create_group(group_data)
             else:
                 # Update group
                 # new_group = event_form.save()
@@ -701,7 +701,7 @@ def adm_groups(request, comp_slug):
     company = Company.get_company(comp_slug)
     # user_list = UserComp.get_users_in_comp(comp_slug)
     group_list = []
-    group_list = EventGroup.objects.filter(company__comp_slug=comp_slug).order_by('group_name')
+    group_list = UserGroup.objects.filter(company__comp_slug=comp_slug).order_by('group_name')
 
     return render(request, "polls/adm_groups.html", locals())
 
@@ -710,7 +710,7 @@ def adm_groups(request, comp_slug):
 def adm_group_detail(request, comp_slug, grp_id=0):
     company = Company.get_company(comp_slug)
     if grp_id > 0:
-        current_group = EventGroup.objects.get(id=grp_id)
+        current_group = UserGroup.objects.get(id=grp_id)
         group_form = GroupDetail(request.POST or None, instance=current_group)
     else:
         group_form = GroupDetail(request.POST or None)
@@ -736,13 +736,13 @@ def adm_group_detail(request, comp_slug, grp_id=0):
                     "group_name": group_form.cleaned_data["group_name"],
                     "weight": group_form.cleaned_data["weight"],
                 }
-                new_group = EventGroup.create_group(group_data, user_list=usr_list)
+                new_group = UserGroup.create_group(group_data, user_list=usr_list)
             else:
                 # Update group
                 new_group = group_form.save()
 
                 # Remove all users then add the ones in the form's list
-                group_usr_list = UserComp.objects.filter(eventgroup=new_group)
+                group_usr_list = UserComp.objects.filter(usergroup=new_group)
                 for usr in group_usr_list:
                     new_group.users.remove(usr)
                 for usr in usr_list:
@@ -763,10 +763,10 @@ def adm_group_detail(request, comp_slug, grp_id=0):
 
 @user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
 def adm_delete_group(request, comp_slug, grp_id):
-    del_grp = EventGroup.objects.get(pk=grp_id)
+    del_grp = UserGroup.objects.get(pk=grp_id)
     msg = "Groupe {0} supprimé.".format(del_grp.group_name)
 
-    EventGroup.objects.get(pk=grp_id).delete()
+    UserGroup.objects.get(pk=grp_id).delete()
 
     messages.success(request, msg)
     return redirect("polls:adm_groups", comp_slug=comp_slug)

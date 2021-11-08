@@ -16,7 +16,7 @@ from .models import (
     Question,
     Choice,
     UserVote,
-    EventGroup,
+    UserGroup,
     Result,
     Procuration,
     UserComp,
@@ -94,8 +94,8 @@ def add_dummy_event(company, name="Dummy event", groups=None, new_groups=True):
 
     if new_groups:
         # Create dummy groups if requested
-        group1 = EventGroup.objects.create(group_name="Dummy group 1", weight=30)
-        group2 = EventGroup.objects.create(group_name="Dummy group 2", weight=70)
+        group1 = UserGroup.objects.create(group_name="Dummy group 1", weight=30)
+        group2 = UserGroup.objects.create(group_name="Dummy group 2", weight=70)
         event.groups.add(group1, group2)
         groups += [group1, group2]
 

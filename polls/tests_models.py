@@ -20,7 +20,7 @@ from .models import (
     Question,
     Choice,
     UserVote,
-    EventGroup,
+    UserGroup,
     Result,
     Procuration,
     UserComp,
@@ -109,12 +109,12 @@ class TestModelQuestion(TestCase):
         self.choice2 = Choice.objects.create(
             event=self.event, choice_text="Choix 2", choice_no=2
         )
-        self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
-        self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
+        self.group1 = UserGroup.objects.create(group_name="Groupe 1", weight=30)
+        self.group2 = UserGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group1,
+            usergroup=self.group1,
             question=self.question1,
             choice=self.choice1,
             votes=3,
@@ -122,7 +122,7 @@ class TestModelQuestion(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group1,
+            usergroup=self.group1,
             question=self.question1,
             choice=self.choice2,
             votes=1,
@@ -130,7 +130,7 @@ class TestModelQuestion(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group1,
+            usergroup=self.group1,
             question=self.question2,
             choice=self.choice1,
             votes=1,
@@ -138,7 +138,7 @@ class TestModelQuestion(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group1,
+            usergroup=self.group1,
             question=self.question2,
             choice=self.choice2,
             votes=3,
@@ -146,7 +146,7 @@ class TestModelQuestion(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group2,
+            usergroup=self.group2,
             question=self.question1,
             choice=self.choice1,
             votes=0,
@@ -154,7 +154,7 @@ class TestModelQuestion(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group2,
+            usergroup=self.group2,
             question=self.question1,
             choice=self.choice2,
             votes=2,
@@ -162,7 +162,7 @@ class TestModelQuestion(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group2,
+            usergroup=self.group2,
             question=self.question2,
             choice=self.choice1,
             votes=0,
@@ -170,7 +170,7 @@ class TestModelQuestion(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group2,
+            usergroup=self.group2,
             question=self.question2,
             choice=self.choice2,
             votes=2,
@@ -211,7 +211,7 @@ class TestModelQuestion(TestCase):
         self.assertEqual(data["chart_data"]["values"], [30, 70])
 
 
-class TestModelEventGroup(TestCase):
+class TestModelUserGroup(TestCase):
     def setUp(self):
         self.company = create_dummy_company("Société de test")
 
@@ -224,7 +224,7 @@ class TestModelEventGroup(TestCase):
 
     def test_create_group(self):
         # Group with no users
-        self.group0 = EventGroup.create_group({
+        self.group0 = UserGroup.create_group({
             "company": self.company,
             "group_name": "Groupe sans users",
             "weight": 60,
@@ -237,7 +237,7 @@ class TestModelEventGroup(TestCase):
         # Group with multiple users
         user_list = [self.usr11.id, self.usr12.id, self.usr13.id, self.usr14.id]
         users = UserComp.objects.filter(id__in=user_list)
-        self.group1 = EventGroup.create_group({
+        self.group1 = UserGroup.create_group({
             "company": self.company,
             "group_name": "Groupe 1",
             "weight": 40,
@@ -250,7 +250,7 @@ class TestModelEventGroup(TestCase):
         self.assertIn(self.usr12, g1_users)
 
         # Group with 1 user
-        self.group2 = EventGroup.create_group({
+        self.group2 = UserGroup.create_group({
             "company": self.company,
             "group_name": "Groupe 2",
             "weight": 60,
@@ -263,7 +263,7 @@ class TestModelEventGroup(TestCase):
         self.assertIn(self.usr11, g2_users)
         self.assertNotIn(self.usr22, g2_users)
 
-        usr11_groups = self.usr11.eventgroup_set.all()
+        usr11_groups = self.usr11.usergroup_set.all()
         self.assertEqual(len(usr11_groups), 2)
 
 
@@ -279,7 +279,7 @@ class TestModelEventGroup(TestCase):
 
         # user_list = [self.usr11.id]
         users = UserComp.objects.filter(id=self.usr11.id)
-        self.group1 = EventGroup.create_group({
+        self.group1 = UserGroup.create_group({
             "company": self.company,
             "group_name": "Groupe 1",
             "weight": 40,
@@ -290,9 +290,9 @@ class TestModelEventGroup(TestCase):
         # self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
         # self.user_alpha = create_dummy_user(self.company, "alpha")
 
-        user_in_evt = EventGroup.user_in_event(self.event.slug, self.usr11)
+        user_in_evt = UserGroup.user_in_event(self.event.slug, self.usr11)
         self.assertEqual(user_in_evt, True)
-        user_in_evt = EventGroup.user_in_event(self.event.slug, self.usr12)
+        user_in_evt = UserGroup.user_in_event(self.event.slug, self.usr12)
         self.assertEqual(user_in_evt, False)
 
 
@@ -313,7 +313,7 @@ class TestModelUserVote(TestCase):
         self.question2 = Question.objects.create(
             question_text="Question 2", question_no=2, event=self.event
         )
-        self.group = EventGroup.objects.create(group_name="Groupe 1")
+        self.group = UserGroup.objects.create(group_name="Groupe 1")
         self.event.groups.add(self.group)
         self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
         self.user_alpha = create_dummy_user(self.company, "alpha")
@@ -362,7 +362,7 @@ class TestModelUserVote(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group, question=self.question1, choice=self.choice1
+            usergroup=self.group, question=self.question1, choice=self.choice1
         )
         user_vote = UserVote.set_vote(self.event.slug, self.user_lambda, 1, 1)
         self.assertEqual(user_vote.has_voted, True)
@@ -386,7 +386,7 @@ class TestModelResult(TestCase):
         self.question2 = Question.objects.create(
             question_text="Question 2", question_no=2, event=self.event
         )
-        self.group = EventGroup.objects.create(group_name="Groupe 1")
+        self.group = UserGroup.objects.create(group_name="Groupe 1")
         self.event.groups.add(self.group)
         self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
         self.user_alpha = create_dummy_user(self.company, "alpha")
@@ -398,19 +398,19 @@ class TestModelResult(TestCase):
         )
         self.r1 = Result.objects.create(
             event=self.event,
-            eventgroup=self.group, question=self.question1, choice=self.choice1
+            usergroup=self.group, question=self.question1, choice=self.choice1
         )
         self.r2 = Result.objects.create(
             event=self.event,
-            eventgroup=self.group, question=self.question1, choice=self.choice2
+            usergroup=self.group, question=self.question1, choice=self.choice2
         )
         self.r3 = Result.objects.create(
             event=self.event,
-            eventgroup=self.group, question=self.question2, choice=self.choice1
+            usergroup=self.group, question=self.question2, choice=self.choice1
         )
         self.r4 = Result.objects.create(
             event=self.event,
-            eventgroup=self.group, question=self.question2, choice=self.choice2
+            usergroup=self.group, question=self.question2, choice=self.choice2
         )
 
     def test_add_vote(self):
@@ -444,8 +444,8 @@ class TestModelProcuration(TestCase):
             slug=slugify("Evénement de test" + str(event_date)),
             company=self.company,
         )
-        self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
-        self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
+        self.group1 = UserGroup.objects.create(group_name="Groupe 1", weight=30)
+        self.group2 = UserGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
         self.usr11 = create_dummy_user(self.company, "user11", self.group1)
         self.usr12 = create_dummy_user(self.company, "user12", self.group1)

@@ -6,7 +6,7 @@ from django.core.validators import FileExtensionValidator
 
 from .models import (
     UserComp,
-    EventGroup,
+    UserGroup,
     Company,
     Event
 )
@@ -55,7 +55,7 @@ class CompanyForm(forms.ModelForm):
 class EventDetail(forms.ModelForm):
     groups = forms.ModelMultipleChoiceField(
         label = "Liste des groupes",
-        queryset = EventGroup.objects.none(),
+        queryset = UserGroup.objects.none(),
         widget = forms.CheckboxSelectMultiple,
         # label_from_instance = lambda grp: "%s (poids : %s \%)" % (grp.group_name, grp.weight),
         required = False
@@ -70,11 +70,11 @@ class EventDetail(forms.ModelForm):
     #     super().__init__(*args, **kwargs)
     #     instance = kwargs.get('instance', None)
     #     if instance is not None:
-    #         self.fields['groups'].queryset= EventGroup.objects.\
+    #         self.fields['groups'].queryset= UserGroup.objects.\
     #                                                     filter(company=instance.company).\
     #                                                     order_by('group_name')
     #     else:
-    #         self.fields['groups'].queryset = EventGroup.objects.none()
+    #         self.fields['groups'].queryset = UserGroup.objects.none()
 
 
 
@@ -95,7 +95,7 @@ class GroupDetail(forms.ModelForm):
     users_in_group = forms.CharField(max_length=500, required=False)
     
     class Meta:
-        model = EventGroup
+        model = UserGroup
         fields = ['group_name', 'weight', 'users', 'all_users', 'users_in_group']
 
     def __init__(self, *args, **kwargs):
@@ -105,7 +105,7 @@ class GroupDetail(forms.ModelForm):
             # Users to be selected : all users except the ones already in group
             self.fields['all_users'].queryset= UserComp.objects.\
                                                         filter(company=instance.company).\
-                                                        exclude(eventgroup=instance).\
+                                                        exclude(usergroup=instance).\
                                                         order_by('user__last_name', 'user__first_name')
             # Current users in group
             self.fields['users'].queryset = instance.users.all().\

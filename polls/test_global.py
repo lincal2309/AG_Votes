@@ -27,7 +27,7 @@ from .models import (
     Question,
     Choice,
     UserVote,
-    EventGroup,
+    UserGroup,
     Result,
     Procuration,
     UserComp,
@@ -64,12 +64,12 @@ class TestSetChartData(TestCase):
         self.choice2 = Choice.objects.create(
             event=self.event, choice_text="Choix 2", choice_no=2
         )
-        self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
-        self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
+        self.group1 = UserGroup.objects.create(group_name="Groupe 1", weight=30)
+        self.group2 = UserGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group1,
+            usergroup=self.group1,
             question=self.question1,
             choice=self.choice1,
             votes=3,
@@ -77,7 +77,7 @@ class TestSetChartData(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group1,
+            usergroup=self.group1,
             question=self.question1,
             choice=self.choice2,
             votes=1,
@@ -85,7 +85,7 @@ class TestSetChartData(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group1,
+            usergroup=self.group1,
             question=self.question2,
             choice=self.choice1,
             votes=1,
@@ -93,7 +93,7 @@ class TestSetChartData(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group1,
+            usergroup=self.group1,
             question=self.question2,
             choice=self.choice2,
             votes=3,
@@ -101,7 +101,7 @@ class TestSetChartData(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group2,
+            usergroup=self.group2,
             question=self.question1,
             choice=self.choice1,
             votes=0,
@@ -109,7 +109,7 @@ class TestSetChartData(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group2,
+            usergroup=self.group2,
             question=self.question1,
             choice=self.choice2,
             votes=2,
@@ -117,7 +117,7 @@ class TestSetChartData(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group2,
+            usergroup=self.group2,
             question=self.question2,
             choice=self.choice1,
             votes=0,
@@ -125,7 +125,7 @@ class TestSetChartData(TestCase):
         )
         Result.objects.create(
             event=self.event,
-            eventgroup=self.group2,
+            usergroup=self.group2,
             question=self.question2,
             choice=self.choice2,
             votes=2,
@@ -142,7 +142,7 @@ class TestSetChartData(TestCase):
 
 
     def test_chart_first_question_maj(self):
-        evt_group_list = EventGroup.get_list(self.event.slug)
+        evt_group_list = UserGroup.get_list(self.event.slug)
         data = set_chart_data(self.event, evt_group_list, 1)
 
         # Global variables
@@ -165,7 +165,7 @@ class TestSetChartData(TestCase):
         Event.objects.filter(id=self.event.id).update(rule="PROP")
         self.event.refresh_from_db()
 
-        evt_group_list = EventGroup.get_list(self.event.slug)
+        evt_group_list = UserGroup.get_list(self.event.slug)
         data = set_chart_data(self.event, evt_group_list, 1)
         global_data = data["chart_data"]["global"]
 
@@ -181,7 +181,7 @@ class TestSetChartData(TestCase):
         Event.objects.filter(id=self.event.id).update(rule="PROP")
         self.event.refresh_from_db()
 
-        evt_group_list = EventGroup.get_list(self.event.slug)
+        evt_group_list = UserGroup.get_list(self.event.slug)
         data = set_chart_data(self.event, evt_group_list, 1)
         global_data = data["chart_data"]["global"]
 
@@ -209,8 +209,8 @@ class TestPollsMail(TestCase):
         self.question2 = Question.objects.create(
             question_text="Question 2", question_no=2, event=self.event
         )
-        self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
-        self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
+        self.group1 = UserGroup.objects.create(group_name="Groupe 1", weight=30)
+        self.group2 = UserGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
         self.usr11 = create_dummy_user(self.company, "user11", self.group1)
         self.usr12 = create_dummy_user(self.company, "user12", self.group1)
@@ -270,8 +270,8 @@ class TestAdminActions(TestCase):
             company=self.company,
         )
 
-        self.group1 = EventGroup.objects.create(group_name="Groupe 1", weight=30)
-        self.group2 = EventGroup.objects.create(group_name="Groupe 2", weight=70)
+        self.group1 = UserGroup.objects.create(group_name="Groupe 1", weight=30)
+        self.group2 = UserGroup.objects.create(group_name="Groupe 2", weight=70)
         self.event.groups.add(self.group1, self.group2)
 
         create_dummy_user(self.company, "user11", self.group1)
@@ -295,7 +295,7 @@ class TestAdminActions(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_invite_users_total_group_weight_not_100(self):
-        EventGroup.objects.filter(id=self.group1.id).update(weight=10)
+        UserGroup.objects.filter(id=self.group1.id).update(weight=10)
         self.group1.refresh_from_db()
 
         data = {"action": "invite_users", "_selected_action": [self.event.id]}

@@ -131,7 +131,7 @@ class PollsMail:
         )
 
         self.subject = "Invitation et ordre du jour"
-        for user in UserComp.objects.filter(eventgroup__event=self.event):
+        for user in UserComp.objects.filter(usergroup__event=self.event):
             if user.user.email:
                 self.recipient_list = [user.user.email]
                 self.message = invite_text.format(

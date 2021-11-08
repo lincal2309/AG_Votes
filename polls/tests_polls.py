@@ -27,7 +27,7 @@ from .models import (
     Question,
     Choice,
     UserVote,
-    EventGroup,
+    UserGroup,
     Result,
     Procuration,
     UserComp,
@@ -176,7 +176,7 @@ class TestEvent(TestCase):
         self.assertContains(response, "Accéder à l'événement")
 
     def test_user_lambda_event_not_started(self):
-        self.group = EventGroup.objects.create(group_name="Groupe 1", weight=70)
+        self.group = UserGroup.objects.create(group_name="Groupe 1", weight=70)
         self.event.groups.add(self.group)
         self.group.users.add(self.user_lambda)
         self.client.force_login(self.user_lambda.user)
@@ -189,7 +189,7 @@ class TestEvent(TestCase):
         self.assertNotContains(response, "Accéder à l'événement")
 
     def test_user_lambda_event_started(self):
-        self.group = EventGroup.objects.create(group_name="Groupe 1", weight=70)
+        self.group = UserGroup.objects.create(group_name="Groupe 1", weight=70)
         self.event.groups.add(self.group)
         self.group.users.add(self.user_lambda)
         self.client.force_login(self.user_lambda.user)
@@ -226,7 +226,7 @@ class TestQuestion(TestCase):
             slug=slugify("Evénement de test" + str(event_date)),
             company=self.company,
         )
-        self.group = EventGroup.objects.create(group_name="Groupe 1", weight=70)
+        self.group = UserGroup.objects.create(group_name="Groupe 1", weight=70)
         self.event.groups.add(self.group)
         self.user_staff = create_dummy_user(self.company, "staff", group=self.group, admin=True)
         self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
@@ -246,7 +246,7 @@ class TestQuestion(TestCase):
 
     def test_launch_event(self):
         # Add a group to have a total weight of 100
-        group2 = EventGroup.objects.create(group_name="Groupe 2", weight=30)
+        group2 = UserGroup.objects.create(group_name="Groupe 2", weight=30)
         self.event.groups.add(group2)
         self.client.force_login(self.user_staff.user)
         url = reverse("polls:question", args=(self.company.comp_slug, self.event.slug, 1))
