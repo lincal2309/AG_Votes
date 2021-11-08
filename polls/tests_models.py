@@ -32,6 +32,13 @@ from .models import (
 
 
 class TestModelCompany(TestCase):
+    def test_create_company(self):
+        comp = create_dummy_company("Société de test")
+        default_group = comp.get_default_group()
+        self.assertEqual(default_group.id, 1)
+        self.assertEqual(default_group.hidden, True)
+
+
     def test_get_company(self):
         comp = create_dummy_company("Société de test")
         company = Company.get_company("societe-de-test")
@@ -230,7 +237,7 @@ class TestModelUserGroup(TestCase):
             "weight": 60,
             })
 
-        self.assertEqual(self.group0.id, 1)
+        self.assertEqual(self.group0.id, 2)
         g0_users = self.group0.users.all()
         self.assertEqual(len(g0_users), 0)
 
@@ -244,7 +251,7 @@ class TestModelUserGroup(TestCase):
             },
             user_list=users)
         
-        self.assertEqual(self.group1.id, 2)
+        self.assertEqual(self.group1.id, 3)
         g1_users = self.group1.users.all()
         self.assertEqual(len(g1_users), 4)
         self.assertIn(self.usr12, g1_users)
@@ -257,14 +264,14 @@ class TestModelUserGroup(TestCase):
             },
             user=self.usr11)
 
-        self.assertEqual(self.group2.id, 3)
+        self.assertEqual(self.group2.id, 4)
         g2_users = self.group2.users.all()
         self.assertEqual(len(g2_users), 1)
         self.assertIn(self.usr11, g2_users)
         self.assertNotIn(self.usr22, g2_users)
 
         usr11_groups = self.usr11.usergroup_set.all()
-        self.assertEqual(len(usr11_groups), 2)
+        self.assertEqual(len(usr11_groups), 3)
 
 
     def test_user_in_event(self):

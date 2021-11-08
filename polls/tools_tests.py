@@ -61,6 +61,21 @@ def create_dummy_company(name):
         fax="toto",
     )
 
+    # return Company.create_company(
+    # name,
+    # "SARL",
+    # "0123456789",
+    # "Rue des fauvettes",
+    # "99456",
+    # "Somewhere",
+    # logo="logo.jpg",
+    # host="smtp.gmail.com",
+    # port=587,
+    # hname="test@polls.com",
+    # fax="toto"
+    # )
+
+
 
 def add_dummy_event(company, name="Dummy event", groups=None, new_groups=True):
     # Create dummy event and add group if any

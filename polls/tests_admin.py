@@ -27,15 +27,15 @@ from .models import (
     UserComp,
 )
 
-from .forms import (
-    UserForm,
-    UserBaseForm,
-    UserCompForm,
-    UploadFileForm,
-    GroupDetail,
-    EventDetail,
-    CompanyForm
-)
+# from .forms import (
+#     UserForm,
+#     UserBaseForm,
+#     UserCompForm,
+#     UploadFileForm,
+#     GroupDetail,
+#     EventDetail,
+#     CompanyForm
+# )
 
 
 class TestOptions(TestCase):
@@ -47,7 +47,7 @@ class TestOptions(TestCase):
     def test_access_admin(self):
         # Ensure the user will be redirected if he is not granted as admin for the company
         # Test the use of the decorator for all admin views
-        comp = Company.get_company(self.company.comp_slug)
+        # comp = Company.get_company(self.company.comp_slug)
         self.user_lambda = create_dummy_user(self.company, "lambda")
         self.client.force_login(self.user_lambda.user)
         url = reverse("polls:adm_options", args=[self.company.comp_slug])
@@ -290,7 +290,7 @@ class TestAdmGroups(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         new_group = UserGroup.objects.get(group_name="Nouveau Groupe")
-        self.assertEqual(new_group.id, 3)
+        self.assertEqual(new_group.id, 4)
         group_users = UserComp.objects.filter(usergroup__id=new_group.id)
         self.assertEqual(len(group_users), 2)
         self.assertIn(self.usr11, group_users)

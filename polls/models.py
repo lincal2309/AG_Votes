@@ -7,6 +7,8 @@ from django.utils import timezone
 from django.db.models import Count, Q
 from django.conf import settings
 from django.core.validators import RegexValidator
+from django.utils.text import slugify
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 class Company(models.Model):
     """
@@ -40,6 +42,7 @@ class Company(models.Model):
     fax = models.CharField("mot de passe", max_length=50, null=True, blank=True)
     use_tls = models.BooleanField("authentification requise", default=True, blank=True)
 
+
     class Meta:
         verbose_name = "Société"
         constraints = [
@@ -50,9 +53,49 @@ class Company(models.Model):
         return self.company_name
 
     @classmethod
+    def create_company(self, company_name, statut, siret, address1, zip_code, city,
+                       logo=None, use_groups=False, rule="MAJ", upd_rule=False, street_num=None,
+                       street_cplt=None, address2=None, host=None, port=None, hname=None, fax=None, use_tls=True):
+        """ Create new company - includes a default hidden group """
+        comp = Company.objects.create(
+            company_name=company_name,
+            comp_slug=slugify(company_name),
+            logo=SimpleUploadedFile(name=logo, content=b'content', content_type='image/jpeg'),
+            use_groups=use_groups,
+            rule=rule,
+            upd_rule=upd_rule,
+            statut=statut,
+            siret=siret,
+            street_num=street_num,
+            street_cplt=street_cplt,
+            address1=address1,
+            address2=address2,
+            zip_code=zip_code,
+            city=city,
+            host=host,
+            port=port,
+            hname=hname,
+            fax=fax,
+            use_tls=use_tls
+        )
+        UserGroup.create_group(
+            {
+                "company": comp,
+                "group_name": "Default Group",
+                "weight": 100,
+                "hidden": True
+            }
+        )
+        return comp
+
+    @classmethod
     def get_company(cls, slug):
         """ Retreive company from its slug """
         return cls.objects.get(comp_slug=slug)
+
+    def get_default_group(self):
+        """ Retreive company's default hidden group """
+        return UserGroup.objects.get(company=self, group_name="Default Group")
 
 
 class UserComp(models.Model):
@@ -69,14 +112,17 @@ class UserComp(models.Model):
     def __str__(self):
         return '%s %s' % (self.user.last_name, self.user.first_name)
     class Meta:
-        verbose_name = "Liens Utilisateurs / Sociétés"
-        verbose_name_plural = "Liens Utilisateurs / Sociétés"
+        verbose_name = "Profil utilisateurs"
+        verbose_name_plural = "Profils utilisateurs"
 
     @classmethod
     def create_usercomp(cls, user, company, phone_num='', is_admin=False):
         """ Create a new UserComp """
         usr_comp = UserComp(user=user, company=company, phone_num=phone_num, is_admin=is_admin)
         usr_comp.save()
+        # Add the new user to the company's default group
+        # def_group = company.get_default_group()
+        # def_group.users.add(usr_comp)
         return usr_comp
 
     @classmethod

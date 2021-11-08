@@ -178,8 +178,32 @@ class EventAdmin(admin.ModelAdmin):
 
 
 class UserGroupAdmin(admin.ModelAdmin):
-    fields = ["group_name", "weight", "company", "users"]
+    fields = ["group_name", "weight", "company", "hidden", "users"]
     filter_horizontal = ("users",)
+    list_display = ("group_name", "company", "nb_users")
+
+    def group_name_comp(self, obj):
+        return "%s (%s)" % (
+            obj.group_name,
+            obj.company.company_name,
+        )
+    group_name_comp.short_description = "Groupe d'utilisateurs"
+
+    def nb_users(self, obj):
+        nb = UserComp.objects.filter(usergroup=obj).count()
+        return "%s utilisateur(s)" % (str(nb))
+    nb_users.short_description = "Nb utilisateurs"
+
+    
+    # def get_object(self, request, object_id, from_field=None):
+    #     obj = super().get_object(request, object_id, from_field=from_field)
+    #     # Put object in cache for use in formfield_for_manytomany
+    #     request.report_obj = obj
+    
+    # def formfield_for_manytomany(self, db_field, request, **kwargs):
+    #     if db_field.name == "users" and hasattr(request, 'report_obj'):
+    #         kwargs["queryset"] = UserGroup.objects.filter(company=request.report_obj.company)
+    #     return super(UserGroupAdmin, self).formfield_for_manytomany(db_field, request, **kwargs)
 
 
 class UserVoteAdmin(admin.ModelAdmin):
@@ -202,7 +226,6 @@ class UserCompAdmin(admin.ModelAdmin):
             obj.user.username,
             obj.company.company_name,
         )
-
     usercomp_label.short_description = "Utilisateurs par société"
 
 class ResultAdmin(admin.ModelAdmin):
@@ -239,5 +262,5 @@ class ProcurationAdmin(admin.ModelAdmin):
 admin.site.register(Company, CompanyAdmin)
 admin.site.register(Event, EventAdmin)
 admin.site.register(UserGroup, UserGroupAdmin)
-admin.site.register(Result, ResultAdmin)
+admin.site.register(UserVote, UserVoteAdmin)
 admin.site.register(UserComp, UserCompAdmin)

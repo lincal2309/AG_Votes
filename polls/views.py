@@ -54,7 +54,7 @@ from .models import (
     UserComp,
 )
 
-from pprint import pprint
+# from pprint import pprint
 
 # debug = settings.DEBUG
 # background_colors = settings.BACKGROUND_COLORS
@@ -700,8 +700,8 @@ def adm_groups(request, comp_slug):
     # Variables set to be integrated in locals()
     company = Company.get_company(comp_slug)
     # user_list = UserComp.get_users_in_comp(comp_slug)
-    group_list = []
-    group_list = UserGroup.objects.filter(company__comp_slug=comp_slug).order_by('group_name')
+    # group_list = []
+    group_list = UserGroup.objects.filter(company__comp_slug=comp_slug, hidden=False).order_by('group_name')
 
     return render(request, "polls/adm_groups.html", locals())
 
