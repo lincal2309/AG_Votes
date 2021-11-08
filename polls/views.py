@@ -475,7 +475,7 @@ def adm_delete_user(request, comp_slug, usr_id):
     msg = "Utilisateur {0} {1} supprimé.".\
             format(del_usr.last_name, del_usr.first_name)
 
-    User.objects.filter(pk=usr_id).delete()
+    User.objects.get(pk=usr_id).delete()
 
     messages.success(request, msg)
     return redirect("polls:adm_users", comp_slug=comp_slug)
@@ -697,8 +697,10 @@ def adm_groups(request, comp_slug):
     '''
         Manage users groups
     '''
+    # Variables set to be integrated in locals()
     company = Company.get_company(comp_slug)
     # user_list = UserComp.get_users_in_comp(comp_slug)
+    group_list = []
     group_list = EventGroup.objects.filter(company__comp_slug=comp_slug).order_by('group_name')
 
     return render(request, "polls/adm_groups.html", locals())
@@ -706,20 +708,21 @@ def adm_groups(request, comp_slug):
 
 @user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
 def adm_group_detail(request, comp_slug, grp_id=0):
+    company = Company.get_company(comp_slug)
     if grp_id > 0:
         current_group = EventGroup.objects.get(id=grp_id)
         group_form = GroupDetail(request.POST or None, instance=current_group)
     else:
         group_form = GroupDetail(request.POST or None)
-        company = Company.get_company(comp_slug)
-        group_form.fields['all_users'].queryset= UserComp.objects.\
+        group_form.fields['all_users'].queryset = UserComp.objects.\
                                                     filter(company=company).\
                                                     order_by('user__last_name', 'user__first_name')
 
-
     if request.method == 'POST':
-        # Convert the string in a list of user IDs
-        usr_list = [int(elt) for elt in request.POST['group_list'].split('-') if elt != ""]
+        # Test if the list contains values and convert the string in a list of user IDs
+        usr_list = []
+        if request.POST.get('users_in_group', False):
+            usr_list = [int(elt) for elt in request.POST['users_in_group'].split('-') if elt != ""]
 
         group_form.fields['users'].queryset = UserComp.objects.filter(id__in=usr_list).\
                                                         order_by('user__last_name', 'user__first_name')
@@ -733,26 +736,24 @@ def adm_group_detail(request, comp_slug, grp_id=0):
                     "group_name": group_form.cleaned_data["group_name"],
                     "weight": group_form.cleaned_data["weight"],
                 }
-                new_group = EventGroup.create_group(group_data)
+                new_group = EventGroup.create_group(group_data, user_list=usr_list)
             else:
                 # Update group
                 new_group = group_form.save()
 
-                # Remove all users
+                # Remove all users then add the ones in the form's list
                 group_usr_list = UserComp.objects.filter(eventgroup=new_group)
                 for usr in group_usr_list:
                     new_group.users.remove(usr)
-
-            # Common part for create and update : add users according to new/updated list
-            for usr in usr_list:
-                new_group.users.add(usr)
-            new_group.save()
+                for usr in usr_list:
+                    new_group.users.add(usr)
+                new_group.save()
 
             # Update form according to latest changes
             group_form.fields['all_users'].queryset = UserComp.objects.\
                                                             exclude(id__in=usr_list).\
                                                             order_by('user__last_name', 'user__first_name')
-            group_form.fields['group_list'].initial = "-".join([str(elt.id) for elt in new_group.users.all()])
+            group_form.fields['users_in_group'].initial = "-".join([str(elt.id) for elt in new_group.users.all()])
         else:
             print("****** FORMULAIRE NON VALIDE *******")
             print(group_form.errors)
@@ -765,7 +766,7 @@ def adm_delete_group(request, comp_slug, grp_id):
     del_grp = EventGroup.objects.get(pk=grp_id)
     msg = "Groupe {0} supprimé.".format(del_grp.group_name)
 
-    EventGroup.objects.filter(pk=grp_id).delete()
+    EventGroup.objects.get(pk=grp_id).delete()
 
     messages.success(request, msg)
     return redirect("polls:adm_groups", comp_slug=comp_slug)

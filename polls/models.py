@@ -58,7 +58,7 @@ class Company(models.Model):
 class UserComp(models.Model):
     """
     Link between users and companies
-    Used to restrict display to companie(s) the users belong to
+    Used to restrict display to the company the users belong to
     """
     user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name="Utilisateur")
     company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name="Société")
@@ -81,6 +81,7 @@ class UserComp(models.Model):
 
     @classmethod
     def get_users_in_comp(cls, comp_slug):
+        """Checks if user is in related company"""
         user_list = cls.objects.filter(company__comp_slug=comp_slug)
         return user_list
 
@@ -97,6 +98,7 @@ class EventGroup(models.Model):
     users = models.ManyToManyField(UserComp, verbose_name="utilisateurs", blank=True)
     group_name = models.CharField("nom", max_length=100)
     weight = models.IntegerField("poids", default=0)
+    # hidden = models.BooleanField(default=False)
 
     def __str__(self):
         return self.group_name
@@ -106,20 +108,30 @@ class EventGroup(models.Model):
         verbose_name_plural = "Groupes d'utilisateurs"
 
     @classmethod
-    def create_group(cls, group_info):
-        print("SAVE GROUP")
-        new_group = EventGroup(company=group_info["company"], group_name=group_info["group_name"], weight=group_info["weight"])
+    def create_group(cls, group_info, user=None, user_list=[]):
+        new_group = EventGroup(
+            company=group_info["company"],
+            group_name=group_info["group_name"],
+            weight=group_info["weight"],
+            # hidden=group_info["hidden"]
+            )
         new_group.save()
+
+        if user: new_group.users.add(user)
+        
+        for usr in user_list:
+            new_group.users.add(usr)
         return new_group
     
     @classmethod
     def get_list(cls, event_slug):
         """ Retreive list of groups linked to an event identified with its slug """
+        # TO BE REMOVED
         return cls.objects.filter(event__slug=event_slug)
 
     @classmethod
     def user_in_event(cls, event_slug, user):
-        """ Checks whether a user belongs to the group or not """
+        """ Checks whether a user belongs to the group linked to the event or not """
         user_in_group = False
         if len(user.eventgroup_set.filter(event__slug=event_slug)) > 0:
             user_in_group = True

@@ -20,7 +20,7 @@
                 {% if grp_id %}
                 <form action="{% url 'polls:adm_group_detail' company.comp_slug grp_id %}" method="post">
                 {% else %}
-                <form action="{% url 'polls:adm_group_detail' company.comp_slug %}" method="post">
+                <form action="{% url 'polls:adm_create_group' company.comp_slug %}" method="post">
                 {% endif %}
                     {% csrf_token %}
                     <div class="row">
@@ -33,6 +33,7 @@
                     </div>
                     <div class="row mt-30 grp-content" id="grp_content">
                         <div class="col-md-5 d-flex justify-content-center">
+                            <p>Utilisateurs</p>
                             {{ group_form.all_users}}
                         </div>
                         <div class="col-md-2 d-flex flex-column text-center justify-content-around">
@@ -50,6 +51,7 @@
                             </a>
                         </div>
                         <div class="col-md-5 d-flex justify-content-center">
+                            <p>Utilisateurs sélectionnés</p><br>
                             {{ group_form.users }}
                             <div class="control-group {%if group_form.users.errors %}error{%endif%}"></div>
                         </div>
@@ -69,9 +71,8 @@
                     </div>
                 </form>
             </div>
+        </div>
     </div>
-
-
 </div>
 
 {% endblock %}

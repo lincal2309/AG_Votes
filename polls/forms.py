@@ -92,11 +92,11 @@ class GroupDetail(forms.ModelForm):
         widget=forms.SelectMultiple,
         required=False
         )
-    group_list = forms.CharField(max_length=500)
+    users_in_group = forms.CharField(max_length=500, required=False)
     
     class Meta:
         model = EventGroup
-        fields = ['group_name', 'weight', 'users', 'all_users', 'group_list']
+        fields = ['group_name', 'weight', 'users', 'all_users', 'users_in_group']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -111,9 +111,9 @@ class GroupDetail(forms.ModelForm):
             self.fields['users'].queryset = instance.users.all().\
                                                      order_by('user__last_name', 'user__first_name')
             # Group's users list in string format
-            self.fields['group_list'].initial = "-".join([str(elt.id) for elt in instance.users.all()])
+            self.fields['users_in_group'].initial = "-".join([str(elt.id) for elt in instance.users.all()])
         else:
             self.fields['all_users'].queryset = UserComp.objects.none()
             self.fields['users'].queryset = UserComp.objects.none()
-            self.fields['group_list'].initial = ""
+            self.fields['users_in_group'].initial = ""
             self.fields['weight'].initial = 100
