@@ -11,7 +11,7 @@ import datetime
 from .tools_tests import (
     create_dummy_user,
     create_dummy_company,
-    add_dummy_event,
+    create_dummy_event,
 )
 
 from .models import (
@@ -240,6 +240,7 @@ class TestModelUserGroup(TestCase):
         self.assertEqual(self.group0.id, 2)
         g0_users = self.group0.users.all()
         self.assertEqual(len(g0_users), 0)
+        self.assertEqual(self.group0.nb_users, 0)
 
         # Group with multiple users
         user_list = [self.usr11.id, self.usr12.id, self.usr13.id, self.usr14.id]
@@ -254,6 +255,7 @@ class TestModelUserGroup(TestCase):
         self.assertEqual(self.group1.id, 3)
         g1_users = self.group1.users.all()
         self.assertEqual(len(g1_users), 4)
+        self.assertEqual(self.group1.nb_users, 4)
         self.assertIn(self.usr12, g1_users)
 
         # Group with 1 user
@@ -265,8 +267,8 @@ class TestModelUserGroup(TestCase):
             user=self.usr11)
 
         self.assertEqual(self.group2.id, 4)
+        self.assertEqual(self.group2.nb_users, 1)
         g2_users = self.group2.users.all()
-        self.assertEqual(len(g2_users), 1)
         self.assertIn(self.usr11, g2_users)
         self.assertNotIn(self.usr22, g2_users)
 

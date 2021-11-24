@@ -52,6 +52,53 @@ def define_password():
 # =======================
 
 
+def create_new_user(comp_slug, user_data):
+    ''' Function used to create new user '''
+
+    username = user_data["username"]
+    # password = user_form.cleaned_data["password"]
+    if User.objects.filter(username=username):
+        user_exists = True
+    else:
+        # Save new user first
+        if "password" not in user_data:
+            user_data["password"] = username.lower()
+        new_user = User.objects.create_user(
+            username=username,
+            password=user_data["password"],
+            last_name=user_data["last_name"],
+            first_name=user_data["first_name"],
+            email=user_data["email"]
+            )
+
+        if comp_slug != '':
+            company = Company.get_company(comp_slug)
+            usr_comp = UserComp.create_usercomp(
+                user=new_user, 
+                company=company,
+                phone_num=user_data["phone_num"],
+                is_admin=user_data["is_admin"]
+            )
+        else:
+            usr_comp = ''
+
+    return new_user, usr_comp
+
+
+def user_is_admin(comp_slug, current_user):
+    """
+    Check whether current user has admin access or not (for his company)
+    """
+    access_admin = False
+    if current_user.is_authenticated and UserComp.objects.filter(user=current_user):
+        # Checks that user is connected and UserComp exists for him
+        if current_user.usercomp.company.comp_slug == comp_slug and current_user.usercomp.is_admin:
+            # The user needs to belong to the company and have admin role
+            access_admin = True
+
+    return access_admin
+
+
 def init_event(event):
     """
     Initialize an event and set it as current
@@ -156,17 +203,3 @@ def set_chart_data(event, evt_group_list, question_no):
     }
 
     return data
-
-
-def user_is_admin(comp_slug, current_user):
-    """
-    Check whether current user has admin access or not (for his company)
-    """
-    access_admin = False
-    if current_user.is_authenticated and UserComp.objects.filter(user=current_user):
-        # Checks that user is connected and UserComp exists for him
-        if current_user.usercomp.company.comp_slug == comp_slug and current_user.usercomp.is_admin:
-            # The user needs to belong to the company and have admin role
-            access_admin = True
-
-    return access_admin

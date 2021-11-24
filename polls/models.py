@@ -172,6 +172,12 @@ class UserGroup(models.Model):
             new_group.users.add(usr)
         return new_group
     
+
+    # @property
+    def nb_users(self):
+        return UserComp.objects.filter(usergroup=self).count()
+
+
     @classmethod
     def get_list(cls, event_slug):
         """ Retreive list of groups linked to an event identified with its slug """
@@ -218,6 +224,27 @@ class Event(models.Model):
 
     def __str__(self):
         return self.event_name
+
+    @classmethod
+    def create_event(cls, event_info):
+        new_event = Event(
+            company = event_info["company"],
+            event_name = event_info["event_name"],
+            event_date = event_info["event_date"],
+            slug = slugify(event_info["event_name"]),
+            current = False,
+            quorum = event_info["quorum"],
+            rule = event_info["rule"]
+            )
+        new_event.save()
+
+        # Add groups: converts queryset into list and add in M2M field
+        new_event.groups.add(*event_info['groups'])
+
+        new_event.save()
+
+        return new_event
+
 
     @classmethod
     def get_event(cls, comp_slug, event_slug):

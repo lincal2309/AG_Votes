@@ -564,6 +564,17 @@ $("#id_users option").dblclick(function(e) {
 })
 
 
+
+
+// Manage events' groups list checkboxes
+$("#id_users option").dblclick(function(e) {
+    e.preventDefault();
+    $('#id_all_users').find('option').removeAttr('selected');
+    add_option('#id_users', '#id_all_users', $(this));
+    $('#id_group_list').val($('#id_group_list').val().replace(String($(this).val()), ""))
+})
+
+
 // On submit, select all elements to ensure they are sent to the view
 // $('#upd_grp').on("click", function() {
 //     $('#id_all_users option').removeAttr('selected');

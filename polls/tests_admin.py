@@ -8,11 +8,13 @@
 from django.test import TestCase
 from django.shortcuts import reverse
 from django.contrib.auth.models import User
+from django.utils import timezone
+import datetime
 
 from .tools_tests import (
     create_dummy_user,
     create_dummy_company,
-    add_dummy_event,
+    create_dummy_event,
 )
 
 from .models import (
@@ -343,6 +345,7 @@ class TestAdmGroups(TestCase):
 
 
     def test_adm_delete_group(self):
+        self.client.force_login(self.user_staff.user)
         test_group_id = self.group1.id
         grp = UserGroup.objects.get(group_name="Groupe 1")
         self.assertEqual(grp.id, test_group_id)
@@ -352,3 +355,79 @@ class TestAdmGroups(TestCase):
         self.assertEqual(response.status_code, 302)
         with self.assertRaises(UserGroup.DoesNotExist):
             UserGroup.objects.get(id=test_group_id)
+
+class TestAdmEvents(TestCase):
+    def setUp(self):
+        self.company = create_dummy_company("Société de test")
+
+        self.user_staff = create_dummy_user(self.company, "staff", admin=True)
+        self.usr11 = create_dummy_user(self.company, "user11")
+        self.usr12 = create_dummy_user(self.company, "user12", admin=True)
+        self.usr13 = create_dummy_user(self.company, "user13")
+        self.usr14 = create_dummy_user(self.company, "user14")
+        self.usr21 = create_dummy_user(self.company, "user21")
+        self.usr22 = create_dummy_user(self.company, "user22")
+
+        user_list = [self.usr11.id, self.usr12.id, self.usr13.id, self.usr14.id]
+        users = UserComp.objects.filter(id__in=user_list)
+        self.group1 = UserGroup.create_group({
+            "company": self.company,
+            "group_name": "Groupe 1",
+            "weight": 40,
+            },
+            user_list=users)
+
+        user_list = [self.usr21.id, self.usr22.id]
+        users = UserComp.objects.filter(id__in=user_list)
+        self.group2 = UserGroup.create_group({
+            "company": self.company,
+            "group_name": "Groupe 2",
+            "weight": 60,
+            },
+            user_list=users)
+
+        group_list = [self.group1, self.group2]
+        self.event1 = create_dummy_event(self.company, name="Event 1", groups=group_list, new_groups=False)
+        group_list = [self.group1]
+        self.event2 = create_dummy_event(self.company, name="Event 2", groups=group_list, new_groups=False)
+        self.event3 = create_dummy_event(self.company, name="Event 3", groups=group_list, new_groups=False)
+        self.event3.event_date = timezone.now() + datetime.timedelta(days=-10)
+        self.event3.save()
+
+
+    def test_adm_events(self):
+        # Test access with no connection
+        url = reverse("polls:adm_events", args=[self.company.comp_slug])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 302)
+
+        # Test access for a dummy user
+        self.client.force_login(self.usr11.user)
+        url = reverse("polls:adm_events", args=[self.company.comp_slug])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 302)
+
+        # Test access for a staff user
+        self.client.force_login(self.user_staff.user)
+        url = reverse("polls:adm_events", args=[self.company.comp_slug])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['next_events']), 2)
+        self.assertEqual(len(response.context['old_events']), 1)
+
+
+    def test_adm_create_event(self):
+        self.client.force_login(self.user_staff.user)
+
+
+    def test_adm_delete_event(self):
+        self.client.force_login(self.user_staff.user)
+        test_event_id = self.event1.id
+        evt = Event.objects.get(event_name="Event 1")
+        self.assertEqual(evt.id, test_event_id)
+
+        url = reverse("polls:adm_delete_event", args=[self.company.comp_slug, test_event_id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 302)
+        with self.assertRaises(Event.DoesNotExist):
+            Event.objects.get(id=test_event_id)

@@ -40,6 +40,7 @@ class UploadFileForm(forms.Form):
 
 # Company management
 class CompanyForm(forms.ModelForm):
+    # rule = forms.Select(label="mode de scrutin")
     class Meta:
         model = Company
         exclude = []

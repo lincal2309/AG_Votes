@@ -18,7 +18,7 @@ import datetime
 from .tools_tests import (
     create_dummy_user,
     create_dummy_company,
-    add_dummy_event,
+    create_dummy_event,
 )
 
 from .models import (

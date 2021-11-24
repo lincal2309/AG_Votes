@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
 from django.db.models import Sum
 from django.contrib import messages
+from django.utils.text import slugify
 # from django.conf import settings
 # from django.contrib.auth.password_validation import validate_password
 # from django.core.exceptions import ValidationError
@@ -36,7 +37,7 @@ from .forms import (
 )
 
 # from .tools import define_password
-from .tools import set_chart_data, init_event, user_is_admin
+from .tools import set_chart_data, init_event, user_is_admin, create_new_user
 
 from .pollsmail import PollsMail
 
@@ -331,39 +332,22 @@ def cancel_proxy(request):
 #      Administration views & actions
 # ========================================
 
-# Common functions
+# Company settings management
 
-def create_new_user(comp_slug, user_data):
-    ''' Function used to create new user '''
+@user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
+def adm_options(request, comp_slug):
+    '''
+        Manage Company options
+    '''
+    company = Company.get_company(comp_slug)
+    comp_form = CompanyForm(request.POST or None, instance=company)
 
-    username = user_data["username"]
-    # password = user_form.cleaned_data["password"]
-    if User.objects.filter(username=username):
-        user_exists = True
-    else:
-        # Save new user first
-        if "password" not in user_data:
-            user_data["password"] = username.lower()
-        new_user = User.objects.create_user(
-            username=username,
-            password=user_data["password"],
-            last_name=user_data["last_name"],
-            first_name=user_data["first_name"],
-            email=user_data["email"]
-            )
+    if request.method == "POST":
 
-        if comp_slug != '':
-            company = Company.get_company(comp_slug)
-            usr_comp = UserComp.create_usercomp(
-                user=new_user, 
-                company=company,
-                phone_num=user_data["phone_num"],
-                is_admin=user_data["is_admin"]
-            )
-        else:
-            usr_comp = ''
+        if comp_form.is_valid():
+            comp_form.save()
 
-    return new_user, usr_comp
+    return render(request, "polls/adm_options.html", locals())
 
 
 # Users management
@@ -602,94 +586,6 @@ def adm_load_users(request, comp_slug):
             return redirect("polls:adm_users", comp_slug=comp_slug)
 
 
-# Event management
-
-@user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
-def adm_events(request, comp_slug):
-    '''
-        Manage events
-    '''
-    company = Company.get_company(request.session['comp_slug'])
-    next_events = Event.get_next_events(company)
-    old_events = Event.get_old_events(company)
-    return render(request, "polls/adm_events.html", locals())
-
-
-@user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
-def adm_event_detail(request, comp_slug, evt_id=0):
-    '''
-        Manage events creation and options
-    '''
-    print("===== Infos ")
-    company = Company.get_company(request.session['comp_slug'])
-
-    group_list = list(UserGroup.objects.filter(company=company).order_by('group_name').values())
-    
-    print(group_list)
-
-    if evt_id > 0:
-        current_event = Event.objects.get(id=evt_id)
-        event_form = EventDetail(request.POST or None, instance=current_event)
-
-        event_groups = list(UserGroup.objects.filter(company=company, event__id=evt_id).order_by('group_name').values())
-        print(event_groups)
-        for grp in group_list:
-            if any(g["id"] == grp["id"] for g in event_groups):
-                grp["in_event"] = True
-            else:
-                grp["in_event"] = False
-        print(group_list)
-    else:
-        event_form = EventDetail(request.POST or None)
-        # company = Company.get_company(request.session['comp_slug'])
-        # group_form.fields['all_users'].queryset= UserComp.objects.\
-        #                                             filter(company=company).\
-        #                                             order_by('user__last_name', 'user__first_name')
-
-    event_form.fields['groups'].queryset = UserGroup.objects.\
-                                                        filter(company=company).\
-                                                        order_by('group_name')
-
-    # print(event_form.fields['groups'])
-    
-    if request.method == 'POST':
-        if event_form.is_valid():
-            # event_form.save()
-            print("=== Retour POST :")
-            send_grp_list = request.POST.getlist("group_list")
-            print(request.POST)
-            if evt_id == 0:
-                # Create empty group
-                pass
-                # group_data = {
-                #     "company": company,
-                #     "group_name": group_form.cleaned_data["group_name"],
-                #     "weight": group_form.cleaned_data["weight"],
-                # }
-                # new_group = UserGroup.create_group(group_data)
-            else:
-                # Update group
-                # new_group = event_form.save()
-                pass
-
-        else:
-            print("****** FORMULAIRE NON VALIDE *******")
-            print(event_form.errors)
-
-    return render(request, "polls/adm_event_detail.html", locals())
-
-
-@user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
-def adm_delete_event(request, comp_slug, evt_id):
-    del_evt = Event.objects.get(pk=evt_id)
-    msg = "Evénement {0} du {1} supprimé.".format(del_evt.event_name, del_evt.event_date)
-
-    Event.objects.filter(pk=evt_id).delete()
-
-    messages.success(request, msg)
-    return redirect("polls:adm_events", comp_slug=comp_slug)
-
-
 # Groups management
 
 @user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
@@ -743,10 +639,8 @@ def adm_group_detail(request, comp_slug, grp_id=0):
 
                 # Remove all users then add the ones in the form's list
                 group_usr_list = UserComp.objects.filter(usergroup=new_group)
-                for usr in group_usr_list:
-                    new_group.users.remove(usr)
-                for usr in usr_list:
-                    new_group.users.add(usr)
+                new_group.users.remove(*group_usr_list)
+                new_group.users.add(*usr_list)
                 new_group.save()
 
             # Update form according to latest changes
@@ -772,19 +666,68 @@ def adm_delete_group(request, comp_slug, grp_id):
     return redirect("polls:adm_groups", comp_slug=comp_slug)
 
 
-# Company settings management
+# Event management
 
 @user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
-def adm_options(request, comp_slug):
+def adm_events(request, comp_slug):
     '''
-        Manage Company options
+        Manage events
     '''
+    # Define context variables
     company = Company.get_company(comp_slug)
-    comp_form = CompanyForm(request.POST or None, instance=company)
+    next_events = Event.get_next_events(company)
+    old_events = Event.get_old_events(company)
+    return render(request, "polls/adm_events.html", locals())
 
-    if request.method == "POST":
 
-        if comp_form.is_valid():
-            comp_form.save()
+@user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
+def adm_event_detail(request, comp_slug, evt_id=0):
+    '''
+        Manage events creation and options
+    '''
+    company = Company.get_company(request.session['comp_slug'])
+    # all_groups = list(UserGroup.objects.filter(company=company, hidden=False).order_by('group_name').values())
 
-    return render(request, "polls/adm_options.html", locals())
+    if evt_id > 0:
+        current_event = Event.objects.get(id=evt_id)
+        event_form = EventDetail(request.POST or None, instance=current_event)
+
+    else:
+        event_form = EventDetail(request.POST or None)
+
+    event_form.fields['groups'].queryset = UserGroup.objects.\
+                                                        filter(company=company, hidden=False).\
+                                                        order_by('group_name')
+    
+    if request.method == 'POST':
+        if event_form.is_valid():
+            if evt_id == 0:
+                # Create new event
+                event_data = {
+                    "company": company,
+                    "groups": event_form.cleaned_data["groups"],
+                    "event_name": event_form.cleaned_data["event_name"],
+                    "event_date": event_form.cleaned_data["event_date"],
+                    "quorum": event_form.cleaned_data["quorum"],
+                    "rule":event_form.cleaned_data["rule"]
+                }
+                new_event = Event.create_event(event_data)
+            else:
+                new_event = event_form.save()
+
+        else:
+            print("****** FORMULAIRE NON VALIDE *******")
+            print(event_form.errors)
+
+    return render(request, "polls/adm_event_detail.html", locals())
+
+
+@user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
+def adm_delete_event(request, comp_slug, evt_id):
+    del_evt = Event.objects.get(pk=evt_id)
+    msg = "Evénement {0} du {1} supprimé.".format(del_evt.event_name, del_evt.event_date)
+
+    Event.objects.filter(pk=evt_id).delete()
+
+    messages.success(request, msg)
+    return redirect("polls:adm_events", comp_slug=comp_slug)

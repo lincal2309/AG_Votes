@@ -94,7 +94,7 @@ class EventAdmin(admin.ModelAdmin):
         "rule",
         "current",
     ]
-    list_display = ("event_name", "event_date", "quorum", "rule", "current")
+    list_display = ("event_name", "event_date", "company", "quorum", "rule", "current")
     ordering = ("event_date", "event_name")
     filter_horizontal = ("groups",)
     inlines = [QuestionInLine, ChoiceInLine]
@@ -180,7 +180,7 @@ class EventAdmin(admin.ModelAdmin):
 class UserGroupAdmin(admin.ModelAdmin):
     fields = ["group_name", "weight", "company", "hidden", "users"]
     filter_horizontal = ("users",)
-    list_display = ("group_name", "company", "nb_users")
+    list_display = ("group_name", "company", "nb_users_display")
 
     def group_name_comp(self, obj):
         return "%s (%s)" % (
@@ -189,10 +189,10 @@ class UserGroupAdmin(admin.ModelAdmin):
         )
     group_name_comp.short_description = "Groupe d'utilisateurs"
 
-    def nb_users(self, obj):
-        nb = UserComp.objects.filter(usergroup=obj).count()
-        return "%s utilisateur(s)" % (str(nb))
-    nb_users.short_description = "Nb utilisateurs"
+    def nb_users_display(self, obj):
+        # nb = UserComp.objects.filter(usergroup=obj).count()
+        return "%s utilisateur(s)" % (str(obj.nb_users()))
+    nb_users_display.short_description = "Nb utilisateurs"
 
     
     # def get_object(self, request, object_id, from_field=None):

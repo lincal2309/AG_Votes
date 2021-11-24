@@ -18,7 +18,7 @@ import datetime
 from .tools_tests import (
     create_dummy_user,
     create_dummy_company,
-    add_dummy_event,
+    create_dummy_event,
 )
 
 from .models import (
@@ -138,7 +138,7 @@ class TestSetChartData(TestCase):
         self.usr21 = create_dummy_user(self.company, "user21", self.group2)
         self.usr22 = create_dummy_user(self.company, "user22", self.group2)
 
-        add_dummy_event(self.company)
+        create_dummy_event(self.company)
 
 
     def test_chart_first_question_maj(self):

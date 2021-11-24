@@ -77,7 +77,7 @@ def create_dummy_company(name):
 
 
 
-def add_dummy_event(company, name="Dummy event", groups=None, new_groups=True):
+def create_dummy_event(company, name="Dummy event", groups=None, new_groups=True):
     # Create dummy event and add group if any
     # Allows to test case were more than 1 event is in the database
     event_date = timezone.now() + datetime.timedelta(days=1)
@@ -117,7 +117,10 @@ def add_dummy_event(company, name="Dummy event", groups=None, new_groups=True):
     if len(groups) > 0:
         # if groups sent and / or created, create results and uservotes
         for group in groups:
-            create_dummy_user(company, "user " + group.group_name + " 1", group=group)
-            create_dummy_user(company, "user " + group.group_name + " 2", group=group)
+            if UserComp.objects.filter(usergroup=group).count() == 0:
+                create_dummy_user(company, "user " + group.group_name + " 1", group=group)
+                create_dummy_user(company, "user " + group.group_name + " 2", group=group)
 
         init_event(event)
+
+    return event
