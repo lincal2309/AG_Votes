@@ -178,9 +178,10 @@ class EventAdmin(admin.ModelAdmin):
 
 
 class UserGroupAdmin(admin.ModelAdmin):
-    fields = ["group_name", "weight", "company", "hidden", "users"]
+    readonly_fields = ("nb_users",)
+    fields = ["group_name", "weight", "company", "hidden", "nb_users", "users"]
     filter_horizontal = ("users",)
-    list_display = ("group_name", "company", "nb_users_display")
+    list_display = ("group_name", "company", "nb_users")
 
     def group_name_comp(self, obj):
         return "%s (%s)" % (
@@ -188,22 +189,6 @@ class UserGroupAdmin(admin.ModelAdmin):
             obj.company.company_name,
         )
     group_name_comp.short_description = "Groupe d'utilisateurs"
-
-    def nb_users_display(self, obj):
-        # nb = UserComp.objects.filter(usergroup=obj).count()
-        return "%s utilisateur(s)" % (str(obj.nb_users()))
-    nb_users_display.short_description = "Nb utilisateurs"
-
-    
-    # def get_object(self, request, object_id, from_field=None):
-    #     obj = super().get_object(request, object_id, from_field=from_field)
-    #     # Put object in cache for use in formfield_for_manytomany
-    #     request.report_obj = obj
-    
-    # def formfield_for_manytomany(self, db_field, request, **kwargs):
-    #     if db_field.name == "users" and hasattr(request, 'report_obj'):
-    #         kwargs["queryset"] = UserGroup.objects.filter(company=request.report_obj.company)
-    #     return super(UserGroupAdmin, self).formfield_for_manytomany(db_field, request, **kwargs)
 
 
 class UserVoteAdmin(admin.ModelAdmin):

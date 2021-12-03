@@ -146,8 +146,12 @@ class UserGroup(models.Model):
     weight = models.IntegerField("poids", default=0)
     hidden = models.BooleanField(default=False)
 
+    @property
+    def nb_users(self):
+        return UserComp.objects.filter(usergroup=self).count()
+
     def __str__(self):
-        return self.group_name
+        return self.group_name + " (Poids : " + str(self.weight) + " / " + str(self.nb_users) + " utilisateurs)"
 
     class Meta:
         verbose_name = "Groupe d'utilisateurs"
@@ -171,12 +175,6 @@ class UserGroup(models.Model):
         for usr in user_list:
             new_group.users.add(usr)
         return new_group
-    
-
-    # @property
-    def nb_users(self):
-        return UserComp.objects.filter(usergroup=self).count()
-
 
     @classmethod
     def get_list(cls, event_slug):
@@ -294,6 +292,18 @@ class Question(models.Model):
 
     def __str__(self):
         return self.question_text
+
+    @classmethod
+    def create_or_update(cls, event, question_data):
+        """ Ceate or update a question """
+        new_question =  cls.objects.update_or_create(
+                            event=event,
+                            question_text= question_data["question_text"],
+                            question_no= question_data["question_no"]
+                        )
+        new_question.save()
+        return new_question
+
 
     @classmethod
     def get_question_list(cls, event):

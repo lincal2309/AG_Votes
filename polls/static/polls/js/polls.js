@@ -488,7 +488,7 @@ function sortlist(mylist) {
     // }
 }
 
-// Send an option from a select to another
+// Send an value from a select box to another
 function add_option(source, dest, elt) {
     let new_option = new Option(elt.text(), elt.val())
     $(dest).append(new_option);

@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.core.validators import FileExtensionValidator
 
 from .models import (
+    Question,
     UserComp,
     UserGroup,
     Company,
@@ -56,27 +57,14 @@ class CompanyForm(forms.ModelForm):
 class EventDetail(forms.ModelForm):
     groups = forms.ModelMultipleChoiceField(
         label = "Liste des groupes",
-        queryset = UserGroup.objects.none(),
+        queryset = None,
         widget = forms.CheckboxSelectMultiple,
-        # label_from_instance = lambda grp: "%s (poids : %s \%)" % (grp.group_name, grp.weight),
         required = False
         )
 
     class Meta:
         model = Event
-        fields = ['event_name', 'event_date', 'quorum', 'rule', 'groups']
-
-
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
-    #     instance = kwargs.get('instance', None)
-    #     if instance is not None:
-    #         self.fields['groups'].queryset= UserGroup.objects.\
-    #                                                     filter(company=instance.company).\
-    #                                                     order_by('group_name')
-    #     else:
-    #         self.fields['groups'].queryset = UserGroup.objects.none()
-
+        fields = ['event_name', 'event_date', 'quorum', 'rule']
 
 
 # Group management
@@ -118,3 +106,8 @@ class GroupDetail(forms.ModelForm):
             self.fields['users'].queryset = UserComp.objects.none()
             self.fields['users_in_group'].initial = ""
             self.fields['weight'].initial = 100
+
+class QuestionDetail(forms.ModelForm):
+    class Meta:
+        model = Question
+        fields = ["question_no", "question_text"]

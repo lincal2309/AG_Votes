@@ -9,7 +9,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
 from django.db.models import Sum
 from django.contrib import messages
-from django.utils.text import slugify
+from django.forms import formset_factory
+# from django.utils.text import slugify
 # from django.conf import settings
 # from django.contrib.auth.password_validation import validate_password
 # from django.core.exceptions import ValidationError
@@ -33,7 +34,8 @@ from .forms import (
     UploadFileForm,
     GroupDetail,
     EventDetail,
-    CompanyForm
+    CompanyForm,
+    QuestionDetail,
 )
 
 # from .tools import define_password
@@ -54,12 +56,6 @@ from .models import (
     Procuration,
     UserComp,
 )
-
-# from pprint import pprint
-
-# debug = settings.DEBUG
-# background_colors = settings.BACKGROUND_COLORS
-# border_colors = settings.BORDER_COLORS
 
 
 # =======================
@@ -685,22 +681,26 @@ def adm_event_detail(request, comp_slug, evt_id=0):
     '''
         Manage events creation and options
     '''
-    company = Company.get_company(request.session['comp_slug'])
-    # all_groups = list(UserGroup.objects.filter(company=company, hidden=False).order_by('group_name').values())
+    company = Company.get_company(comp_slug)
+    # QuestionFormset = formset_factory(QuestionDetail, extra=3)
 
     if evt_id > 0:
         current_event = Event.objects.get(id=evt_id)
         event_form = EventDetail(request.POST or None, instance=current_event)
+        event_form.fields['groups'].initial= current_event.groups.all()
+        # question_set = QuestionFormset(request.POST, initial=list(Question.objects.filter(event=current_event)))
 
     else:
         event_form = EventDetail(request.POST or None)
+        # question_set = QuestionFormset()
 
-    event_form.fields['groups'].queryset = UserGroup.objects.\
-                                                        filter(company=company, hidden=False).\
-                                                        order_by('group_name')
+    event_form.fields['groups'].queryset= UserGroup.objects.\
+                                            filter(company=company, hidden=False).\
+                                            order_by('group_name')
     
     if request.method == 'POST':
         if event_form.is_valid():
+        # if any(event_form.is_valid(), question_set.is_valid()):
             if evt_id == 0:
                 # Create new event
                 event_data = {
@@ -714,10 +714,19 @@ def adm_event_detail(request, comp_slug, evt_id=0):
                 new_event = Event.create_event(event_data)
             else:
                 new_event = event_form.save()
+                new_event.groups.clear()
+                new_event = event_form.save()
+                new_event.groups.add(*event_form.cleaned_data['groups'])
 
+            # for item in question_set:
+            #     print(item)
+            #     if item.cleaned_data:
+            #         print(item.cleaned_data)
+            #         Question.create_or_update(new_event, item.cleaned_data)
         else:
             print("****** FORMULAIRE NON VALIDE *******")
             print(event_form.errors)
+            # print(question_set.errors)
 
     return render(request, "polls/adm_event_detail.html", locals())
 

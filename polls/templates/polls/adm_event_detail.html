@@ -59,29 +59,21 @@
 
                         <!-- Accordion item 2 - Event's groups -->
                         <div class="card">
-                        <div id="headingTwo" class="card-header bg-white shadow-sm border-0">
-                            <h6 class="mb-0 font-weight-bold">
-                                <a href="#" data-toggle="collapse" data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo" class="d-block position-relative collapsed text-dark collapsible-link py-2">
-                                    Groupes d'utilisateurs
-                                </a>
-                            </h6>
-                        </div>
-                        <div id="collapseTwo" aria-labelledby="headingTwo" data-parent="#eventDetails" class="collapse show">
-                            <div class="card-body p-5">
-                                <p>Sélectionnez le(s) groupe(s) d'utilisateurs participants à l'événement :</p>
-                                <ul>
-                                {% for grp in event_form.groups %}
-                                    <li>{{ grp }}
-                                        {{ grp.weight }}
-                                        {{ grp.hidden }}
-                                        {{ grp.nb_users }}
-                                    </li>
-                                {% endfor %}
-                                </ul>
-
-                                <p></p>
+                            <div id="headingTwo" class="card-header bg-white shadow-sm border-0">
+                                <h6 class="mb-0 font-weight-bold">
+                                    <a href="#" data-toggle="collapse" data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo" class="d-block position-relative collapsed text-dark collapsible-link py-2">
+                                        Groupes d'utilisateurs
+                                    </a>
+                                </h6>
                             </div>
-                        </div>
+                            <div id="collapseTwo" aria-labelledby="headingTwo" data-parent="#eventDetails" class="collapse show">
+                                <div class="card-body p-5">
+                                    <p>Sélectionnez le(s) groupe(s) d'utilisateurs participants à l'événement :</p>
+                                    {{ event_form.groups }}
+
+                                    <p></p>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Accordion item 3 - Event's questions -->
@@ -95,7 +87,9 @@
                         </div>
                         <div id="collapseThree" aria-labelledby="headingThree" data-parent="#eventDetails" class="collapse">
                             <div class="card-body p-5">
-                                <p class="font-weight-light m-0">Dans cette partie, gestion des questions & résolutions</p>
+                                <p class="font-weight-light m-0">Entrez les questions à l'ordre du jour ; elles seront présentées selon l'ordre de leur numéro.</p>
+                                <br>
+                                {{ question_set.as_p }}
                             </div>
                         </div>
                         </div>

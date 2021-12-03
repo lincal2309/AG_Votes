@@ -226,3 +226,7 @@ a .btn-secondary.disabled, a .btn-secondary:disabled {
 #toggle_mail_mdp {
   cursor: default;
 }
+
+#id_groups {
+  list-style-type: none;
+}
