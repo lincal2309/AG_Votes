@@ -294,15 +294,15 @@ class Question(models.Model):
         return self.question_text
 
     @classmethod
-    def create_or_update(cls, event, question_data):
-        """ Ceate or update a question """
-        new_question =  cls.objects.update_or_create(
-                            event=event,
-                            question_text= question_data["question_text"],
-                            question_no= question_data["question_no"]
-                        )
-        new_question.save()
-        return new_question
+    def create(cls, event, question_data):
+        """ Create a question """
+        # A question is created only if a text is provided, else nothing's done
+        if "question_text" in question_data:
+            return  cls.objects.create(
+                        event=event,
+                        question_text= question_data["question_text"],
+                        question_no= question_data["question_no"]
+                    )
 
 
     @classmethod
@@ -409,7 +409,7 @@ class Choice(models.Model):
         Event, on_delete=models.CASCADE, null=True, verbose_name="événement"
     )
     choice_text = models.CharField("libellé", max_length=200)
-    choice_no = models.IntegerField("numéro de question")
+    choice_no = models.IntegerField("numéro de choix")
 
     class Meta:
         verbose_name = "Choix"
@@ -424,9 +424,21 @@ class Choice(models.Model):
         return self.choice_text
 
     @classmethod
-    def get_choice_list(cls, event_slug):
+    def create(cls, event, choice_data):
+        """ Create a choice """
+        # A choice is created only if a text is provided, else nothing's done
+        if "choice_text" in choice_data:
+            return  cls.objects.create(
+                        event=event,
+                        choice_text= choice_data["choice_text"],
+                        choice_no= choice_data["choice_no"]
+                    )
+
+
+    @classmethod
+    def get_choice_list(cls, event):
         """ Retreives all choices for an event, ordered by number """
-        return Choice.objects.filter(event__slug=event_slug).order_by("choice_no")
+        return Choice.objects.filter(event=event).order_by("choice_no")
 
 
 class UserVote(models.Model):

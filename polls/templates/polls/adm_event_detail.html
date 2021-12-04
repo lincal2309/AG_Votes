@@ -78,33 +78,72 @@
 
                         <!-- Accordion item 3 - Event's questions -->
                         <div class="card">
-                        <div id="headingThree" class="card-header bg-white shadow-sm border-0">
-                            <h6 class="mb-0 font-weight-bold">
-                                <a href="#" data-toggle="collapse" data-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree" class="d-block position-relative collapsed text-dark collapsible-link py-2">
-                                    Questions / Résolutions
-                                </a>
-                            </h6>
-                        </div>
-                        <div id="collapseThree" aria-labelledby="headingThree" data-parent="#eventDetails" class="collapse">
-                            <div class="card-body p-5">
-                                <p class="font-weight-light m-0">Entrez les questions à l'ordre du jour ; elles seront présentées selon l'ordre de leur numéro.</p>
-                                <br>
-                                {{ question_set.as_p }}
+                            <div id="headingThree" class="card-header bg-white shadow-sm border-0">
+                                <h6 class="mb-0 font-weight-bold">
+                                    <a href="#" data-toggle="collapse" data-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree" class="d-block position-relative collapsed text-dark collapsible-link py-2">
+                                        Questions / Résolutions
+                                    </a>
+                                </h6>
+                            </div>
+                            <div id="collapseThree" aria-labelledby="headingThree" data-parent="#eventDetails" class="collapse">
+                                <div class="card-body p-5">
+                                    <p class="font-weight-light m-0">Entrez les questions à l'ordre du jour ; elles seront présentées selon l'ordre de leur numéro.</p>
+                                    <p class="font-weight-light m-0 comments">(Pour supprimer une question, effacez simplement son texte)</p>
+                                    <br>
+                                    <!-- Question formset management -->
+                                    <!-- question_set.management_form do not need to be added until question_set.as_p is used to display the formset -->
+                                    <!-- Div are used to manage "Add" button to add forms in the set -->
+                                    <div id="question_set">
+                                    {{ question_set.as_p }}
+                                    </div>
+                                    <div>
+                                    <button class="btn btn-outline-primary opt-center" id="add_question"><i class="fas fa-plus-circle"></i> Ajouter</button>
+                                    </div>
+                                    <div id="question_empty_form" style="display:none">
+                                    {{ question_set.empty_form.as_p }}
+                                    </div>
+                                    <!-- End question formset  -->
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Accordion item 4 - Event's choices -->
+                        <div class="card">
+                            <div id="headingFour" class="card-header bg-white shadow-sm border-0">
+                                <h6 class="mb-0 font-weight-bold">
+                                    <a href="#" data-toggle="collapse" data-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour" class="d-block position-relative collapsed text-dark collapsible-link py-2">
+                                        Choix / Options de réponses
+                                    </a>
+                                </h6>
+                            </div>
+                            <div id="collapseFour" aria-labelledby="headingFour" data-parent="#eventDetails" class="collapse">
+                                <div class="card-body p-5">
+                                    <p class="font-weight-light m-0">Entrez les options de réponses aux questions à l'ordre du jour ; elles seront présentées selon l'ordre de leur numéro.</p>
+                                    <p class="font-weight-light m-0 comments">(Pour supprimer un choix, effacez simplement son texte)</p>
+                                    <br>
+                                    <!-- Choice formset management -->
+                                    <!-- choice_set.management_form do not need to be added until choice_set.as_p is used to display the formset -->
+                                    <!-- Div are used to manage "Add" button to add forms in the set -->
+                                    <div id="choice_set">
+                                    {{ choice_set.as_p }}
+                                    </div>
+                                    <div>
+                                    <button class="btn btn-outline-primary opt-center" id="add_choice"><i class="fas fa-plus-circle"></i> Ajouter</button>
+                                    </div>
+                                    <div id="choice_empty_form" style="display:none">
+                                    {{ choice_set.empty_form.as_p }}
+                                    </div>
+                                    <!-- End choice formset  -->
+                                </div>
+                            </div>
                         </div>
 
                     </div> <!-- Accordion end -->
 
-
+                    <div class="opt-center">
                     <button class="btn btn-success mt-5" type="submit">{% if evt_id %}Mettre à jour{% else %}Créer{% endif %}</button>
                     &nbsp &nbsp &nbsp
                     <a class="btn btn-secondary back_btn mt-5" href="*">Annuler</a>
-                    <div class="row">
-                        <div hidden>
-                            <!-- List of groups in event -->
-                            {{ event_form.group_list }}
-                        </div>
                     </div>
                 </form>
             </div>

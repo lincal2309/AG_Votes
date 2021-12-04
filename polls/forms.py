@@ -9,7 +9,8 @@ from .models import (
     UserComp,
     UserGroup,
     Company,
-    Event
+    Event,
+    Choice
 )
 
 
@@ -111,3 +112,8 @@ class QuestionDetail(forms.ModelForm):
     class Meta:
         model = Question
         fields = ["question_no", "question_text"]
+
+class ChoiceDetail(forms.ModelForm):
+    class Meta:
+        model = Choice
+        fields = ["choice_no", "choice_text"]

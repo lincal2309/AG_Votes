@@ -227,6 +227,31 @@ a .btn-secondary.disabled, a .btn-secondary:disabled {
   cursor: default;
 }
 
+.comments {
+  font-style: italic;
+  font-size: 0.6em;
+}
+
+/* ===== Events details ===== */
+
+/* Remove bullets from list */
 #id_groups {
   list-style-type: none;
+}
+
+/* Define inputs and text areas size */
+#question_set > p > textarea {
+  height: 80px;
+  width: 100%;
+}
+
+#question_set > p > input {
+  width: 3em;
+}
+
+
+.opt-center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }

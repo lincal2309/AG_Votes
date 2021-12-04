@@ -5,7 +5,8 @@ If you would like to propose an update, please contact me.
 
 ## To Do
 
-- manage models constraints: event name's unicity (per company), question number's unicity (+ prepopulate field)
+- manage models constraints: event name's unicity (per company)
+- add comments in .js and .css to identify html pages
 - Upgrade Django and take advantage of ASGI (might come with Python and PostgreSQL version upgrades too)
 - Integrate JS framework (React?)
 - Add legal mentions - RGPD compliance (+ certifications)
