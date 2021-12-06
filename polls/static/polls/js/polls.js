@@ -3,8 +3,10 @@
 // =====================================
 
 // Display page management
-$(document).ready(function(event) {
+$(document).ready(function() {
     if ($('#results').length > 0) {
+        // == At startup, checks context to personalize display ==
+
         // Results page : create charts if data available
         let nb_charts = $('#nb_questions').attr('data-nb');
         for (let chart_num = 1; chart_num <= nb_charts; chart_num++) {
@@ -43,10 +45,7 @@ $(document).ready(function(event) {
                     }
                 }
             });
-
-
         }
-        
     }
 
     else if ($('#admin-polls').length > 0) {
@@ -458,6 +457,36 @@ $(document).ready(function(event) {
     //      Administration functions
     // =====================================
 
+    // Manage admin menu display according to the active page
+    function adminEvents() {
+        $('#menu-events').addClass("underlined");
+        $('#menu-users').removeClass("underlined");
+        $('#menu-groups').removeClass("underlined");
+        $('#menu-options').removeClass("underlined");
+    }
+
+    function adminUsers() {
+        $('#menu-events').removeClass("underlined");
+        $('#menu-users').addClass("underlined");
+        $('#menu-groups').removeClass("underlined");
+        $('#menu-options').removeClass("underlined");
+    }
+
+    function adminGroups() {
+        $('#menu-events').removeClass("underlined");
+        $('#menu-users').removeClass("underlined");
+        $('#menu-groups').addClass("underlined");
+        $('#menu-options').removeClass("underlined");
+    }
+
+    function adminOptions() {
+        $('#menu-events').removeClass("underlined");
+        $('#menu-users').removeClass("underlined");
+        $('#menu-groups').removeClass("underlined");
+        $('#menu-options').addClass("underlined");
+    }
+
+
     // Multiple select box management
 
     // Sort list function
@@ -626,34 +655,6 @@ $(document).ready(function(event) {
     // })
 
 
-    function adminEvents() {
-        $('#menu-events').addClass("underlined");
-        $('#menu-users').removeClass("underlined");
-        $('#menu-groups').removeClass("underlined");
-        $('#menu-options').removeClass("underlined");
-    }
-
-    function adminUsers() {
-        $('#menu-events').removeClass("underlined");
-        $('#menu-users').addClass("underlined");
-        $('#menu-groups').removeClass("underlined");
-        $('#menu-options').removeClass("underlined");
-    }
-
-    function adminGroups() {
-        $('#menu-events').removeClass("underlined");
-        $('#menu-users').removeClass("underlined");
-        $('#menu-groups').addClass("underlined");
-        $('#menu-options').removeClass("underlined");
-    }
-
-    function adminOptions() {
-        $('#menu-events').removeClass("underlined");
-        $('#menu-users').removeClass("underlined");
-        $('#menu-groups').removeClass("underlined");
-        $('#menu-options').addClass("underlined");
-    }
-
     // Delete user modal display
     $('.delete-user').on("click", function() {
         dlte_usr = $(this).attr("data-usr-name") + " " + $(this).attr("data-usr-first-name");
@@ -709,22 +710,3 @@ $(document).ready(function(event) {
         }
     })
 })
-
-
-    // // Add a question in question formset
-    // $('#add_question').click(function(e) {
-    //     e.preventDefault();
-    //     var question_idx = $('#id_question-TOTAL_FORMS').val();
-    //     $('#question_set').append($('#question_empty_form').html().replace(/__prefix__/g, question_idx));
-    //     $('#id_question-TOTAL_FORMS').val(parseInt(question_idx) + 1);
-    // });
-
-
-    // // Add a choice in choice formset
-    // $('#add_choice').click(function(e) {
-    //     e.preventDefault();
-    //     var choice_idx = $('#id_choice-TOTAL_FORMS').val();
-    //     $('#choice_set').append($('#choice_empty_form').html().replace(/__prefix__/g, choice_idx));
-    //     $('#id_choice-TOTAL_FORMS').val(parseInt(choice_idx) + 1);
-    // });
-

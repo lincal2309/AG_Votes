@@ -10,6 +10,7 @@ from django.shortcuts import reverse
 from django.contrib.auth.models import User
 from django.utils import timezone
 import datetime
+from django.forms import formset_factory
 
 from .tools_tests import (
     create_dummy_user,
@@ -29,7 +30,9 @@ from .models import (
     UserComp,
 )
 
-# from .forms import (
+from .forms import (
+    QuestionDetail,
+    ChoiceDetail
 #     UserForm,
 #     UserBaseForm,
 #     UserCompForm,
@@ -37,7 +40,7 @@ from .models import (
 #     GroupDetail,
 #     EventDetail,
 #     CompanyForm
-# )
+)
 
 
 class TestOptions(TestCase):
@@ -238,21 +241,11 @@ class TestAdmGroups(TestCase):
 
         user_list = [self.usr11.id, self.usr12.id, self.usr13.id, self.usr14.id]
         users = UserComp.objects.filter(id__in=user_list)
-        self.group1 = UserGroup.create_group({
-            "company": self.company,
-            "group_name": "Groupe 1",
-            "weight": 40,
-            },
-            user_list=users)
+        self.group1 = UserGroup.create_group(self.company, "Groupe 1", 40, user_list=users)
 
         user_list = [self.usr21.id, self.usr22.id]
         users = UserComp.objects.filter(id__in=user_list)
-        self.group2 = UserGroup.create_group({
-            "company": self.company,
-            "group_name": "Groupe 2",
-            "weight": 60,
-            },
-            user_list=users)
+        self.group2 = UserGroup.create_group(self.company, "Groupe 2", 60, user_list=users)
 
     def test_adm_groups(self):
         # Test access with no connection
@@ -370,21 +363,11 @@ class TestAdmEvents(TestCase):
 
         user_list = [self.usr11.id, self.usr12.id, self.usr13.id, self.usr14.id]
         users = UserComp.objects.filter(id__in=user_list)
-        self.group1 = UserGroup.create_group({
-            "company": self.company,
-            "group_name": "Groupe 1",
-            "weight": 40,
-            },
-            user_list=users)
+        self.group1 = UserGroup.create_group(self.company, "Groupe 1", 40, user_list=users)
 
         user_list = [self.usr21.id, self.usr22.id]
         users = UserComp.objects.filter(id__in=user_list)
-        self.group2 = UserGroup.create_group({
-            "company": self.company,
-            "group_name": "Groupe 2",
-            "weight": 60,
-            },
-            user_list=users)
+        self.group2 = UserGroup.create_group(self.company, "Groupe 2", 60, user_list=users)
 
         group_list = [self.group1, self.group2]
         self.event1 = create_dummy_event(self.company, name="Event 1", groups=group_list, new_groups=False)
@@ -418,6 +401,89 @@ class TestAdmEvents(TestCase):
 
     def test_adm_create_event(self):
         self.client.force_login(self.user_staff.user)
+
+        post_data = {
+            # Event data
+            "company": self.company,
+            "event_name": "Evénement de test",
+            "event_date": "22/05/2030",
+            "current": False,
+            "quorum": 33,
+            "rule": "MAJ",
+
+            # Question data
+            "question-TOTAL_FORMS": '1',
+            "question-INITIAL_FORMS": '0',
+            "question-0-question_no": '1',
+            "question-0-question_text": "Question 1",
+
+            # Choice data
+            "choice-TOTAL_FORMS": '2',
+            "choice-INITIAL_FORMS": '0',
+            "choice-0-choice_no": '1',
+            "choice-0-choice_text": "Choix 1",
+            "choice-1-choice_no": '2',
+            "choice-1-choice_text": "Choix 2",
+        }
+
+        response = self.client.post(
+            reverse("polls:adm_create_event", args=[self.company.comp_slug]), post_data)
+
+        self.assertEqual(response.status_code, 200)
+        new_event = Event.objects.get(event_name="Evénement de test")
+        question_list = Question.get_question_list(new_event)
+        self.assertEqual(len(question_list), 1)
+        choice_list = Choice.get_choice_list(new_event)
+        self.assertEqual(len(choice_list), 2)
+
+
+    def test_adm_update_event(self):
+        self.client.force_login(self.user_staff.user)
+
+        post_data = {
+            # Event data
+            "company": self.company,
+            "event_name": "Event 1",
+            "event_date": "22/05/2030",
+            "current": False,
+            "quorum": 50,
+            "rule": "MAJ",
+
+            # Question data
+            "question-TOTAL_FORMS": '2',
+            "question-INITIAL_FORMS": '2',
+            "question-0-question_no": '1',
+            "question-0-question_text": "Dummy quest 1",
+            "question-1-question_no": '2',
+            "question-1-question_text": "Question 2",
+
+            # Choice data
+            "choice-TOTAL_FORMS": '3',
+            "choice-INITIAL_FORMS": '2',
+            "choice-0-choice_no": '1',
+            "choice-0-choice_text": "Choix 1",
+            "choice-1-choice_no": '2',
+            "choice-1-choice_text": "Choix 2",
+            "choice-2-choice_no": '3',
+            "choice-2-choice_text": "3è choix",
+        }
+
+        response = self.client.post(
+            reverse("polls:adm_event_detail", args=[self.company.comp_slug, self.event1.id]), post_data)
+
+        self.assertEqual(response.status_code, 200)
+        self.event1.refresh_from_db()
+        self.assertEqual(self.event1.event_date.strftime("%d/%m/%Y"), "22/05/2030")
+        self.assertEqual(self.event1.quorum, 50)
+
+        question_list = Question.get_question_list(self.event1)
+        self.assertEqual(len(question_list), 2)
+        self.assertEqual(question_list[1].question_text, "Question 2")
+
+        choice_list = Choice.get_choice_list(self.event1)
+        self.assertEqual(len(choice_list), 3)
+        self.assertEqual(choice_list[0].choice_text, "Choix 1")
+        self.assertEqual(choice_list[2].choice_text, "3è choix")
 
 
     def test_adm_delete_event(self):

@@ -184,6 +184,11 @@ class TestModelQuestion(TestCase):
             group_weight=70,
         )
 
+
+    def test_create_question(self):
+        question = Question.create(self.event, 3, "Question 3")
+        self.assertEqual(question.id, 3)
+
     def test_get_question_list(self):
         question_list = Question.get_question_list(self.event)
         self.assertEqual(len(question_list), 2)
@@ -231,11 +236,7 @@ class TestModelUserGroup(TestCase):
 
     def test_create_group(self):
         # Group with no users
-        self.group0 = UserGroup.create_group({
-            "company": self.company,
-            "group_name": "Groupe sans users",
-            "weight": 60,
-            })
+        self.group0 = UserGroup.create_group(self.company, "Groupe sans users", 60)
 
         self.assertEqual(self.group0.id, 2)
         g0_users = self.group0.users.all()
@@ -245,12 +246,7 @@ class TestModelUserGroup(TestCase):
         # Group with multiple users
         user_list = [self.usr11.id, self.usr12.id, self.usr13.id, self.usr14.id]
         users = UserComp.objects.filter(id__in=user_list)
-        self.group1 = UserGroup.create_group({
-            "company": self.company,
-            "group_name": "Groupe 1",
-            "weight": 40,
-            },
-            user_list=users)
+        self.group1 = UserGroup.create_group(self.company, "Groupe 1", 40, user_list=users)
         
         self.assertEqual(self.group1.id, 3)
         g1_users = self.group1.users.all()
@@ -259,12 +255,7 @@ class TestModelUserGroup(TestCase):
         self.assertIn(self.usr12, g1_users)
 
         # Group with 1 user
-        self.group2 = UserGroup.create_group({
-            "company": self.company,
-            "group_name": "Groupe 2",
-            "weight": 60,
-            },
-            user=self.usr11)
+        self.group2 = UserGroup.create_group(self.company, "Groupe 2", 60, user=self.usr11)
 
         self.assertEqual(self.group2.id, 4)
         self.assertEqual(self.group2.nb_users, 1)
@@ -288,12 +279,7 @@ class TestModelUserGroup(TestCase):
 
         # user_list = [self.usr11.id]
         users = UserComp.objects.filter(id=self.usr11.id)
-        self.group1 = UserGroup.create_group({
-            "company": self.company,
-            "group_name": "Groupe 1",
-            "weight": 40,
-            },
-            user=self.usr11)
+        self.group1 = UserGroup.create_group(self.company, "Groupe 1", 40, user=self.usr11)
 
         self.event.groups.add(self.group1)
         # self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)

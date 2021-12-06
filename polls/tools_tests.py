@@ -37,8 +37,8 @@ def create_dummy_user(company, username, group=None, staff=False, admin=False):
         email=email,
         last_name=last_name
     )
-    usrcomp = UserComp.objects.create(company=company, user=usr, is_admin=admin)
-    usrcomp.save()
+    usrcomp = UserComp.create_usercomp(usr, company, is_admin=admin)
+    # usrcomp.save()
 
     if group:
         group.users.add(usrcomp)
@@ -87,18 +87,11 @@ def create_dummy_event(company, name="Dummy event", groups=None, new_groups=True
         event_date=event_date,
         slug=slugify(name + str(event_date)),
     )
-    Question.objects.create(
-        question_text="Dummy quest 1", question_no=1, event=event
-    )
-    Question.objects.create(
-        question_text="Dummy quest 2", question_no=2, event=event
-    )
-    Choice.objects.create(
-        event=event, choice_text="Dummy choice 1", choice_no=1
-    )
-    Choice.objects.create(
-        event=event, choice_text="Dummy choice 2", choice_no=2
-    )
+    Question.create(event, 1, "Dummy quest 1")
+    Question.create(event, 2, "Dummy quest 2")
+
+    Choice.create(event, 1, "Dummy choice 1")
+    Choice.create(event, 2, "Dummy choice 2")
     
     if groups is not None:
         # Add groups to event if any
@@ -109,18 +102,18 @@ def create_dummy_event(company, name="Dummy event", groups=None, new_groups=True
 
     if new_groups:
         # Create dummy groups if requested
-        group1 = UserGroup.objects.create(group_name="Dummy group 1", weight=30)
-        group2 = UserGroup.objects.create(group_name="Dummy group 2", weight=70)
+        group1 = UserGroup.create_group(company, "Dummy group 1", 30)
+        group2 = UserGroup.create_group(company, "Dummy group 2", 70)
         event.groups.add(group1, group2)
         groups += [group1, group2]
 
-    if len(groups) > 0:
-        # if groups sent and / or created, create results and uservotes
-        for group in groups:
-            if UserComp.objects.filter(usergroup=group).count() == 0:
-                create_dummy_user(company, "user " + group.group_name + " 1", group=group)
-                create_dummy_user(company, "user " + group.group_name + " 2", group=group)
+    # if len(groups) > 0:
+    #     # if groups sent and / or created, create results and uservotes
+    #     for group in groups:
+    #         if UserComp.objects.filter(usergroup=group).count() == 0:
+    #             create_dummy_user(company, "user " + group.group_name + " 1", group=group)
+    #             create_dummy_user(company, "user " + group.group_name + " 2", group=group)
 
-        init_event(event)
+    #     init_event(event)
 
     return event

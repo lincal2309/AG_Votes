@@ -158,14 +158,14 @@ class UserGroup(models.Model):
         verbose_name_plural = "Groupes d'utilisateurs"
 
     @classmethod
-    def create_group(cls, group_info, user=None, user_list=[]):
-        hidden = False
-        if "hidden" in group_info: hidden = group_info["hidden"]
+    def create_group(cls, company, group_name, weight, hidden=False, user=None, user_list=[]):
+        # hidden = False
+        # if "hidden" in group_info: hidden = group_info["hidden"]
         
         new_group = UserGroup(
-            company=group_info["company"],
-            group_name=group_info["group_name"],
-            weight=group_info["weight"],
+            company=company,
+            group_name=group_name,
+            weight=weight,
             hidden=hidden
             )
         new_group.save()
@@ -294,15 +294,43 @@ class Question(models.Model):
         return self.question_text
 
     @classmethod
-    def create(cls, event, question_data):
-        """ Create a question """
+    def create(cls, event, question_no, question_text):
+        return cls.objects.create(
+                    event=event,
+                    question_text= question_text,
+                    question_no= question_no
+                )
+
+
+    @classmethod
+    def question_form_create(cls, event, question_set):
+        """ Manage Question creation from formset
+        Entry values com from a formset :
+            - we need to check whether nested forms are valid or not
+            - according to the result, create a new question
+            - 'question_no' field is recalcultate at the end to return consistent values
+         """
+        # Delete all previous questions - updated ones will be created as new ones
+        # This allow to manage actual deletions
+        cls.objects.filter(event=event).delete()
+
         # A question is created only if a text is provided, else nothing's done
-        if "question_text" in question_data:
-            return  cls.objects.create(
-                        event=event,
-                        question_text= question_data["question_text"],
-                        question_no= question_data["question_no"]
-                    )
+        for item in question_set:
+            if item.cleaned_data and "question_text" in item.cleaned_data:
+                if item.cleaned_data["question_no"] is None or cls.get_question(event, item.cleaned_data["question_no"]) is not None:
+                    # Duplicate question number or no number provided : calcultate new one
+                    question_no = len(cls.get_question_list(event)) + 1
+                else:
+                    question_no = item.cleaned_data["question_no"]
+
+                cls.create(event, question_no, item.cleaned_data["question_text"])
+
+        # Recalculate question numbers according to new order
+        n = 0
+        for question in cls.get_question_list(event):
+            n += 1
+            question.question_no = n
+            question.save()
 
 
     @classmethod
@@ -312,8 +340,12 @@ class Question(models.Model):
 
     @classmethod
     def get_question(cls, event, question_no):
-        """ Retreives a question from its and numer and the related event's slug """
-        return cls.objects.get(event=event, question_no=question_no)
+        """ Retreives a question from its number and the related event's slug """
+        try:
+            return cls.objects.get(event=event, question_no=question_no)
+        except cls.DoesNotExist:
+            return None
+        
 
     def get_results(self):
         """ Calculates votes' results for a question """
@@ -423,16 +455,51 @@ class Choice(models.Model):
     def __str__(self):
         return self.choice_text
 
+
     @classmethod
-    def create(cls, event, choice_data):
-        """ Create a choice """
+    def create(cls, event, choice_no, choice_text):
+        return cls.objects.create(
+                    event=event,
+                    choice_text= choice_text,
+                    choice_no= choice_no
+                )
+
+
+    @classmethod
+    def choice_form_create(cls, event, choice_set):
+        """ Manage Choice creation from formset
+        Entry values com from a formset :
+            - we need to check whether nested forms are valid or not
+            - according to the result, create a new choice
+            - 'choice_no' field is recalcultate at the end to return consistent values
+         """
+        # Entry data is a formset : need to use cleaned_data
+        # This allow to filter and manage anticipate errors
+        #   - in case of duplicate it's anticipate a a new question_no is calculated
+        #   - same if 'quenstion_no is not provided
+
+        # Delete all previous choices - updated ones will be created as new ones
+        # This allow to manage actual deletions
+        cls.objects.filter(event=event).delete()
+
         # A choice is created only if a text is provided, else nothing's done
-        if "choice_text" in choice_data:
-            return  cls.objects.create(
-                        event=event,
-                        choice_text= choice_data["choice_text"],
-                        choice_no= choice_data["choice_no"]
-                    )
+        for item in choice_set:
+            if item.cleaned_data and "choice_text" in item.cleaned_data:
+                if item.cleaned_data["choice_no"] is None \
+                or cls.objects.filter(event=event, choice_no=item.cleaned_data["choice_no"]).exists():
+                    # Duplicate choice number or no number provided : calcultate new one
+                    choice_no = len(cls.objects.filter(event=event)) + 1
+                else:
+                    choice_no = item.cleaned_data["choice_no"]
+
+                cls.create(event, choice_no, item.cleaned_data["choice_text"])
+
+        # Recalculate choice numbers according to new order
+        n = 0
+        for choice in cls.get_choice_list(event):
+            n += 1
+            choice.choice_no = n
+            choice.save()
 
 
     @classmethod
@@ -444,7 +511,7 @@ class Choice(models.Model):
 class UserVote(models.Model):
     """
     Follow up users' votes for an event
-    Indicates, for each Evznt / User / question :
+    Indicates, for each Event / User / question :
         Number of votes (in case of procuration)
         If he has voted, and when
     """

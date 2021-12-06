@@ -100,6 +100,8 @@
                                     <button class="btn btn-outline-primary opt-center" id="add_question"><i class="fas fa-plus-circle"></i> Ajouter</button>
                                     </div>
                                     <div id="question_empty_form" style="display:none">
+                                        <!-- Empty form to be duplicated if user wants to add a row -->
+                                        <!-- Use the same display op^tions as the main form -->
                                     {{ question_set.empty_form.as_p }}
                                     </div>
                                     <!-- End question formset  -->
@@ -122,16 +124,19 @@
                                     <p class="font-weight-light m-0 comments">(Pour supprimer un choix, effacez simplement son texte)</p>
                                     <br>
                                     <!-- Choice formset management -->
-                                    <!-- choice_set.management_form do not need to be added until choice_set.as_p is used to display the formset -->
+                                    <!-- choice_set.management_form mandatory here to manage the formset as field are set separately -->
                                     <!-- Div are used to manage "Add" button to add forms in the set -->
+                                    {{ choice_set.management_form }}
                                     <div id="choice_set">
-                                    {{ choice_set.as_p }}
+                                        {% for form in choice_set.forms %}
+                                            <p>N° : {{ form.choice_no }} &nbsp &nbsp &nbsp Libellé :  {{form.choice_text }}</p>
+                                        {% endfor %}
                                     </div>
                                     <div>
                                     <button class="btn btn-outline-primary opt-center" id="add_choice"><i class="fas fa-plus-circle"></i> Ajouter</button>
                                     </div>
                                     <div id="choice_empty_form" style="display:none">
-                                    {{ choice_set.empty_form.as_p }}
+                                        <p>N° : {{choice_set.empty_form.choice_no }} &nbsp &nbsp &nbsp Libellé :  {{choice_set.empty_form.choice_text }}</p>
                                     </div>
                                     <!-- End choice formset  -->
                                 </div>

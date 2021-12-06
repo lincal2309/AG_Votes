@@ -109,11 +109,13 @@ class GroupDetail(forms.ModelForm):
             self.fields['weight'].initial = 100
 
 class QuestionDetail(forms.ModelForm):
+    question_no = forms.IntegerField(label="Numéro", min_value=1, required=False)
     class Meta:
         model = Question
         fields = ["question_no", "question_text"]
 
 class ChoiceDetail(forms.ModelForm):
+    choice_no = forms.IntegerField(label="Numéro", min_value=1, required=False)
     class Meta:
         model = Choice
         fields = ["choice_no", "choice_text"]

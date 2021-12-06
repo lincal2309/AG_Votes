@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
 from django.db.models import Sum
 from django.contrib import messages
-from django.forms import formset_factory, inlineformset_factory
+from django.forms import formset_factory
 # from django.utils.text import slugify
 # from django.conf import settings
 # from django.contrib.auth.password_validation import validate_password
@@ -624,12 +624,12 @@ def adm_group_detail(request, comp_slug, grp_id=0):
         if group_form.is_valid():
             if grp_id == 0:
                 # Create empty group
-                group_data = {
-                    "company": company,
-                    "group_name": group_form.cleaned_data["group_name"],
-                    "weight": group_form.cleaned_data["weight"],
-                }
-                new_group = UserGroup.create_group(group_data, user_list=usr_list)
+                new_group = UserGroup.create_group(
+                                        company,
+                                        group_form.cleaned_data["group_name"],
+                                        group_form.cleaned_data["weight"],
+                                        user_list=usr_list
+                                        )
             else:
                 # Update group
                 new_group = group_form.save()
@@ -692,7 +692,7 @@ def adm_event_detail(request, comp_slug, evt_id=0):
         current_event = Event.objects.get(id=evt_id)
         event_form = EventDetail(request.POST or None, instance=current_event)
         event_form.fields['groups'].initial= current_event.groups.all()
-        question_set.initial = Question.objects.filter(event=current_event).order_by('question_no').values()
+        question_set.initial = Question.get_question_list(current_event).values()
         choice_set.initial = Choice.get_choice_list(current_event).values()
 
     else:
@@ -701,7 +701,6 @@ def adm_event_detail(request, comp_slug, evt_id=0):
     event_form.fields['groups'].queryset= UserGroup.objects.\
                                             filter(company=company, hidden=False).\
                                             order_by('group_name')
-    
     if request.method == 'POST':
         if any([event_form.is_valid(), question_set.is_valid(), choice_set.is_valid()]):
             if evt_id == 0:
@@ -721,33 +720,16 @@ def adm_event_detail(request, comp_slug, evt_id=0):
                 new_event = event_form.save()
                 new_event.groups.add(*event_form.cleaned_data['groups'])
 
-            # Create / Update questions
-            # Delete all previous question - updated ones will be created as new ones
-            # This allow to manage actual deletions
-            Question.objects.filter(event=current_event).delete()
-            for item in question_set:
-                if item.cleaned_data:
-                    print("Question")
-                    print(item.cleaned_data)
-                    Question.create(new_event, item.cleaned_data)
+            # Create / Update questions and choices
+            Question.question_form_create(new_event, question_set)
+            Choice.choice_form_create(new_event, choice_set)
 
-            # Refresh formset to reorder questions if necessary
+            # Refresh formsets to reorder questions and choices if necessary
             question_set = QuestionFormset(prefix="question")
-            question_set.initial = Question.objects.filter(event=current_event).order_by('question_no').values()
+            question_set.initial = Question.get_question_list(new_event).values()
 
-            # Create / Update choices
-            # Delete all previous choice - updated ones will be created as new ones
-            # This allow to manage actual deletions
-            Choice.objects.filter(event=current_event).delete()
-            for item in choice_set:
-                if item.cleaned_data:
-                    print("Choix")
-                    print(item.cleaned_data)
-                    Choice.create(new_event, item.cleaned_data)
-
-            # Refresh formset to reorder choices if necessary
             choice_set = ChoiceFormset(prefix="choice")
-            choice_set.initial = Choice.get_choice_list(current_event).values()
+            choice_set.initial = Choice.get_choice_list(new_event).values()
 
         else:
             print("****** FORMULAIRE NON VALIDE *******")
