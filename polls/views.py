@@ -172,12 +172,12 @@ def event(request, comp_slug, event_slug):
 
     # Check if connected user is part of the event and is authorized to vote
     user_can_vote = False
-    if UserGroup.user_in_event(event_slug, request.user.usercomp):
+    if UserGroup.user_in_event(event, request.user.usercomp):
         user_can_vote = True
 
         # Get user's proxy status
         proxy_list, user_proxy, user_proxy_list = Procuration.get_proxy_status(
-            event_slug, request.user.usercomp
+            event, request.user.usercomp
         )
 
     return render(request, "polls/event.html", locals())
@@ -191,7 +191,7 @@ def question(request, comp_slug, event_slug, question_no):
     # Necessary info for the template
     # company = Company.get_company(comp_slug)
     event = Event.get_event(comp_slug, event_slug)
-    evt_group_list = UserGroup.get_list(event_slug)
+    evt_group_list = UserGroup.get_group_list(event)
     question = Question.get_question(event, question_no)
     choice_list = Choice.get_choice_list(event)
     last_question = False
@@ -212,7 +212,7 @@ def question(request, comp_slug, event_slug, question_no):
 
     # Gather user's info about the current question
     if not request.user.is_staff:
-        user_vote = UserVote.get_user_vote(event_slug, request.user.usercomp, question_no)
+        user_vote = UserVote.get_user_vote(event, request.user.usercomp, question_no)
 
     # Check if current question is the last one
     if question_no == len(Question.get_question_list(event)):
@@ -246,7 +246,7 @@ def get_chart_data(request):
     question_no = int(request.GET["question_no"])
 
     event = Event.get_event(comp_slug, event_slug)
-    evt_group_list = UserGroup.get_list(event_slug)
+    evt_group_list = UserGroup.get_group_list(event)
 
     data = set_chart_data(event, evt_group_list, question_no)
 
@@ -256,8 +256,8 @@ def get_chart_data(request):
 def vote(request, comp_slug, event_slug, question_no):
     """ Manage users' votes """
 
-    choice_id = request.POST["choice"]
-    user_vote = UserVote.set_vote(event_slug, request.user.usercomp, question_no, choice_id)
+    choice = request.POST["choice"]
+    user_vote = UserVote.set_vote(event, request.user.usercomp, question, choices=[choice])
 
     data = {"success": "OK", "nb_votes": user_vote.nb_user_votes}
 
@@ -602,6 +602,8 @@ def adm_groups(request, comp_slug):
 @user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
 def adm_group_detail(request, comp_slug, grp_id=0):
     company = Company.get_company(comp_slug)
+
+
     if grp_id > 0:
         current_group = UserGroup.objects.get(id=grp_id)
         group_form = GroupDetail(request.POST or None, instance=current_group)
@@ -627,9 +629,12 @@ def adm_group_detail(request, comp_slug, grp_id=0):
                 new_group = UserGroup.create_group(
                                         company,
                                         group_form.cleaned_data["group_name"],
-                                        group_form.cleaned_data["weight"],
+                                        weight=group_form.cleaned_data["weight"],
                                         user_list=usr_list
                                         )
+
+                return redirect("polls:adm_groups", comp_slug=comp_slug)
+
             else:
                 # Update group
                 new_group = group_form.save()
@@ -705,24 +710,41 @@ def adm_event_detail(request, comp_slug, evt_id=0):
         if any([event_form.is_valid(), question_set.is_valid(), choice_set.is_valid()]):
             if evt_id == 0:
                 # Create new event
-                event_data = {
-                    "company": company,
-                    "groups": event_form.cleaned_data["groups"],
-                    "event_name": event_form.cleaned_data["event_name"],
-                    "event_date": event_form.cleaned_data["event_date"],
-                    "quorum": event_form.cleaned_data["quorum"],
-                    "rule":event_form.cleaned_data["rule"]
-                }
-                new_event = Event.create_event(event_data)
+                # event_data = {
+                #     "company": company,
+                #     "groups": event_form.cleaned_data["groups"],
+                #     "event_name": event_form.cleaned_data["event_name"],
+                #     "event_start_date": event_form.cleaned_data["event_start_date"],
+                #     "event_end_date": event_form.cleaned_data["event_end_date"],
+                #     "quorum": event_form.cleaned_data["quorum"],
+                #     "rule":event_form.cleaned_data["rule"]
+                # }
+                new_event = Event.create_event(
+                    company,
+                    event_form.cleaned_data["event_name"],
+                    event_form.cleaned_data["event_start_date"],
+                    event_end_date = event_form.cleaned_data["event_end_date"],
+                    quorum = event_form.cleaned_data["quorum"],
+                    rule = event_form.cleaned_data["rule"],
+                    groups = event_form.cleaned_data["groups"],
+                )
+
+
+                # Create questions and choices
+                Question.question_form_create(new_event, question_set)
+                Choice.choice_form_create(new_event, choice_set)
+
+                return redirect("polls:adm_events", comp_slug=comp_slug)
+
             else:
                 new_event = event_form.save()
                 new_event.groups.clear()
                 new_event = event_form.save()
                 new_event.groups.add(*event_form.cleaned_data['groups'])
 
-            # Create / Update questions and choices
-            Question.question_form_create(new_event, question_set)
-            Choice.choice_form_create(new_event, choice_set)
+                # Update questions and choices
+                Question.question_form_create(new_event, question_set)
+                Choice.choice_form_create(new_event, choice_set)
 
             # Refresh formsets to reorder questions and choices if necessary
             question_set = QuestionFormset(prefix="question")
@@ -743,7 +765,7 @@ def adm_event_detail(request, comp_slug, evt_id=0):
 @user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
 def adm_delete_event(request, comp_slug, evt_id):
     del_evt = Event.objects.get(pk=evt_id)
-    msg = "Evénement {0} du {1} supprimé.".format(del_evt.event_name, del_evt.event_date)
+    msg = "Evénement {0} du {1} supprimé.".format(del_evt.event_name, del_evt.event_start_date)
 
     Event.objects.filter(pk=evt_id).delete()
 

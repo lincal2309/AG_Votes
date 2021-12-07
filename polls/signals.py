@@ -8,7 +8,7 @@ from django.dispatch import receiver
 @receiver(post_save, sender=Company)
 def create_default_group(sender, instance, created, **kwargs):
     if created:
-        UserGroup.create_group(instance, "Default Group", 100, hidden=True)
+        UserGroup.create_group(instance, "Default Group", weight=100, hidden=True)
 
 # Each new user is added to the company's default hidden group
 @receiver(post_save, sender=UserComp)

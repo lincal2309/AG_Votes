@@ -30,7 +30,7 @@
                     <ul class="mt-30">
                     {% for event in next_events %}
                         <li>
-                            {{ event.event_date|date:"d/m/Y" }} : {{ event.event_name }}
+                            {{ event.event_start_date|date:"d/m/Y" }} : {{ event.event_name }}
 
                             <!-- Update buttons -->
                             <a type="button" class="update-evt btn btn-sm" href="{% url 'polls:adm_event_detail' company.comp_slug event.id %}">
@@ -62,7 +62,7 @@
                     <ul class="mt-30">
                     {% for event in old_events %}
                         <li>
-                            {{ event.event_date|date:"d/m/Y" }} : {{ event.event_name }}
+                            {{ event.event_start_date|date:"d/m/Y" }} : {{ event.event_name }}
 
                             <!-- Update buttons -->
                             <a type="button" class="update-evt btn btn-sm" href="{% url 'polls:adm_event_detail' company.comp_slug event.id %}">

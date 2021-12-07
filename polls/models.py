@@ -53,11 +53,11 @@ class Company(models.Model):
         return self.company_name
 
     @classmethod
-    def create_company(self, company_name, statut, siret, address1, zip_code, city,
+    def create_company(cls, company_name, statut, siret, address1, zip_code, city,
                        logo=None, use_groups=False, rule="MAJ", upd_rule=False, street_num=None,
                        street_cplt=None, address2=None, host=None, port=None, hname=None, fax=None, use_tls=True):
         """ Create new company - includes a default hidden group """
-        comp = Company.objects.create(
+        comp = cls.objects.create(
             company_name=company_name,
             comp_slug=slugify(company_name),
             logo=SimpleUploadedFile(name=logo, content=b'content', content_type='image/jpeg'),
@@ -77,14 +77,6 @@ class Company(models.Model):
             hname=hname,
             fax=fax,
             use_tls=use_tls
-        )
-        UserGroup.create_group(
-            {
-                "company": comp,
-                "group_name": "Default Group",
-                "weight": 100,
-                "hidden": True
-            }
         )
         return comp
 
@@ -118,11 +110,9 @@ class UserComp(models.Model):
     @classmethod
     def create_usercomp(cls, user, company, phone_num='', is_admin=False):
         """ Create a new UserComp """
-        usr_comp = UserComp(user=user, company=company, phone_num=phone_num, is_admin=is_admin)
+        # A Signal is defined to add the new user to the company's default group
+        usr_comp = cls(user=user, company=company, phone_num=phone_num, is_admin=is_admin)
         usr_comp.save()
-        # Add the new user to the company's default group
-        # def_group = company.get_default_group()
-        # def_group.users.add(usr_comp)
         return usr_comp
 
     @classmethod
@@ -143,7 +133,7 @@ class UserGroup(models.Model):
     )
     users = models.ManyToManyField(UserComp, verbose_name="utilisateurs", blank=True)
     group_name = models.CharField("nom", max_length=100)
-    weight = models.IntegerField("poids", default=0)
+    weight = models.IntegerField("poids", default=100)
     hidden = models.BooleanField(default=False)
 
     @property
@@ -158,11 +148,11 @@ class UserGroup(models.Model):
         verbose_name_plural = "Groupes d'utilisateurs"
 
     @classmethod
-    def create_group(cls, company, group_name, weight, hidden=False, user=None, user_list=[]):
+    def create_group(cls, company, group_name, weight=100, hidden=False, user=None, user_list=[]):
         # hidden = False
         # if "hidden" in group_info: hidden = group_info["hidden"]
         
-        new_group = UserGroup(
+        new_group = cls(
             company=company,
             group_name=group_name,
             weight=weight,
@@ -177,16 +167,15 @@ class UserGroup(models.Model):
         return new_group
 
     @classmethod
-    def get_list(cls, event_slug):
+    def get_group_list(cls, event):
         """ Retreive list of groups linked to an event identified with its slug """
-        # TO BE REMOVED
-        return cls.objects.filter(event__slug=event_slug)
+        return cls.objects.filter(event=event).order_by("group_name")
 
     @classmethod
-    def user_in_event(cls, event_slug, user):
+    def user_in_event(cls, event, user):
         """ Checks whether a user belongs to the group linked to the event or not """
         user_in_group = False
-        if len(user.usergroup_set.filter(event__slug=event_slug)) > 0:
+        if len(user.usergroup_set.filter(event=event)) > 0:
             user_in_group = True
         return user_in_group
 
@@ -203,7 +192,8 @@ class Event(models.Model):
     groups = models.ManyToManyField(UserGroup, verbose_name="groupes", blank=True)
     rules = [("MAJ", "Majorité"), ("PROP", "Proportionnelle")]
     event_name = models.CharField("nom", max_length=200)
-    event_date = models.DateField("date de l'événement")
+    event_start_date = models.DateField("date de début de l'événement")
+    event_end_date = models.DateField("date de fin de l'événement", null=True, blank=True)
     slug = models.SlugField()
     current = models.BooleanField("en cours", default=False)
     quorum = models.IntegerField(default=33)
@@ -224,20 +214,21 @@ class Event(models.Model):
         return self.event_name
 
     @classmethod
-    def create_event(cls, event_info):
-        new_event = Event(
-            company = event_info["company"],
-            event_name = event_info["event_name"],
-            event_date = event_info["event_date"],
-            slug = slugify(event_info["event_name"]),
-            current = False,
-            quorum = event_info["quorum"],
-            rule = event_info["rule"]
+    def create_event(cls, company, event_name, event_start_date, event_end_date=None, quorum=33, rule="MAJ", current=False, groups=[]):
+        new_event = cls(
+            company = company,
+            event_name = event_name,
+            event_start_date = event_start_date,
+            event_end_date = event_end_date,
+            slug = slugify(event_name + str(event_start_date)),
+            quorum = quorum,
+            rule = rule,
+            current=current
             )
         new_event.save()
 
         # Add groups: converts queryset into list and add in M2M field
-        new_event.groups.add(*event_info['groups'])
+        new_event.groups.add(*groups)
 
         new_event.save()
 
@@ -255,15 +246,15 @@ class Event(models.Model):
     def get_next_events(cls, company):
         """ Retreive all events releted to a company that are planned in the future """
         return cls.objects.filter(
-            company=company, event_date__gte=timezone.now()
-        ).order_by("event_date")
+            company=company, event_start_date__gte=timezone.now()
+        ).order_by("event_start_date")
 
     @classmethod
     def get_old_events(cls, company):
         """ Retreive all passed events releted to a company """
         return cls.objects.filter(
-            company=company, event_date__lt=timezone.now()
-        ).order_by("-event_date")
+            company=company, event_start_date__lt=timezone.now()
+        ).order_by("-event_start_date")
 
     def set_current(self):
         """ Set the event to be "in progress" """
@@ -294,7 +285,7 @@ class Question(models.Model):
         return self.question_text
 
     @classmethod
-    def create(cls, event, question_no, question_text):
+    def create_question(cls, event, question_no, question_text):
         return cls.objects.create(
                     event=event,
                     question_text= question_text,
@@ -323,7 +314,7 @@ class Question(models.Model):
                 else:
                     question_no = item.cleaned_data["question_no"]
 
-                cls.create(event, question_no, item.cleaned_data["question_text"])
+                cls.create_question(event, question_no, item.cleaned_data["question_text"])
 
         # Recalculate question numbers according to new order
         n = 0
@@ -350,10 +341,10 @@ class Question(models.Model):
     def get_results(self):
         """ Calculates votes' results for a question """
         # Calcultate global results for the question
-        evt_group_list = UserGroup.get_list(self.event.slug)
+        evt_group_list = UserGroup.get_group_list(self.event)
 
         # Initialize global results data
-        global_choice_list = Choice.get_choice_list(self.event.slug).values(
+        global_choice_list = Choice.get_choice_list(self.event).values(
             "choice_text"
         )
         group_vote = {}
@@ -457,7 +448,7 @@ class Choice(models.Model):
 
 
     @classmethod
-    def create(cls, event, choice_no, choice_text):
+    def create_choice(cls, event, choice_no, choice_text):
         return cls.objects.create(
                     event=event,
                     choice_text= choice_text,
@@ -492,7 +483,7 @@ class Choice(models.Model):
                 else:
                     choice_no = item.cleaned_data["choice_no"]
 
-                cls.create(event, choice_no, item.cleaned_data["choice_text"])
+                cls.create_choice(event, choice_no, item.cleaned_data["choice_text"])
 
         # Recalculate choice numbers according to new order
         n = 0
@@ -537,41 +528,81 @@ class UserVote(models.Model):
         )
 
     @classmethod
-    def get_user_vote(cls, event_slug, user, question_no):
+    def get_user_vote(cls, event, user, question):
         """ Return user's vote status """
-        return cls.objects.get(
-            user=user,
-            event__slug=event_slug,
-            question__event__slug=event_slug,
-            question__question_no=question_no,
-        )
+        try:
+            return cls.objects.get(
+                user=user,
+                event=event,
+                question__event=event,
+                question=question,
+            )
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def set_vote(cls, event, user, question, nb_user_votes=1, has_voted=False, choices=[]):
+        """ Initialize users'vote / update info while user's voting """
+        # By default, the user is allowed to vote once and did not vote yet
+        nb_votes = 0
+        # If a choice number is provided, user has voted
+        if len(choices) > 0: has_voted = True
+        # If user has voted, his count is decreased (it's not 0 if he is a proxy)
+        # If no choices are precised but has_voted is set to True, we consider this stands for 1 vote
+        if has_voted == True: nb_votes = max(len(choices), 1)
+
+        user_vote = cls.get_user_vote(event, user, question)
+        if user_vote is None:
+            # First vote
+            user_vote = cls(
+                event=event,
+                user=user,
+                question=question,
+                has_voted=has_voted,
+                nb_user_votes=nb_user_votes - nb_votes,
+            )
+        else:
+            # Update vote
+            user_vote.nb_user_votes, user_vote.has_voted, user_vote.date_vote = (
+                user_vote.nb_user_votes - nb_votes,
+                has_voted,
+                timezone.now(),
+            )
+        user_vote.save()
+
+        # Update result in case of actual vote
+        if user_vote.has_voted == True and len(choices) > 0:
+            Result.add_vote(user, event, question, choices)
+
+        return user_vote
 
     @classmethod
     def init_uservotes(cls, event):
         """
         Initializae user votes table
-        When the event is lauchend, gather all info related to the vote, including procurations,
+        When the event is launchend, gather all info related to the vote, including procurations,
             to define each user rights to vote
         """
         event_user_list = [
             user for user in UserComp.objects.filter(usergroup__event=event)
         ]
         question_list = Question.get_question_list(event)
-        user_group_list = UserGroup.objects.filter(event=event)
-        event_choice_list = Choice.get_choice_list(event.slug)
+        user_group_list = UserGroup.get_group_list(event)
+        event_choice_list = Choice.get_choice_list(event)
         for question in question_list:
             for event_user in event_user_list:
                 nb_user_votes = 1
                 proxy_list, user_proxy, user_proxy_list = Procuration.get_proxy_status(
                     event.slug, event_user
                 )
+
                 if user_proxy:
                     nb_user_votes = 0
                 elif user_proxy_list:
                     nb_user_votes += len(user_proxy_list)
-                cls.objects.create(
-                    event=event, user=event_user, question=question, nb_user_votes=nb_user_votes
-                )
+
+                cls.set_vote(event, event_user, question, nb_user_votes=nb_user_votes)
+
             for event_choice in event_choice_list:
                 for usr_group in user_group_list:
                     Result.objects.create(
@@ -581,19 +612,6 @@ class UserVote(models.Model):
                         question=question,
                         group_weight=usr_group.weight,
                     )
-
-    @classmethod
-    def set_vote(cls, event_slug, user, question_no, choice_id):
-        """ Update info while user's voting """
-        user_vote = cls.get_user_vote(event_slug, user, question_no)
-        user_vote.nb_user_votes, user_vote.has_voted, user_vote.date_vote = (
-            user_vote.nb_user_votes - 1,
-            True,
-            timezone.now(),
-        )
-        user_vote.save()
-        Result.add_vote(user, event_slug, question_no, choice_id)
-        return user_vote
 
 
 class Result(models.Model):
@@ -625,24 +643,25 @@ class Result(models.Model):
         verbose_name_plural = "Résultats des votes"
 
     @classmethod
-    def add_vote(cls, user, event_slug, question_no, choice_id):
-        res = cls.objects.get(
-            event__slug=event_slug,
-            usergroup__users=user,
-            usergroup__event__slug=event_slug,
-            question__question_no=question_no,
-            choice__id=choice_id,
-        )
-        res.votes += 1
-        res.save()
+    def add_vote(cls, user, event, question, choices):
+        for choice in choices:
+            res = cls.objects.get(
+                event=event,
+                usergroup__users=user,
+                usergroup__event=event,
+                question=question,
+                choice=choice,
+            )
+            res.votes += 1
+            res.save()
 
     @classmethod
-    def get_vote_list(cls, event, evt_group, question_no):
+    def get_vote_list(cls, event, evt_group, question):
         return cls.objects.filter(
             event=event,
             usergroup=evt_group,
             usergroup__event=event,
-            question__question_no=question_no,
+            question=question,
         ).order_by("choice__choice_no")
 
 
@@ -675,14 +694,14 @@ class Procuration(models.Model):
         verbose_name = "Procuration"
 
     @classmethod
-    def get_proxy_status(cls, event_slug, user):
+    def get_proxy_status(cls, event, user):
         user_proxy_list = []
         proxy_list = []
         user_proxy = None
-        if len(cls.objects.filter(proxy=user, event__slug=event_slug)) > 0:
+        if len(cls.objects.filter(proxy=user, event=event)) > 0:
             # Case user is proxyholder => get proxy list
             user_proxy_list = cls.objects.filter(
-                proxy=user, event__slug=event_slug
+                proxy=user, event=event
             ).order_by("usercomp__user__last_name")
         elif len(cls.objects.filter(user=user)) > 0:
             # Case user has given proxy => get proxyholder
@@ -720,12 +739,12 @@ class Procuration(models.Model):
             proc.save()
 
     @classmethod
-    def cancel_proxy(cls, event_slug, user, *args):
+    def cancel_proxy(cls, event, user, *args):
         if len(args) == 1:
             # Case a proxyholder refuse a proxy request
             cls.objects.filter(
-                event__slug=event_slug, user__id=user, proxy=args[0]
+                event=event, user__id=user, proxy=args[0]
             ).delete()
         else:
             # Case a user cancels his proxy's request
-            cls.objects.filter(event__slug=event_slug, user=user).delete()
+            cls.objects.filter(event=event, user=user).delete()

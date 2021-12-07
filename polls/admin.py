@@ -83,10 +83,11 @@ class QuestionInLine(admin.TabularInline):
 
 
 class EventAdmin(admin.ModelAdmin):
-    prepopulated_fields = {"slug": ("event_name", "event_date")}
+    prepopulated_fields = {"slug": ("event_name", "event_start_date")}
     fields = [
         "event_name",
-        "event_date",
+        "event_start_date",
+        "event_end_date",
         "slug",
         "company",
         "groups",
@@ -94,8 +95,8 @@ class EventAdmin(admin.ModelAdmin):
         "rule",
         "current",
     ]
-    list_display = ("event_name", "event_date", "company", "quorum", "rule", "current")
-    ordering = ("event_date", "event_name")
+    list_display = ("event_name", "event_start_date", "event_end_date", "company", "quorum", "rule", "current")
+    ordering = ("event_start_date", "event_name")
     filter_horizontal = ("groups",)
     inlines = [QuestionInLine, ChoiceInLine]
 
@@ -171,7 +172,7 @@ class EventAdmin(admin.ModelAdmin):
             nb_questions = len(question_list)
 
             user_can_vote = False
-            if UserGroup.user_in_event(event.slug, request.user):
+            if UserGroup.user_in_event(event, request.user):
                 user_can_vote = True
 
     reinit_event00 = "Réinitialiser l'événement"

@@ -8,7 +8,7 @@
         <div class="row">
             <div class="col-sm-12">
                 <!-- Display event's name on page's width -->
-                <h1 class="text-center">{{ event.event_name }} - {{ event.event_date|date:"d/m/Y" }}</h1>
+                <h1 class="text-center">{{ event.event_name }} - {{ event.event_start_date|date:"d/m/Y" }}</h1>
             {% if not user.is_staff %}
             </div>
             <div class="col-md-7">

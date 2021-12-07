@@ -46,9 +46,9 @@ $(document).ready(function() {
                 }
             });
         }
-    }
+    };
 
-    else if ($('#admin-polls').length > 0) {
+    if ($('#admin-polls').length > 0) {
         // Admin page : show admin events options
         switch(parseInt($("#menu_id").val())) {
             case 1:
@@ -71,13 +71,13 @@ $(document).ready(function() {
             $('#display_msg').modal('show');
         }
 
-    }
+    };
 
-    else if ($('select').length > 0) {
+    if ($('select').length > 0) {
         // Unselect any choice within a "select multiple" box
         $('select').removeAttr('required');
         $('select option').removeAttr('selected');
-    }
+    };
 
     if ($('#admin-options').length > 0) {
         // For admin options, enable or disable options according to displayed values
@@ -347,7 +347,7 @@ $(document).ready(function() {
 
 
     // =====================================
-    //      PROXY BUTTONS MANAGEMENT
+    //      PROXY BUTTONS
     // =====================================
 
     // User gives proxy
@@ -533,7 +533,7 @@ $(document).ready(function() {
         $('#id_users').find('option').removeAttr('selected');
         $('#id_all_users option').each(function() {
             add_option('#id_all_users', '#id_users', $(this));
-            $('#id_group_list').val($('#id_group_list').val() + "-" + String($(this).val()))
+            $('#id_users_in_group').val($('#id_users_in_group').val() + "-" + String($(this).val()))
         })
     })
 
@@ -546,7 +546,7 @@ $(document).ready(function() {
         $('#id_all_users option').each(function() {
             if ( values.includes( $(this).val() ) ) {
                 add_option('#id_all_users', '#id_users', $(this));
-                $('#id_group_list').val($('#id_group_list').val() + "-" + String($(this).val()))
+                $('#id_users_in_group').val($('#id_users_in_group').val() + "-" + String($(this).val()))
             }
         })
     })
@@ -556,7 +556,7 @@ $(document).ready(function() {
         e.preventDefault();
         $('#id_users').find('option').removeAttr('selected');
         add_option('#id_all_users', '#id_users', $(this));
-        $('#id_group_list').val($('#id_group_list').val() + "-" + String($(this).val()))
+        $('#id_users_in_group').val($('#id_users_in_group').val() + "-" + String($(this).val()))
     })
 
     // Remove all (empty list, back to global list)
@@ -565,7 +565,7 @@ $(document).ready(function() {
         $('#id_all_users').find('option').removeAttr('selected');
         $('#id_users option').each(function() {
             add_option('#id_users', '#id_all_users', $(this));
-            $('#id_group_list').val($('#id_group_list').val().replace(String($(this).val()), ""))
+            $('#id_users_in_group').val($('#id_users_in_group').val().replace(String($(this).val()), ""))
         })
     })
 
@@ -578,7 +578,7 @@ $(document).ready(function() {
         $('#id_users option').each(function() {
             if ( values.includes( $(this).val() ) ) {
                 add_option('#id_users', '#id_all_users', $(this));
-                $('#id_group_list').val($('#id_group_list').val().replace(String($(this).val()), ""))
+                $('#id_users_in_group').val($('#id_users_in_group').val().replace(String($(this).val()), ""))
             }
         })
     })
@@ -588,7 +588,7 @@ $(document).ready(function() {
         e.preventDefault();
         $('#id_all_users').find('option').removeAttr('selected');
         add_option('#id_users', '#id_all_users', $(this));
-        $('#id_group_list').val($('#id_group_list').val().replace(String($(this).val()), ""))
+        $('#id_users_in_group').val($('#id_users_in_group').val().replace(String($(this).val()), ""))
     })
 
 

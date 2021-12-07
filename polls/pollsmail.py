@@ -138,7 +138,7 @@ class PollsMail:
                     user.user.first_name,
                     user.user.last_name,
                     self.event.event_name,
-                    str(self.event.event_date),
+                    str(self.event.event_start_date),
                 )
 
                 self.msg = EmailMessage(
@@ -163,7 +163,7 @@ class PollsMail:
         self.message = ask_proxy.format(
             self.proxy.user.first_name,
             self.event.event_name,
-            str(self.event.event_date),
+            str(self.event.event_start_date),
             self.user.user.first_name,
             self.user.user.last_name,
         )

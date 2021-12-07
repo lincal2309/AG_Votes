@@ -12,6 +12,8 @@ from .tools_tests import (
     create_dummy_user,
     create_dummy_company,
     create_dummy_event,
+    set_default_context,
+    set_full_context
 )
 
 from .models import (
@@ -48,32 +50,21 @@ class TestModelCompany(TestCase):
 class TestModelEvent(TestCase):
     def test_get_event(self):
         self.company = create_dummy_company("Société de test")
-        event_date = datetime.date(2150, 5, 12)
-        self.event = Event.objects.create(
-            event_name="Evénement de test",
-            event_date=event_date,
-            slug=slugify("Evénement de test" + str(event_date)),
-            company=self.company,
+        event_start_date = datetime.date(2150, 5, 12)
+        self.event = create_dummy_event(
+            self.company,
+            name = "Evénement de test",
+            event_start_date = event_start_date
         )
         my_event = Event.get_event(self.company.comp_slug, "evenement-de-test2150-05-12")
         self.assertEqual(self.event, my_event)
 
     def test_get_next_events(self):
         company = create_dummy_company("Société de test")
+
         passed_date = timezone.now() - datetime.timedelta(days=1)
-        future_date = timezone.now() + datetime.timedelta(days=1)
-        Event.objects.create(
-            event_name="Evénement passé",
-            event_date=passed_date,
-            slug=slugify("Evénement passé" + str(passed_date)),
-            company=company,
-        )
-        Event.objects.create(
-            event_name="Evénement futur",
-            event_date=future_date,
-            slug=slugify("Evénement futur" + str(future_date)),
-            company=company,
-        )
+        Event.create_event(company, "Evénement passé", passed_date)
+        create_dummy_event(company, name = "Evénement futur")
 
         next_events = Event.get_next_events(company)
         self.assertEqual(len(next_events), 1)
@@ -81,12 +72,11 @@ class TestModelEvent(TestCase):
 
     def test_set_current(self):
         self.company = create_dummy_company("Société de test")
-        event_date = datetime.date(2150, 5, 12)
-        self.event = Event.objects.create(
-            event_name="Evénement de test",
-            event_date=event_date,
-            slug=slugify("Evénement de test" + str(event_date)),
-            company=self.company,
+        event_start_date = datetime.date(2150, 5, 12)
+        self.event = Event.create_event(
+            self.company,
+            "Evénement de test",
+            event_start_date,
         )
 
         self.assertEqual(self.event.current, False)
@@ -96,129 +86,43 @@ class TestModelEvent(TestCase):
 
 class TestModelQuestion(TestCase):
     def setUp(self):
-        self.company = create_dummy_company("Société de test")
-        event_date = timezone.now() + datetime.timedelta(days=1)
-        self.event = Event.objects.create(
-            event_name="Evénement de test",
-            event_date=event_date,
-            slug=slugify("Evénement de test" + str(event_date)),
-            company=self.company,
-        )
-        self.question1 = Question.objects.create(
-            question_text="Question 1", question_no=1, event=self.event
-        )
-        self.question2 = Question.objects.create(
-            question_text="Question 2", question_no=2, event=self.event
-        )
-        self.choice1 = Choice.objects.create(
-            event=self.event, choice_text="Choix 1", choice_no=1
-        )
-        self.choice2 = Choice.objects.create(
-            event=self.event, choice_text="Choix 2", choice_no=2
-        )
-        self.group1 = UserGroup.objects.create(group_name="Groupe 1", weight=30)
-        self.group2 = UserGroup.objects.create(group_name="Groupe 2", weight=70)
-        self.event.groups.add(self.group1, self.group2)
-        Result.objects.create(
-            event=self.event,
-            usergroup=self.group1,
-            question=self.question1,
-            choice=self.choice1,
-            votes=3,
-            group_weight=30,
-        )
-        Result.objects.create(
-            event=self.event,
-            usergroup=self.group1,
-            question=self.question1,
-            choice=self.choice2,
-            votes=1,
-            group_weight=30,
-        )
-        Result.objects.create(
-            event=self.event,
-            usergroup=self.group1,
-            question=self.question2,
-            choice=self.choice1,
-            votes=1,
-            group_weight=30,
-        )
-        Result.objects.create(
-            event=self.event,
-            usergroup=self.group1,
-            question=self.question2,
-            choice=self.choice2,
-            votes=3,
-            group_weight=30,
-        )
-        Result.objects.create(
-            event=self.event,
-            usergroup=self.group2,
-            question=self.question1,
-            choice=self.choice1,
-            votes=0,
-            group_weight=70,
-        )
-        Result.objects.create(
-            event=self.event,
-            usergroup=self.group2,
-            question=self.question1,
-            choice=self.choice2,
-            votes=2,
-            group_weight=70,
-        )
-        Result.objects.create(
-            event=self.event,
-            usergroup=self.group2,
-            question=self.question2,
-            choice=self.choice1,
-            votes=0,
-            group_weight=70,
-        )
-        Result.objects.create(
-            event=self.event,
-            usergroup=self.group2,
-            question=self.question2,
-            choice=self.choice2,
-            votes=2,
-            group_weight=70,
-        )
-
-
+        self.test_data = set_full_context()
+ 
     def test_create_question(self):
-        question = Question.create(self.event, 3, "Question 3")
-        self.assertEqual(question.id, 3)
+        question = Question.create_question(self.test_data["event1"], 3, "Question 3")
+        # 3 events created, 2 questions per event => this question is the 7th
+        self.assertEqual(question.id, 7)
 
     def test_get_question_list(self):
-        question_list = Question.get_question_list(self.event)
+        question_list = Question.get_question_list(self.test_data["event1"])
         self.assertEqual(len(question_list), 2)
         self.assertEqual(question_list[0].question_text, "Question 1")
         self.assertEqual(question_list[1].question_text, "Question 2")
 
     def test_get_question(self):
-        my_question = Question.get_question(self.event, 1)
-        self.assertEqual(my_question, self.question1)
+        my_question = Question.get_question(self.test_data["event1"], 1)
+        self.assertEqual(my_question, self.test_data["question_list_1"][0])
 
     def test_get_results_maj(self):
-        group_vote = self.question1.get_results()
+        group_vote = self.test_data["question_list_1"][0].get_results()
         self.assertEqual(group_vote["Choix 1"], 30)
         self.assertEqual(group_vote["Choix 2"], 70)
-        group_vote = self.question2.get_results()
+        group_vote = self.test_data["question_list_1"][1].get_results()
         self.assertEqual(group_vote["Choix 1"], 0)
         self.assertEqual(group_vote["Choix 2"], 100)
 
     def test_get_results_prop(self):
-        Event.objects.filter(id=self.event.id).update(rule="PROP")
-        self.event.refresh_from_db()
-        group_vote = self.question1.get_results()
+        Event.objects.filter(id=self.test_data["event1"].id).update(rule="PROP")
+        self.test_data["event1"].refresh_from_db()
+        group_vote = self.test_data["question_list_1"][0].get_results()
         self.assertEqual(group_vote["Choix 1"], 34.62)
         self.assertEqual(group_vote["Choix 2"], 65.38)
-        group_vote = self.question2.get_results()
+        group_vote = self.test_data["question_list_1"][1].get_results()
         self.assertEqual(group_vote["Choix 1"], 11.54)
         self.assertEqual(group_vote["Choix 2"], 88.46)
 
     def test_get_chart_results(self):
-        data = self.question1.get_chart_results()
+        data = self.test_data["question_list_1"][0].get_chart_results()
         self.assertEqual(data["chart_data"]["labels"], ["Choix 1", "Choix 2"])
         self.assertEqual(data["chart_data"]["values"], [30, 70])
 
@@ -236,7 +140,7 @@ class TestModelUserGroup(TestCase):
 
     def test_create_group(self):
         # Group with no users
-        self.group0 = UserGroup.create_group(self.company, "Groupe sans users", 60)
+        self.group0 = UserGroup.create_group(self.company, "Groupe sans users")
 
         self.assertEqual(self.group0.id, 2)
         g0_users = self.group0.users.all()
@@ -246,7 +150,7 @@ class TestModelUserGroup(TestCase):
         # Group with multiple users
         user_list = [self.usr11.id, self.usr12.id, self.usr13.id, self.usr14.id]
         users = UserComp.objects.filter(id__in=user_list)
-        self.group1 = UserGroup.create_group(self.company, "Groupe 1", 40, user_list=users)
+        self.group1 = UserGroup.create_group(self.company, "Groupe 1", user_list=users)
         
         self.assertEqual(self.group1.id, 3)
         g1_users = self.group1.users.all()
@@ -255,7 +159,7 @@ class TestModelUserGroup(TestCase):
         self.assertIn(self.usr12, g1_users)
 
         # Group with 1 user
-        self.group2 = UserGroup.create_group(self.company, "Groupe 2", 60, user=self.usr11)
+        self.group2 = UserGroup.create_group(self.company, "Groupe 2", user=self.usr11)
 
         self.assertEqual(self.group2.id, 4)
         self.assertEqual(self.group2.nb_users, 1)
@@ -268,148 +172,101 @@ class TestModelUserGroup(TestCase):
 
 
     def test_user_in_event(self):
-        event_date = timezone.now() + datetime.timedelta(days=1)
-        self.event = Event.objects.create(
-            event_name="Evénement de test",
-            event_date=event_date,
-            slug=slugify("Evénement de test" + str(event_date)),
+        self.group1 = UserGroup.create_group(self.company, "Groupe 1", user=self.usr11)
+        self.event = create_dummy_event(
+            self.company,
+            name="Evénement de test",
             current=True,
-            company=self.company,
+            groups=[self.group1],
         )
 
-        # user_list = [self.usr11.id]
-        users = UserComp.objects.filter(id=self.usr11.id)
-        self.group1 = UserGroup.create_group(self.company, "Groupe 1", 40, user=self.usr11)
-
-        self.event.groups.add(self.group1)
-        # self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
-        # self.user_alpha = create_dummy_user(self.company, "alpha")
-
-        user_in_evt = UserGroup.user_in_event(self.event.slug, self.usr11)
+        user_in_evt = UserGroup.user_in_event(self.event, self.usr11)
         self.assertEqual(user_in_evt, True)
-        user_in_evt = UserGroup.user_in_event(self.event.slug, self.usr12)
+        user_in_evt = UserGroup.user_in_event(self.event, self.usr12)
         self.assertEqual(user_in_evt, False)
 
 
 class TestModelUserVote(TestCase):
     def setUp(self):
         self.company = create_dummy_company("Société de test")
-        event_date = timezone.now() + datetime.timedelta(days=1)
-        self.event = Event.objects.create(
-            event_name="Evénement de test",
-            event_date=event_date,
-            slug=slugify("Evénement de test" + str(event_date)),
-            current=True,
-            company=self.company,
-        )
-        self.question1 = Question.objects.create(
-            question_text="Question 1", question_no=1, event=self.event
-        )
-        self.question2 = Question.objects.create(
-            question_text="Question 2", question_no=2, event=self.event
-        )
-        self.group = UserGroup.objects.create(group_name="Groupe 1")
-        self.event.groups.add(self.group)
+
+        self.group = UserGroup.create_group(self.company, "Groupe 1", weight=40)
         self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
         self.user_alpha = create_dummy_user(self.company, "alpha")
-        self.choice1 = Choice.objects.create(
-            event=self.event, choice_text="Choix 1", choice_no=1
-        )
-        self.choice2 = Choice.objects.create(
-            event=self.event, choice_text="Choix 2", choice_no=2
+
+        self.event = create_dummy_event(
+            self.company,
+            name="Evénement de test",
+            current=True,
+            groups=[self.group],
         )
 
+        self.question_list = Question.get_question_list(self.event)
+        self.choice_list = Choice.get_choice_list(self.event)
+
+    def test_set_vote(self):
+        UserVote.set_vote(self.event, self.user_lambda, self.question_list[0])
+
+        Result.objects.create(
+            event=self.event,
+            usergroup=self.group, question=self.question_list[0], choice=self.choice_list[0]
+        )
+        user_vote = UserVote.set_vote(self.event, self.user_lambda, self.question_list[0], choices=[self.choice_list[0]])
+        self.assertEqual(user_vote.has_voted, True)
+        self.assertEqual(user_vote.nb_user_votes, 0)
+
     def test_get_user_vote(self):
-        UserVote.objects.create(
-            event=self.event,
-            user=self.user_lambda,
-            question=self.question1,
-            has_voted=False,
-            nb_user_votes=1,
-        )
-        UserVote.objects.create(
-            event=self.event,
-            user=self.user_alpha,
-            question=self.question1,
-            has_voted=True,
-            nb_user_votes=0,
-        )
-        user_vote = UserVote.get_user_vote(self.event.slug, self.user_lambda, 1)
+        UserVote.set_vote(self.event, self.user_lambda, self.question_list[0])
+        UserVote.set_vote(self.event, self.user_alpha, self.question_list[0], has_voted=True, nb_user_votes=0)
+
+        user_vote = UserVote.get_user_vote(self.event, self.user_lambda, 1)
         self.assertEqual(user_vote.has_voted, False)
-        user_vote = UserVote.get_user_vote(self.event.slug, self.user_alpha, 1)
+        user_vote = UserVote.get_user_vote(self.event, self.user_alpha, 1)
         self.assertEqual(user_vote.has_voted, True)
 
     def test_init_uservotes(self):
         UserVote.init_uservotes(self.event)
-        new_user_list = UserVote.objects.filter(question__event__slug=self.event.slug)
+        new_user_list = UserVote.objects.filter(question__event=self.event)
         self.assertEqual(len(new_user_list), 2)
         self.assertEqual(new_user_list[0].user.user.username, "lambda")
         self.assertEqual(new_user_list[0].question.question_text, "Question 1")
         self.assertEqual(new_user_list[1].question.question_text, "Question 2")
 
-    def test_set_vote(self):
-        UserVote.objects.create(
-            event=self.event,
-            user=self.user_lambda,
-            question=self.question1,
-            has_voted=False,
-            nb_user_votes=1,
-        )
-        Result.objects.create(
-            event=self.event,
-            usergroup=self.group, question=self.question1, choice=self.choice1
-        )
-        user_vote = UserVote.set_vote(self.event.slug, self.user_lambda, 1, 1)
-        self.assertEqual(user_vote.has_voted, True)
-        self.assertEqual(user_vote.nb_user_votes, 0)
-
 
 class TestModelResult(TestCase):
     def setUp(self):
-        self.company = create_dummy_company("Société de test")
-        event_date = timezone.now() + datetime.timedelta(days=1)
-        self.event = Event.objects.create(
-            event_name="Evénement de test",
-            event_date=event_date,
-            slug=slugify("Evénement de test" + str(event_date)),
-            current=True,
-            company=self.company,
-        )
-        self.question1 = Question.objects.create(
-            question_text="Question 1", question_no=1, event=self.event
-        )
-        self.question2 = Question.objects.create(
-            question_text="Question 2", question_no=2, event=self.event
-        )
-        self.group = UserGroup.objects.create(group_name="Groupe 1")
-        self.event.groups.add(self.group)
-        self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
-        self.user_alpha = create_dummy_user(self.company, "alpha")
-        self.choice1 = Choice.objects.create(
-            event=self.event, choice_text="Choix 1", choice_no=1
-        )
-        self.choice2 = Choice.objects.create(
-            event=self.event, choice_text="Choix 2", choice_no=2
-        )
+        self.test_data = set_default_context()
+
         self.r1 = Result.objects.create(
-            event=self.event,
-            usergroup=self.group, question=self.question1, choice=self.choice1
+            event=self.test_data["event1"],
+            usergroup=self.test_data["group1"],
+            question=self.test_data["question_list_1"][0],
+            choice=self.test_data["choice_list_1"][0]
         )
         self.r2 = Result.objects.create(
-            event=self.event,
-            usergroup=self.group, question=self.question1, choice=self.choice2
+            event=self.test_data["event1"],
+            usergroup=self.test_data["group1"],
+            question=self.test_data["question_list_1"][0],
+            choice=self.test_data["choice_list_1"][1]
         )
         self.r3 = Result.objects.create(
-            event=self.event,
-            usergroup=self.group, question=self.question2, choice=self.choice1
+            event=self.test_data["event1"],
+            usergroup=self.test_data["group1"],
+            question=self.test_data["question_list_1"][1],
+            choice=self.test_data["choice_list_1"][0]
         )
         self.r4 = Result.objects.create(
-            event=self.event,
-            usergroup=self.group, question=self.question2, choice=self.choice2
+            event=self.test_data["event1"],
+            usergroup=self.test_data["group1"],
+            question=self.test_data["question_list_1"][1],
+            choice=self.test_data["choice_list_1"][1]
         )
 
     def test_add_vote(self):
-        Result.add_vote(self.user_lambda, self.event.slug, 1, 1)
+        Result.add_vote(self.test_data["usr11"],
+            self.test_data["event1"],
+            self.test_data["question_list_1"][0],
+            [self.test_data["choice_list_1"][0]])
         self.r1.refresh_from_db()
         self.r2.refresh_from_db()
         self.r3.refresh_from_db()
@@ -419,7 +276,10 @@ class TestModelResult(TestCase):
         self.assertEqual(self.r3.votes, 0)
 
     def test_get_vote_list(self):
-        vote_list = Result.get_vote_list(self.event, self.group, 1)
+        vote_list = Result.get_vote_list(
+            self.test_data["event1"],
+            self.test_data["group1"],
+            self.test_data["question_list_1"][0])
         self.assertQuerysetEqual(
             vote_list,
             [
@@ -431,50 +291,51 @@ class TestModelResult(TestCase):
 
 class TestModelProcuration(TestCase):
     def setUp(self):
-        self.company = create_dummy_company("Société de test")
-        event_date = timezone.now() + datetime.timedelta(days=1)
-        self.event = Event.objects.create(
-            event_name="Evénement de test",
-            event_date=event_date,
-            slug=slugify("Evénement de test" + str(event_date)),
-            company=self.company,
-        )
-        self.group1 = UserGroup.objects.create(group_name="Groupe 1", weight=30)
-        self.group2 = UserGroup.objects.create(group_name="Groupe 2", weight=70)
-        self.event.groups.add(self.group1, self.group2)
-        self.usr11 = create_dummy_user(self.company, "user11", self.group1)
-        self.usr12 = create_dummy_user(self.company, "user12", self.group1)
-        self.usr13 = create_dummy_user(self.company, "user13", self.group1)
-        self.usr14 = create_dummy_user(self.company, "user14", self.group1)
-        self.usr21 = create_dummy_user(self.company, "user21", self.group2)
-        self.usr22 = create_dummy_user(self.company, "user22", self.group2)
+        self.test_data = set_default_context()
+
+        # self.company = create_dummy_company("Société de test")
+        # # event_start_date = timezone.now() + datetime.timedelta(days=1)
+        # self.event = create_dummy_event(
+        #     self.company,
+        #     name="Evénement de test",
+        # )
+        # self.group1 = UserGroup.objects.create(group_name="Groupe 1", weight=30)
+        # self.group2 = UserGroup.objects.create(group_name="Groupe 2", weight=70)
+        # self.event.groups.add(self.group1, self.group2)
+        # self.usr11 = create_dummy_user(self.company, "user11", self.group1)
+        # self.usr12 = create_dummy_user(self.company, "user12", self.group1)
+        # self.usr13 = create_dummy_user(self.company, "user13", self.group1)
+        # self.usr14 = create_dummy_user(self.company, "user14", self.group1)
+        # self.usr21 = create_dummy_user(self.company, "user21", self.group2)
+        # self.usr22 = create_dummy_user(self.company, "user22", self.group2)
 
     def test_get_proxy_status_no_proxy(self):
         proxy_list, user_proxy, user_proxy_list = Procuration.get_proxy_status(
-            self.event.slug, self.usr11
+            self.test_data["event1"], self.test_data["usr11"]
         )
+        print(proxy_list)
         self.assertEqual(len(proxy_list), 3)
         self.assertEqual(user_proxy, None)
         self.assertEqual(len(user_proxy_list), 0)
 
     def test_set_user_proxy(self):
-        Procuration.set_user_proxy(self.event, self.usr11, self.usr13)
-        proc = Procuration.objects.get(event=self.event, user=self.usr11)
-        self.assertEqual(proc.user, self.usr11)
-        self.assertEqual(proc.proxy, self.usr13)
+        Procuration.set_user_proxy(self.test_data["event1"], self.test_data["usr11"], self.test_data["usr13"])
+        proc = Procuration.objects.get(event=self.test_data["event1"], user=self.test_data["usr11"])
+        self.assertEqual(proc.user, self.test_data["usr11"])
+        self.assertEqual(proc.proxy, self.test_data["usr13"])
 
     def test_confirm_proxy(self):
-        Procuration.set_user_proxy(self.event, self.usr11, self.usr13)
-        proc = Procuration.objects.get(event=self.event, user=self.usr11)
+        Procuration.set_user_proxy(self.test_data["event1"], self.test_data["usr11"], self.test_data["usr13"])
+        proc = Procuration.objects.get(event=self.test_data["event1"], user=self.test_data["usr11"])
         self.assertEqual(proc.proxy_confirmed, False)
-        Procuration.confirm_proxy(self.event, self.usr13, self.usr11.id)
+        Procuration.confirm_proxy(self.test_data["event1"], self.test_data["usr13"], self.test_data["usr11"].id)
         proc.refresh_from_db()
         self.assertEqual(proc.proxy_confirmed, True)
 
     def test_refuse_proxy(self):
-        Procuration.set_user_proxy(self.event, self.usr11, self.usr13)
-        proxy_list = Procuration.objects.filter(event=self.event)
+        Procuration.set_user_proxy(self.test_data["event1"], self.test_data["usr11"], self.test_data["usr13"])
+        proxy_list = Procuration.objects.filter(event=self.test_data["event1"])
         self.assertEqual(len(proxy_list), 1)
-        Procuration.cancel_proxy(self.event.slug, self.usr11)
-        proxy_list = Procuration.objects.filter(event=self.event)
+        Procuration.cancel_proxy(self.test_data["event1"], self.test_data["usr11"])
+        proxy_list = Procuration.objects.filter(event=self.test_data["event1"])
         self.assertEqual(len(proxy_list), 0)

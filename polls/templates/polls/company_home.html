@@ -11,7 +11,7 @@
                 <p></p>
                 {% for event in next_event_list %}
                     <h3><a href="{% url 'polls:event' company.comp_slug event.slug %}"> {{ event.event_name }} </a></h2>
-                    <p>Prévu le : {{ event.event_date|date:"d/m/Y" }}<p>
+                    <p>Prévu le : {{ event.event_start_date|date:"d/m/Y" }}<p>
                 {% empty %}
                     <h2 class="h2_perso">Aucun événement prévu</h2>
                 {% endfor %}

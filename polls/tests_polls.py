@@ -19,6 +19,7 @@ from .tools_tests import (
     create_dummy_user,
     create_dummy_company,
     create_dummy_event,
+    set_default_context
 )
 
 from .models import (
@@ -86,19 +87,8 @@ class TestIndex(TestCase):
         cls.company = create_dummy_company("Société de test")
         cls.company2 = create_dummy_company("Une autre société de test")
         passed_date = timezone.now() - datetime.timedelta(days=1)
-        future_date = timezone.now() + datetime.timedelta(days=1)
-        Event.objects.create(
-            event_name="Evénement passé",
-            event_date=passed_date,
-            slug=slugify("Evénement passé" + str(passed_date)),
-            company=cls.company,
-        )
-        Event.objects.create(
-            event_name="Evénement futur",
-            event_date=future_date,
-            slug=slugify("Evénement futur" + str(future_date)),
-            company=cls.company,
-        )
+        create_dummy_event(cls.company, name="Evénement passé", event_start_date=passed_date)
+        create_dummy_event(cls.company, name="Evénement futur")
 
     def test_display_home_no_login_user(self):
         # Displays dedicated home page
@@ -141,19 +131,8 @@ class TestEvent(TestCase):
         self.company = create_dummy_company("Société de test")
         self.user_staff = create_dummy_user(self.company, "staff", admin=True)
         self.user_lambda = create_dummy_user(self.company, "lambda")
-        event_date = timezone.now() + datetime.timedelta(days=1)
-        self.event = Event.objects.create(
-            event_name="Evénement de test",
-            event_date=event_date,
-            slug=slugify("Evénement de test" + str(event_date)),
-            company=self.company,
-        )
-        self.question1 = Question.objects.create(
-            question_text="Question 1", question_no=1, event=self.event
-        )
-        self.question2 = Question.objects.create(
-            question_text="Question 2", question_no=2, event=self.event
-        )
+        self.event = create_dummy_event(self.company, name="Evénement futur")
+        self.group_list = UserGroup.get_group_list(self.event)
 
     def test_user_staff_event_not_started(self):
         self.client.force_login(self.user_staff.user)
@@ -176,9 +155,7 @@ class TestEvent(TestCase):
         self.assertContains(response, "Accéder à l'événement")
 
     def test_user_lambda_event_not_started(self):
-        self.group = UserGroup.objects.create(group_name="Groupe 1", weight=70)
-        self.event.groups.add(self.group)
-        self.group.users.add(self.user_lambda)
+        self.group_list[0].users.add(self.user_lambda)
         self.client.force_login(self.user_lambda.user)
         url = reverse("polls:event", args=(self.company.comp_slug, self.event.slug))
         response = self.client.get(url)
@@ -189,9 +166,7 @@ class TestEvent(TestCase):
         self.assertNotContains(response, "Accéder à l'événement")
 
     def test_user_lambda_event_started(self):
-        self.group = UserGroup.objects.create(group_name="Groupe 1", weight=70)
-        self.event.groups.add(self.group)
-        self.group.users.add(self.user_lambda)
+        self.group_list[0].users.add(self.user_lambda)
         self.client.force_login(self.user_lambda.user)
         self.event.current = True
         self.event.save()
@@ -218,41 +193,25 @@ class TestEvent(TestCase):
 
 class TestQuestion(TestCase):
     def setUp(self):
-        self.company = create_dummy_company("Société de test")
-        event_date = timezone.now() + datetime.timedelta(days=1)
-        self.event = Event.objects.create(
-            event_name="Evénement de test",
-            event_date=event_date,
-            slug=slugify("Evénement de test" + str(event_date)),
-            company=self.company,
-        )
-        self.group = UserGroup.objects.create(group_name="Groupe 1", weight=70)
-        self.event.groups.add(self.group)
-        self.user_staff = create_dummy_user(self.company, "staff", group=self.group, admin=True)
-        self.user_lambda = create_dummy_user(self.company, "lambda", group=self.group)
-        self.question1 = Question.objects.create(
-            question_text="Question 1", question_no=1, event=self.event
-        )
-        self.question2 = Question.objects.create(
-            question_text="Question 2", question_no=2, event=self.event
-        )
+        self.test_data = set_default_context()
 
     def test_launch_event_total_weight_not_100(self):
         # Launching event not possible until total groups' weight == 100
-        self.client.force_login(self.user_staff.user)
-        url = reverse("polls:question", args=(self.company.comp_slug, self.event.slug, 1))
+        self.client.force_login(self.test_data["user_staff"].user)
+        url = reverse("polls:question",
+            args=(self.test_data["company"].comp_slug, self.test_data["event1"].slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 302)
 
     def test_launch_event(self):
         # Add a group to have a total weight of 100
-        group2 = UserGroup.objects.create(group_name="Groupe 2", weight=30)
-        self.event.groups.add(group2)
-        self.client.force_login(self.user_staff.user)
-        url = reverse("polls:question", args=(self.company.comp_slug, self.event.slug, 1))
+        # group2 = UserGroup.objects.create(group_name="Groupe 2", weight=30)
+        # self.event.groups.add(group2)
+        self.client.force_login(self.test_data["user_staff"].user)
+        url = reverse("polls:question", args=(self.test_data["company"].comp_slug, self.test_data["event1"].slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        my_event = get_object_or_404(Event, id=self.event.id)
+        my_event = get_object_or_404(Event, id=self.test_data["event1"].id)
         self.assertEqual(my_event.current, True)
         user_list = get_list_or_404(UserVote)
         self.assertEqual(len(user_list), 4)
@@ -262,17 +221,15 @@ class TestQuestion(TestCase):
         self.assertContains(response, "Résolution suivante")
 
     def test_user_display_first_question(self):
-        UserVote.objects.create(
-            event=self.event,
-            user=self.user_lambda,
-            question=self.question1,
-            has_voted=False,
-            nb_user_votes=1,
+        UserVote.set_vote(
+            self.test_data["event1"],
+            self.test_data["usr11"],
+            self.test_data["question_list_1"][0],
         )
-        self.event.current = True
-        self.event.save()
-        self.client.force_login(self.user_lambda.user)
-        url = reverse("polls:question", args=(self.company.comp_slug, self.event.slug, 1))
+        self.test_data["event1"].current = True
+        self.test_data["event1"].save()
+        self.client.force_login(self.test_data["usr11"].user)
+        url = reverse("polls:question", args=(self.test_data["company"].comp_slug, self.test_data["event1"].slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["question_no"], 1)
@@ -283,17 +240,17 @@ class TestQuestion(TestCase):
         self.assertContains(response, "Résolution suivante")
 
     def test_user_display_question_user_has_voted(self):
-        UserVote.objects.create(
-            event=self.event,
-            user=self.user_lambda,
-            question=self.question1,
+        UserVote.set_vote(
+            self.test_data["event1"],
+            self.test_data["usr11"],
+            self.test_data["question_list_1"][0],
             has_voted=True,
             nb_user_votes=0,
         )
-        self.event.current = True
-        self.event.save()
-        self.client.force_login(self.user_lambda.user)
-        url = reverse("polls:question", args=(self.company.comp_slug, self.event.slug, 1))
+        self.test_data["event1"].current = True
+        self.test_data["event1"].save()
+        self.client.force_login(self.test_data["usr11"].user)
+        url = reverse("polls:question", args=(self.test_data["company"].comp_slug, self.test_data["event1"].slug, 1))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["question_no"], 1)
@@ -302,17 +259,15 @@ class TestQuestion(TestCase):
         self.assertEqual(response.context["user_vote"].has_voted, True)
 
     def test_user_display_last_question(self):
-        UserVote.objects.create(
-            event=self.event,
-            user=self.user_lambda,
-            question=self.question2,
-            has_voted=False,
-            nb_user_votes=1,
+        UserVote.set_vote(
+            self.test_data["event1"],
+            self.test_data["usr11"],
+            self.test_data["question_list_1"][1],
         )
-        self.event.current = True
-        self.event.save()
-        self.client.force_login(self.user_lambda.user)
-        url = reverse("polls:question", args=(self.company.comp_slug, self.event.slug, 2))
+        self.test_data["event1"].current = True
+        self.test_data["event1"].save()
+        self.client.force_login(self.test_data["usr11"].user)
+        url = reverse("polls:question", args=(self.test_data["company"].comp_slug, self.test_data["event1"].slug, 2))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["question_no"], 2)

@@ -65,7 +65,7 @@ class EventDetail(forms.ModelForm):
 
     class Meta:
         model = Event
-        fields = ['event_name', 'event_date', 'quorum', 'rule']
+        fields = ['event_name', 'event_start_date', "event_end_date", 'quorum', 'rule']
 
 
 # Group management
