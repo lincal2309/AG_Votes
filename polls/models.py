@@ -522,7 +522,7 @@ class UserVote(models.Model):
     def __str__(self):
         return (
             "Vote de "
-            + self.user.username
+            + self.user.user.username
             + " pour la question n° "
             + str(self.question.question_no)
         )
@@ -593,7 +593,7 @@ class UserVote(models.Model):
             for event_user in event_user_list:
                 nb_user_votes = 1
                 proxy_list, user_proxy, user_proxy_list = Procuration.get_proxy_status(
-                    event.slug, event_user
+                    event, event_user
                 )
 
                 if user_proxy:
@@ -710,15 +710,16 @@ class Procuration(models.Model):
         else:
             # Case user has no proxy and is not proxyholder
             # => get list of users that could receive his proxy
-            # Get list of users from the same group, except the user himself
-            # and those who already gave proxy
+            # Get list of users from the same group (that is linked to the event),
+            # except the user himself and those who already gave proxy
             # As values are restricted to user_id, we need to transform them
             # into a list usable in the next request
             id_list = [
                 int(proxy["user__id"]) for proxy in cls.objects.all().values("user__id")
             ]
+            user_group = UserGroup.objects.get(event=event, users=user)
             proxy_list = (
-                UserComp.objects.filter(usergroup__users=user)
+                UserComp.objects.filter(usergroup=user_group)
                 .exclude(id=user.id)
                 .exclude(id__in=id_list)
                 .order_by("user__last_name")

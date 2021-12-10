@@ -293,28 +293,12 @@ class TestModelProcuration(TestCase):
     def setUp(self):
         self.test_data = set_default_context()
 
-        # self.company = create_dummy_company("Société de test")
-        # # event_start_date = timezone.now() + datetime.timedelta(days=1)
-        # self.event = create_dummy_event(
-        #     self.company,
-        #     name="Evénement de test",
-        # )
-        # self.group1 = UserGroup.objects.create(group_name="Groupe 1", weight=30)
-        # self.group2 = UserGroup.objects.create(group_name="Groupe 2", weight=70)
-        # self.event.groups.add(self.group1, self.group2)
-        # self.usr11 = create_dummy_user(self.company, "user11", self.group1)
-        # self.usr12 = create_dummy_user(self.company, "user12", self.group1)
-        # self.usr13 = create_dummy_user(self.company, "user13", self.group1)
-        # self.usr14 = create_dummy_user(self.company, "user14", self.group1)
-        # self.usr21 = create_dummy_user(self.company, "user21", self.group2)
-        # self.usr22 = create_dummy_user(self.company, "user22", self.group2)
-
     def test_get_proxy_status_no_proxy(self):
         proxy_list, user_proxy, user_proxy_list = Procuration.get_proxy_status(
             self.test_data["event1"], self.test_data["usr11"]
         )
-        print(proxy_list)
         self.assertEqual(len(proxy_list), 3)
+        self.assertEqual(proxy_list[1], self.test_data["usr13"])
         self.assertEqual(user_proxy, None)
         self.assertEqual(len(user_proxy_list), 0)
 

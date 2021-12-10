@@ -12,6 +12,8 @@ If you would like to propose an update, please contact me.
 - enhance display (colors, blocks, alignments, etc.)
 - Add legal mentions - RGPD compliance (+ certifications)
 - Closed event should not be modified anymore
+- check that the whole list of users, from each group linked to a single event, is unique
+  (i.e. a user can be in only one group for a single event)
 
 - Date field: ad date picker
 - Implement rules to use or not groups (property at company level already defined)

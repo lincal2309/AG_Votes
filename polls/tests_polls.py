@@ -198,6 +198,8 @@ class TestQuestion(TestCase):
     def test_launch_event_total_weight_not_100(self):
         # Launching event not possible until total groups' weight == 100
         self.client.force_login(self.test_data["user_staff"].user)
+        self.test_data["group1"].weight = 10
+        self.test_data["group1"].save()
         url = reverse("polls:question",
             args=(self.test_data["company"].comp_slug, self.test_data["event1"].slug, 1))
         response = self.client.get(url)
@@ -214,7 +216,7 @@ class TestQuestion(TestCase):
         my_event = get_object_or_404(Event, id=self.test_data["event1"].id)
         self.assertEqual(my_event.current, True)
         user_list = get_list_or_404(UserVote)
-        self.assertEqual(len(user_list), 4)
+        self.assertEqual(len(user_list), 12)
         self.assertEqual(response.context["question_no"], 1)
         self.assertEqual(response.context["event"].current, True)
         self.assertContains(response, "Question 1")

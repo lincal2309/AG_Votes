@@ -172,7 +172,9 @@ def event(request, comp_slug, event_slug):
 
     # Check if connected user is part of the event and is authorized to vote
     user_can_vote = False
-    if UserGroup.user_in_event(event, request.user.usercomp):
+    if request.user.usercomp.is_admin: user_can_vote = True
+
+    if UserGroup.user_in_event(event, request.user.usercomp): 
         user_can_vote = True
 
         # Get user's proxy status
@@ -197,21 +199,17 @@ def question(request, comp_slug, event_slug, question_no):
     last_question = False
 
     # Start event - occur when staff only used "Launch event" button
-    if request.user.is_staff and not event.current:
+    total_grp_weights = UserGroup.objects.filter(event=event).aggregate(Sum("weight"))["weight__sum"]
+    if request.user.usercomp.is_admin and not event.current:
         # Event can be launched only if total groups' weight == 100
-        if (
-            UserGroup.objects.filter(event=event).aggregate(Sum("weight"))[
-                "weight__sum"
-            ]
-            != 100
-        ):
+        if total_grp_weights != 100:
             return redirect("polls:event", comp_slug=comp_slug, event_slug=event_slug)
         else:
             # Initialize users vote & results table
             init_event(event)
 
     # Gather user's info about the current question
-    if not request.user.is_staff:
+    if not request.user.usercomp.is_admin:
         user_vote = UserVote.get_user_vote(event, request.user.usercomp, question_no)
 
     # Check if current question is the last one
@@ -710,15 +708,6 @@ def adm_event_detail(request, comp_slug, evt_id=0):
         if any([event_form.is_valid(), question_set.is_valid(), choice_set.is_valid()]):
             if evt_id == 0:
                 # Create new event
-                # event_data = {
-                #     "company": company,
-                #     "groups": event_form.cleaned_data["groups"],
-                #     "event_name": event_form.cleaned_data["event_name"],
-                #     "event_start_date": event_form.cleaned_data["event_start_date"],
-                #     "event_end_date": event_form.cleaned_data["event_end_date"],
-                #     "quorum": event_form.cleaned_data["quorum"],
-                #     "rule":event_form.cleaned_data["rule"]
-                # }
                 new_event = Event.create_event(
                     company,
                     event_form.cleaned_data["event_name"],

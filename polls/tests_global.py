@@ -157,8 +157,7 @@ class TestPollsMail(TestCase):
             dummy_file.write("Liste des résolutions")
 
         PollsMail("invite", self.test_data["event1"], attach="pdf/test_file.pdf")
-        print(mail.outbox)
-        self.assertEqual(len(mail.outbox), 5)
+        self.assertEqual(len(mail.outbox), 6)
         self.assertEqual(mail.outbox[0].subject, "Invitation et ordre du jour")
 
 
@@ -198,6 +197,8 @@ class TestAdminActions(TestCase):
         self.assertEqual(len(mail.outbox), 0)
 
     def test_invite_users(self):
+        # Remove a user from group to test he will not be included
+        self.test_data["group1"].users.remove(self.test_data["usr14"])
 
         data = {"action": "invite_users", "_selected_action": [self.test_data["event1"].id]}
         url = reverse("admin:polls_event_changelist")
