@@ -1,0 +1,149 @@
+{% extends './base.html' %}
+
+{% load static %}
+
+{% block extra_js%}
+    <script src="http://malsup.github.com/jquery.form.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    {% include "./adm_head.html" %}
+
+    <div class="col-md-9">
+        <!-- Right panel : admin actions
+                1 bloc for each menu item, diplayed or hidden according to user's choice -->
+        <input type="hidden" id="menu_id" value="4" /> <!-- Hidden value to store the current selected menu -->
+
+        <div class="row">
+            <div class="col-sm-12 align-items-center text-center">
+                <h4 id="admin-options" class="mt-5">Préférences générales</h4>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-sm-12">
+                <form action="{% url 'polls:adm_options' comp_slug %}" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <!-- Hidden field where the referer is identified to go back to the related page after validation -->
+                    <input type="hidden" name="url_dest" value="{{ url_dest }}" />
+                    <br>
+                    <div class="row border mt-4">
+                        <div class="col-sm-7">
+                            <h5>Présentation</h5>
+                            <div class="row mt-2">
+                                <div class="col-sm-4">
+                                    <br>
+                                    <p><label for="{{comp_form.company_name.label}}">{{comp_form.company_name.label}} :</label></p>
+                                    <p><label for="{{comp_form.statut.label}}">{{comp_form.statut.label}} :</label></p>
+                                    <p><label for="{{comp_form.siret.label}}">{{comp_form.siret.label}} :</label></p>
+                                </div>
+                                <div class="col-sm-4 pl-0">
+                                    <br>
+                                    <p>{{comp_form.company_name}}</p>
+                                    <p>{{comp_form.statut}}</p>
+                                    <p>{{comp_form.siret}}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-5 align-items-center text-center">
+                            <img src="{{ user.usercomp.company.logo.url }}" alt="Logo" width="100" height="100"><br><br>
+                            {{comp_form.logo}}
+                        </div>
+                    </div>
+
+
+                    <div class="row border mt-4">
+                        <div class="col-sm-12">
+                            <h5>Préférences de l'application</h5>
+                        
+                            <div class="row">
+                                <div class="col-sm-5 mt-2">
+                                    {{comp_form.use_groups}} <label for="{{comp_form.use_groups.label}}">{{comp_form.use_groups.label}}</label>
+                                </div>
+                                <div class="col-sm-7 mt-2">
+                                    <p><label for="{{comp_form.rule.label}}">{{comp_form.rule.label}}</label> : {{comp_form.rule}}</p>
+                                    <p>{{comp_form.upd_rule}} <label for="{{comp_form.upd_rule.label}}">{{comp_form.upd_rule.label}}</label></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="row border mt-4">
+                        <div class="col-sm-12">
+                            <h5>Coordonnées</h5>
+                        
+                            <div class="row">
+                                <div class="col-sm-3 mt-2">
+                                    <p><label for="{{comp_form.street_num.label}}">{{comp_form.street_num.label}}</p>
+                                    <p><label for="{{comp_form.street_cplt.label}}">{{comp_form.street_cplt.label}}</p>
+                                    <p><label for="{{comp_form.address1.label}}">{{comp_form.address1.label}}</p>
+                                    <p><label for="{{comp_form.address2.label}}">{{comp_form.address2.label}}</p>
+                                    <p>Code postal / Ville</p>
+                                </div>
+                                <div class="col-sm-9 mt-2">
+                                    <p>{{comp_form.street_num}}</p>
+                                    <p>{{comp_form.street_cplt}}</p>
+                                    <p>{{comp_form.address1}}</p>
+                                    <p>{{comp_form.address2}}</p>
+                                    <p>{{comp_form.zip_code}} {{comp_form.city}}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="row border mt-4">
+                        <div class="col-sm-12">
+                            <h5>Informations serveur de messagerie</h5>
+                        
+                            <div class="row">
+                                <div class="col-sm-2 mt-2">
+                                    <p><label for="{{comp_form.host.label}}">{{comp_form.host.label}}</p>
+                                    <p><label for="{{comp_form.port.label}}">{{comp_form.port.label}}</p>
+                                </div>
+                                <div class="col-sm-3 mt-2">
+                                    <p>{{comp_form.host}}</p>
+                                    <p>{{comp_form.port}}</p>
+                                </div>
+                                <!-- <div class="col-sm-1"></div> -->
+                                <div class="col-sm-2 mt-2 ml-5">
+                                    <p><label for="{{comp_form.hname.label}}">{{comp_form.hname.label}}</p>
+                                        <p><label for="{{comp_form.fax.label}}">{{comp_form.fax.label}} </p>
+                                </div>
+                                <div class="col-sm-2 mt-2">
+                                    <p>{{comp_form.hname}}</p>
+                                    <p>{{comp_form.fax}} </p>
+                                </div>
+                                <!-- <div class="col-sm-1">
+                                    <p></p>
+                                    <span class="fa fa-eye fa-xs" style="color: black;" data-toggle="tooltip" title="Afficher"></span>
+                                </div> -->
+                            </div>
+
+                            <div class="row align-item-center">
+                                <div class="col-sm-5 ml-5">
+                                    <p>{{comp_form.use_tls}} <label for="{{comp_form.use_tls.label}}">{{comp_form.use_tls.label}}</p>
+                                </div>
+                                <div class="col-sm-5 ml-5">
+                                    <p id='toggle_mail_mdp'><span class="fa fa-eye" style="color: black;" data-toggle="tooltip" title="Afficher"></span> &nbsp Voir le mot de passe</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <br>
+                    <button class="btn btn-success" type="submit">Mettre à jour</button>
+                    &nbsp &nbsp &nbsp
+                    <a class="btn btn-secondary back_btn" href="*">Annuler</a>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

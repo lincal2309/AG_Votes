@@ -6,19 +6,21 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0040_auto_20190619_1731'),
-    ]
+    dependencies = [("polls", "0040_auto_20190619_1731")]
 
     operations = [
         migrations.AlterField(
-            model_name='event',
-            name='groups',
-            field=models.ManyToManyField(blank=True, to='polls.EventGroup', verbose_name='groupes'),
+            model_name="event",
+            name="groups",
+            field=models.ManyToManyField(
+                blank=True, to="polls.EventGroup", verbose_name="groupes"
+            ),
         ),
         migrations.AlterField(
-            model_name='eventgroup',
-            name='users',
-            field=models.ManyToManyField(blank=True, to=settings.AUTH_USER_MODEL, verbose_name='utilisateurs'),
+            model_name="eventgroup",
+            name="users",
+            field=models.ManyToManyField(
+                blank=True, to=settings.AUTH_USER_MODEL, verbose_name="utilisateurs"
+            ),
         ),
     ]

@@ -16,15 +16,20 @@
         <title>Votes</title>
 
         <!-- Favicon -->
-        {% if company.logo %}
-            <link rel="icon" type="image/png" href="{{ company.logo.url }}" />
-        {% elif event.company.logo %}
-            <link rel="icon" type="image/png" href="{{ event.company.logo.url }}" />
+        {% if user.usercomp.company.logo and not user.is_supervisor %}
+            <link rel="icon" type="image/png" href="{{ user.usercomp.company.logo.url }}" />
+        {% else %}
+            <link rel="icon" type="image/png" href="{% static 'polls/img/votes_favicon.png' %}" />
         {% endif %}
 
         <!-- Theme CSS - Includes Bootstrap -->
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-        <link href="{% static "polls/css/polls.css" %}" rel="stylesheet">
+
+        <!-- Font Awesome -->
+        <script src="https://kit.fontawesome.com/8b3b9f4776.js" crossorigin="anonymous"></script>
+
+        <!-- Custom CSS -->
+        <link href="{% static 'polls/css/polls.css' %}" rel="stylesheet">
 
     </head>
 
@@ -33,18 +38,18 @@
         <header class="main-header">
             <!-- Header Navbar -->
             {% block nav_bar %}
-            <nav class="navbar navbar-expand-md navbar-light fixed-top bg-light">
+            <nav class="navbar navbar-expand-md navbar-light fixed-top bg-light align-items-center">
                 {% block logo %}
                 <a href="{% url 'polls:index' %}" class="logo">
-                    {% if company.logo is not NULL %}
+                    {% if user.is_superuser %}
                         <div class="logo-lg head-text-color">
-                            <img src="{{ company.logo.url }}" height=50>
-                            <a class="navbar-brand" href="{% url 'polls:index' %}"> {{ company.company_name }}</a>
+                            <img src="{% static 'polls/img/votes_icon.png' %}" height=50>
+                            <p class="navbar-brand">&nbsp Administration de l'application de votes électroniques</p>
                         </div>
-                    {% elif event.company.logo is not NULL %}
+                    {% elif user.usercomp.company.logo is not NULL %}
                         <div class="logo-lg head-text-color">
-                            <img src="{{ event.company.logo.url }}" height=50>
-                            <a class="navbar-brand" href="{% url 'polls:index' %}"> {{ event.company.company_name }}</a>
+                            <img src="{{ user.usercomp.company.logo.url }}" height=50>
+                            <p class="navbar-brand">&nbsp &nbsp &nbsp {{ user.usercomp.company.company_name }}</p>
                         </div>
                     {% endif %}
                 </a>
@@ -54,28 +59,27 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarCollapse">
+                    {% if user.is_authenticated %}
+                        <div class="dropdown user user-menu mr-3 ml-auto">
+                            {% if comp_slug %}
+                                <a href="{% url 'polls:adm_user_profile' comp_slug user.id %}" data-toggle="tooltip" title="Accéder au profil">{% firstof request.user.get_short_name request.user.get_username %}</a>
+                            {% else %}
+                                <a href="#">{% firstof request.user.get_short_name request.user.get_username %}</a>
+                            {% endif %}
+                            &nbsp &nbsp
+                            {% if user.usercomp.is_admin %}
+                                <a href="{% url 'polls:adm_events' comp_slug %}">Administration</a>
+                                &nbsp &nbsp
+                            {% endif %}
 
-                    <li class="dropdown user user-menu mr-5 ml-auto">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                            <span class="hidden-xs">{% firstof request.user.get_short_name request.user.get_username %}</span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-right">
-                            <!-- Menu Footer-->
-                            {% if user.is_staff %}
-                                <li class="user-footer">
-                                        <a href="/admin/" class="btn btn-default btn-flat">Administration</a>
-                                </li>
+                            {% if user.is_superuser and comp_slug %}
+                                <a href="{% url 'polls:adm_events' company.comp_slug %}">Admin {{ request.session.comp_slug }}</a>
+                                &nbsp &nbsp
                             {% endif %}
-                            {% if user.is_superuser %}
-                                <li class="user-footer">
-                                    <a href="sign_up/" class="btn btn-default btn-flat">Création user</a>
-                                </li>
-                            {% endif %}
-                            <li class="user-footer">
-                                <a href="{% url 'polls:logout' %}" class="btn btn-default btn-flat">Déconnexion</a>
-                            </li>
-                        </ul>
-                    </li>
+
+                            <a href="{% url 'polls:logout' %}"><span class="fa fa-power-off" style="color: #700909;" data-toggle="tooltip" title="Déconnexion"></span></a>
+                        </div>
+                    {% endif %}
                 </div>
             </nav>
             {% endblock nav_bar %}
@@ -87,6 +91,32 @@
             <div class="container">
                 {% block content %}{% endblock %}
             </div>
+
+            <div>
+                {% if messages %}
+                    <!-- Popup d'affichage de messages -->
+                    <div id="display_msg" class="modal fade show" role="dialog" tabindex='-1'>
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-body text-center messages">
+                                    {% for message in messages %}
+                                        {% if forloop.first %}
+                                            <h5{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</h5>
+                                            <ul class="text-left list_msg">
+                                        {% else %}
+                                            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    </ul>
+                                    <br>
+                                    <button class="btn btn-primary close-btn">&nbsp &nbsp &nbspOK&nbsp &nbsp &nbsp</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
         </main>
         
 
@@ -102,16 +132,14 @@
         <!-- js scripts-->
         <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-        <script
-        src="https://code.jquery.com/jquery-3.3.1.min.js"
-        integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
-        crossorigin="anonymous"></script>
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+        <!-- <script src="{% static 'polls/js/jquery.bootstrap.modal.forms.js' %}"></script> -->
 
         <!-- Custom scripts for this template -->
-        <script src="{% static "polls/js/polls.js" %}"></script>
+        <script src="{% static 'polls/js/polls.js' %}"></script>
 
     </body>
 

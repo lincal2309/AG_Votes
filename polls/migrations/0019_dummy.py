@@ -5,18 +5,24 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0018_auto_20190606_1101'),
-    ]
+    dependencies = [("polls", "0018_auto_20190606_1101")]
 
     operations = [
         migrations.CreateModel(
-            name='Dummy',
+            name="Dummy",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=50)),
-                ('value_dummy', models.IntegerField()),
-                ('event', models.ManyToManyField(to='polls.Event')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=50)),
+                ("value_dummy", models.IntegerField()),
+                ("event", models.ManyToManyField(to="polls.Event")),
             ],
-        ),
+        )
     ]

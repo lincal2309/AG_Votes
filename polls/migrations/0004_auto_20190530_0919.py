@@ -5,13 +5,10 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0003_auto_20190527_1832'),
-    ]
+    dependencies = [("polls", "0003_auto_20190527_1832")]
 
     operations = [
         migrations.AlterModelOptions(
-            name='usergroup',
-            options={'verbose_name': "Groupe d'utilisateurs"},
-        ),
+            name="usergroup", options={"verbose_name": "Groupe d'utilisateurs"}
+        )
     ]

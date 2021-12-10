@@ -7,38 +7,40 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0007_auto_20190530_1124'),
-    ]
+    dependencies = [("polls", "0007_auto_20190530_1124")]
 
     operations = [
-        migrations.RemoveField(
-            model_name='event',
-            name='evt_groups',
-        ),
-        migrations.RemoveField(
-            model_name='uservote',
-            name='questions',
+        migrations.RemoveField(model_name="event", name="evt_groups"),
+        migrations.RemoveField(model_name="uservote", name="questions"),
+        migrations.AddField(
+            model_name="eventgroup",
+            name="event",
+            field=models.ForeignKey(
+                null=True, on_delete=django.db.models.deletion.CASCADE, to="polls.Event"
+            ),
         ),
         migrations.AddField(
-            model_name='eventgroup',
-            name='event',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='polls.Event'),
-        ),
-        migrations.AddField(
-            model_name='uservote',
-            name='question',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, to='polls.Question'),
+            model_name="uservote",
+            name="question",
+            field=models.ForeignKey(
+                default=1,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="polls.Question",
+            ),
             preserve_default=False,
         ),
         migrations.AlterField(
-            model_name='eventgroup',
-            name='group',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='auth.Group'),
+            model_name="eventgroup",
+            name="group",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to="auth.Group"
+            ),
         ),
         migrations.AlterField(
-            model_name='uservote',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
+            model_name="uservote",
+            name="user",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
+            ),
         ),
     ]

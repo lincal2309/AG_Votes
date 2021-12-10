@@ -1,3 +1,4 @@
+*.pdf
 *.pyc
 __pycache__/
 
@@ -16,3 +17,6 @@ build/
 db.sqlite3
 production.py
 travis.py
+
+# To be removed once the problem of images management will be solved
+media/img/

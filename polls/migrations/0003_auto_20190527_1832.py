@@ -5,14 +5,10 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0002_auto_20190527_1822'),
-    ]
+    dependencies = [("polls", "0002_auto_20190527_1822")]
 
     operations = [
         migrations.RenameField(
-            model_name='uservote',
-            old_name='question',
-            new_name='questions',
-        ),
+            model_name="uservote", old_name="question", new_name="questions"
+        )
     ]

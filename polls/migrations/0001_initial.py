@@ -10,99 +10,188 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('auth', '0011_update_proxy_permissions'),
+        ("auth", "0011_update_proxy_permissions"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Company',
+            name="Company",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('company_name', models.CharField(max_length=200)),
-                ('logo', models.ImageField(null=True, upload_to='img/')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("company_name", models.CharField(max_length=200)),
+                ("logo", models.ImageField(null=True, upload_to="img/")),
+            ],
+            options={"verbose_name": "Société"},
+        ),
+        migrations.CreateModel(
+            name="Event",
+            fields=[
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("event_name", models.CharField(max_length=200)),
+                ("event_date", models.DateField()),
+                ("slug", models.SlugField(unique=True)),
+                ("current", models.BooleanField(default=False)),
+                ("quorum", models.IntegerField(default=33)),
+                (
+                    "rule",
+                    models.CharField(
+                        choices=[("MAJ", "Majorité"), ("PROP", "Proportionnelle")],
+                        default="MAJ",
+                        max_length=5,
+                    ),
+                ),
+                (
+                    "company",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="polls.Company"
+                    ),
+                ),
+                ("groups", models.ManyToManyField(to="auth.Group")),
+            ],
+            options={"verbose_name": "Evénement"},
+        ),
+        migrations.CreateModel(
+            name="Question",
+            fields=[
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("question_text", models.CharField(max_length=200)),
+                ("question_no", models.IntegerField()),
+                (
+                    "event",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="polls.Event"
+                    ),
+                ),
+            ],
+            options={"verbose_name": "Question"},
+        ),
+        migrations.CreateModel(
+            name="UserVote",
+            fields=[
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("has_voted", models.BooleanField(default=False)),
+                ("date_vote", models.DateTimeField(null=True)),
+                ("question", models.ManyToManyField(to="polls.Question")),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Société',
+                "verbose_name": "Vote utilisateurs et pouvoirs",
+                "verbose_name_plural": "Votes utilisateurs et pouvoirs",
             },
         ),
         migrations.CreateModel(
-            name='Event',
+            name="UserGroup",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('event_name', models.CharField(max_length=200)),
-                ('event_date', models.DateField()),
-                ('slug', models.SlugField(unique=True)),
-                ('current', models.BooleanField(default=False)),
-                ('quorum', models.IntegerField(default=33)),
-                ('rule', models.CharField(choices=[('MAJ', 'Majorité'), ('PROP', 'Proportionnelle')], default='MAJ', max_length=5)),
-                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.Company')),
-                ('groups', models.ManyToManyField(to='auth.Group')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("vote_weight", models.IntegerField(default=0)),
+                (
+                    "group",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE, to="auth.Group"
+                    ),
+                ),
+            ],
+            options={"verbose_name": "Groupe"},
+        ),
+        migrations.CreateModel(
+            name="EventGroup",
+            fields=[
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "event",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="polls.Event"
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Evénement',
+                "verbose_name": "Evénements : groupes d'utilisateurs",
+                "verbose_name_plural": "Evénements : groupes d'utilisateurs",
             },
         ),
         migrations.CreateModel(
-            name='Question',
+            name="Choice",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('question_text', models.CharField(max_length=200)),
-                ('question_no', models.IntegerField()),
-                ('event', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.Event')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("choice_text", models.CharField(max_length=200)),
+                ("votes", models.IntegerField(default=0)),
+                (
+                    "question",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="polls.Question"
+                    ),
+                ),
             ],
-            options={
-                'verbose_name': 'Question',
-            },
-        ),
-        migrations.CreateModel(
-            name='UserVote',
-            fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('has_voted', models.BooleanField(default=False)),
-                ('date_vote', models.DateTimeField(null=True)),
-                ('question', models.ManyToManyField(to='polls.Question')),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-            ],
-            options={
-                'verbose_name': 'Vote utilisateurs et pouvoirs',
-                'verbose_name_plural': 'Votes utilisateurs et pouvoirs',
-            },
-        ),
-        migrations.CreateModel(
-            name='UserGroup',
-            fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('vote_weight', models.IntegerField(default=0)),
-                ('group', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='auth.Group')),
-            ],
-            options={
-                'verbose_name': 'Groupe',
-            },
-        ),
-        migrations.CreateModel(
-            name='EventGroup',
-            fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('event', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.Event')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-            ],
-            options={
-                'verbose_name': "Evénements : groupes d'utilisateurs",
-                'verbose_name_plural': "Evénements : groupes d'utilisateurs",
-            },
-        ),
-        migrations.CreateModel(
-            name='Choice',
-            fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('choice_text', models.CharField(max_length=200)),
-                ('votes', models.IntegerField(default=0)),
-                ('question', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='polls.Question')),
-            ],
-            options={
-                'verbose_name': 'Choix',
-                'verbose_name_plural': 'Choix',
-            },
+            options={"verbose_name": "Choix", "verbose_name_plural": "Choix"},
         ),
     ]

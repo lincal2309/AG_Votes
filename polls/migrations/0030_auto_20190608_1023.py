@@ -5,14 +5,12 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0029_auto_20190608_0828'),
-    ]
+    dependencies = [("polls", "0029_auto_20190608_0828")]
 
     operations = [
         migrations.AlterField(
-            model_name='procuration',
-            name='confirm_date',
-            field=models.DateField(null=True, verbose_name='date de confirmation'),
-        ),
+            model_name="procuration",
+            name="confirm_date",
+            field=models.DateField(null=True, verbose_name="date de confirmation"),
+        )
     ]

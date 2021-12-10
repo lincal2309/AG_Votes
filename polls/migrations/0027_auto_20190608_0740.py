@@ -5,13 +5,6 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0026_groupvote_question'),
-    ]
+    dependencies = [("polls", "0026_groupvote_question")]
 
-    operations = [
-        migrations.RenameModel(
-            old_name='GroupVote',
-            new_name='Result',
-        ),
-    ]
+    operations = [migrations.RenameModel(old_name="GroupVote", new_name="Result")]

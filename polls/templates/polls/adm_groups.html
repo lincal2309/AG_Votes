@@ -1,0 +1,82 @@
+{% extends './base.html' %}
+
+{% load static %}
+
+{% block extra_js%}
+    <script src="http://malsup.github.com/jquery.form.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    {% include "./adm_head.html" %}
+
+    <div class="col-md-9">
+        <!-- Right panel : admin actions
+                1 bloc for each menu item, diplayed or hidden according to user's choice -->
+        <input type="hidden" id="menu_id" value="3" /> <!-- Hidden value to store the current selected menu -->
+
+        <div class="row">
+            <div class="col-sm-12 align-items-center text-center">
+                <h4 id="admin-users-details" class="mt-5">Administration des groupes</h4>
+            </div>
+
+            <div class="col-md-9">
+                <div class="row">
+                    <ul class="mt-30">
+                    {% for grp in group_list %}
+                        <li>
+                            {{ grp.group_name }} &nbsp &nbsp &nbsp {{ grp.weight }} &nbsp &nbsp &nbsp
+
+                            <!-- Update buttons -->
+                            <a type="button" class="update-grp btn btn-sm" href="{% url 'polls:adm_group_detail' company.comp_slug grp.id %}">
+                                <span class="fa fa-pencil" style="color: #339af0;" data-toggle="tooltip" title="Modifier"></span>
+                            </a>
+
+                            <!-- Delete buttons -->
+                            <button type="button" class="delete-grp btn btn-sm" data-toggle="modal" data-target="#delete_grp" data-grp-id="{{ grp.id }}" data-grp-name="{{ grp.group_name }}">
+                                <span class="fa fa-trash" style="color: #ff6b6b;" data-toggle="tooltip" title="Supprimer"></span>
+                            </button>
+                        </li>
+
+                    {% empty %}
+                        <p class="h2_perso">Aucun groupe créé</p>
+                    {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="text-center">
+                    <!-- Create button -->
+                    <a type="button" class="create-grp btn btn-primary" href="{% url 'polls:adm_create_group' company.comp_slug %}">Nouveau groupe</a>
+                </div>
+
+                <div>
+                    <!-- Popup de suppression d'un groupe -->
+                    <!-- tabindex property added to allow closing the modal with ESC key -->
+                    <div id="delete_grp" class="modal fade hide" role="dialog" tabindex='-1'>
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-body text-center">
+                                    <p id="dlte-grp-confirm">Voulez-vous supprimer le groupe ?</p>
+
+                                    <form id="form_dlt_grp" action="{% url 'polls:adm_delete_group' company.comp_slug 0 %}" method="post">
+                                        {% csrf_token %}
+                                        <button class="btn btn-primary" type="submit">Supprimer</button>
+                                        &nbsp &nbsp &nbsp
+                                        <button id="close_dlte_grp" class="btn btn-secondary close-btn">Annuler</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+
+</div>
+
+{% endblock %}

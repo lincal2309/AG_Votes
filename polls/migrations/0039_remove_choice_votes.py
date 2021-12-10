@@ -5,13 +5,6 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0038_auto_20190618_0914'),
-    ]
+    dependencies = [("polls", "0038_auto_20190618_0914")]
 
-    operations = [
-        migrations.RemoveField(
-            model_name='choice',
-            name='votes',
-        ),
-    ]
+    operations = [migrations.RemoveField(model_name="choice", name="votes")]

@@ -6,13 +6,8 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('auth', '0011_update_proxy_permissions'),
-        ('polls', '0006_delete_eventgroup'),
+        ("auth", "0011_update_proxy_permissions"),
+        ("polls", "0006_delete_eventgroup"),
     ]
 
-    operations = [
-        migrations.RenameModel(
-            old_name='UserGroup',
-            new_name='EventGroup',
-        ),
-    ]
+    operations = [migrations.RenameModel(old_name="UserGroup", new_name="EventGroup")]

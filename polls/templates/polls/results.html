@@ -12,7 +12,7 @@
         <!-- General information about currect question -->
         <div class="row">
             <div class="col-sm-12">
-                <h1 class="text-center">{{ event.event_name }} - {{ event.event_date|date:"d/m/Y" }}</h1>
+                <h1 class="text-center">{{ event.event_name }} - {{ event.event_start_date|date:"d/m/Y" }}</h1>
                 <p id="quorum" data-quorum="{{ event.quorum }}" hidden></p>
                 <p id="nb_questions" data-nb="{{ nb_questions }}" hidden></p>
             </div>

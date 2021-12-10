@@ -1,0 +1,113 @@
+{% extends './base.html' %}
+
+{% load static %}
+
+{% block extra_js%}
+    <script src="http://malsup.github.com/jquery.form.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    {% include "./adm_head.html" %}
+
+    <div class="col-md-9">
+        <!-- Right panel : admin actions
+                1 bloc for each menu item, diplayed or hidden according to user's choice -->
+        <input type="hidden" id="menu_id" value="1" /> <!-- Hidden value to store the current selected menu -->
+
+        <div class="row">
+            <div class="col-sm-12 align-items-center text-center">
+                <h4 id="admin-events" class="mt-5">Administration des événements</h4>
+            </div>
+
+            <div class="col-md-9">
+                <div class="row">
+                    <div class="col-sm-12 align-items-center text-center">
+                        <h5 id="admin-users-details" class="mt-5">Evénements à venir</h4>
+                    </div>
+
+                    <ul class="mt-30">
+                    {% for event in next_events %}
+                        <li>
+                            {{ event.event_start_date|date:"d/m/Y" }} : {{ event.event_name }}
+
+                            <!-- Update buttons -->
+                            <a type="button" class="update-evt btn btn-sm" href="{% url 'polls:adm_event_detail' company.comp_slug event.id %}">
+                                <span class="fa fa-pencil" style="color: #339af0;" data-toggle="tooltip" title="Modifier"></span>
+                            </a>
+
+                            <!-- Delete buttons -->
+                            <button type="button" class="delete-evt btn btn-sm" data-toggle="modal" data-target="#delete_evt" data-evt-id="{{ event.id }}" data-evt-name="{{ event.event_name }}">
+                                <span class="fa fa-trash" style="color: #ff6b6b;" data-toggle="tooltip" title="Supprimer"></span>
+                            </button>
+                        </li>
+
+                    {% empty %}
+                        <p class="h2_perso">Aucun événement prévu</p>
+                    {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="text-center">
+                    <!-- Create button -->
+                    <a type="button" class="create-evt btn btn-primary" href="{% url 'polls:adm_create_event' company.comp_slug %}">Nouvel événement</a>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-12 align-items-center text-center">
+                        <h5 class="mt-5">Evénements passés</h4>
+                    </div>
+
+                    <ul class="mt-30">
+                    {% for event in old_events %}
+                        <li>
+                            {{ event.event_start_date|date:"d/m/Y" }} : {{ event.event_name }}
+
+                            <!-- Update buttons -->
+                            <a type="button" class="update-evt btn btn-sm" href="{% url 'polls:adm_event_detail' company.comp_slug event.id %}">
+                                <span class="fa fa-pencil" style="color: #339af0;" data-toggle="tooltip" title="Modifier"></span>
+                            </a>
+
+                            <!-- Delete buttons -->
+                            <button type="button" class="delete-evt btn btn-sm" data-toggle="modal" data-target="#delete_evt" data-evt-id="{{ event.id }}" data-evt-name="{{ event.event_name }}">
+                                <span class="fa fa-trash" style="color: #ff6b6b;" data-toggle="tooltip" title="Supprimer"></span>
+                            </button>
+                        </li>
+
+                    {% empty %}
+                        <p class="h2_perso">Aucun événement passé</p>
+                    {% endfor %}
+                    </ul>
+                </div>
+
+                <div>
+                    <!-- Popup de suppression d'un événement -->
+                    <!-- tabindex property added to allow closing the modal with ESC key -->
+                    <div id="delete_evt" class="modal fade hide" role="dialog" tabindex='-1'>
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-body text-center">
+                                    <p id="dlte-evt-confirm">Voulez-vous supprimer l'événement ?</p>
+
+                                    <form id="form_dlt_evt" action="{% url 'polls:adm_delete_event' company.comp_slug 0 %}" method="post">
+                                        {% csrf_token %}
+                                        <button class="btn btn-primary" type="submit">Supprimer</button>
+                                        &nbsp &nbsp &nbsp
+                                        <button id="close_dlte_evt" class="btn btn-secondary close-btn">Annuler</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        
+    </div>
+
+
+</div>
+
+{% endblock %}

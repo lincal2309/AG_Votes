@@ -1,0 +1,160 @@
+{% extends './base.html' %}
+
+{% load static %}
+
+{% block content %}
+
+
+<div class="row">
+    {% include "./adm_head.html" %}
+
+    <div class="col-sm-9">
+
+        <div class="row">
+            <div class="col-sm-12 mt-30">
+
+                {% if evt_id %}
+                <form action="{% url 'polls:adm_event_detail' company.comp_slug evt_id %}" method="post">
+                {% else %}
+                <form action="{% url 'polls:adm_create_event' company.comp_slug %}" method="post">
+                {% endif %}
+                    {% csrf_token %}
+
+                    <!-- Hidden field where the referer is identified to go back to the related page after validation -->
+                    <input type="hidden" name="url_dest" value="{{ url_dest }}" />
+
+                    <br>
+
+                    <!-- Accordion -->
+                    <div id="eventDetails" class="accordion shadow">
+
+                        <div class="card">
+                            <div class="card-header bg-white shadow-sm border-0">
+                                <h6 class="mb-0 font-weight-bold">
+                                    Evénement
+                                </h6>
+                            </div>
+                            <div class="card-body p-5">
+                                <p>Nom : &nbsp &nbsp {{event_form.event_name}} </p>
+                                <p>Début : &nbsp {{event_form.event_start_date}} </p>
+                                <p>Fin : &nbsp &nbsp &nbsp &nbsp{{event_form.event_end_date}} </p>
+                            </div>
+                        </div>
+            
+                        <!-- Accordion item 1 - Event's options -->
+                        <div class="card">
+                        <div id="headingOne" class="card-header bg-white shadow-sm border-0">
+                            <h6 class="mb-0 font-weight-bold">
+                                <a href="#" data-toggle="collapse" data-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne" class="d-block position-relative text-dark collapsible-link py-2">
+                                    Options
+                                </a>
+                            </h6>
+                        </div>
+                        <div id="collapseOne" aria-labelledby="headingOne" data-parent="#eventDetails" class="collapse">
+                            <div class="card-body p-5">
+                                <p>Quorum : {{event_form.quorum}} </p>
+                                <p>Mode de scrutin : {{event_form.rule}} </p>
+                            </div>
+                        </div>
+                        </div>
+
+                        <!-- Accordion item 2 - Event's groups -->
+                        <div class="card">
+                            <div id="headingTwo" class="card-header bg-white shadow-sm border-0">
+                                <h6 class="mb-0 font-weight-bold">
+                                    <a href="#" data-toggle="collapse" data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo" class="d-block position-relative collapsed text-dark collapsible-link py-2">
+                                        Groupes d'utilisateurs
+                                    </a>
+                                </h6>
+                            </div>
+                            <div id="collapseTwo" aria-labelledby="headingTwo" data-parent="#eventDetails" class="collapse show">
+                                <div class="card-body p-5">
+                                    <p>Sélectionnez le(s) groupe(s) d'utilisateurs participants à l'événement :</p>
+                                    {{ event_form.groups }}
+
+                                    <p></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Accordion item 3 - Event's questions -->
+                        <div class="card">
+                            <div id="headingThree" class="card-header bg-white shadow-sm border-0">
+                                <h6 class="mb-0 font-weight-bold">
+                                    <a href="#" data-toggle="collapse" data-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree" class="d-block position-relative collapsed text-dark collapsible-link py-2">
+                                        Questions / Résolutions
+                                    </a>
+                                </h6>
+                            </div>
+                            <div id="collapseThree" aria-labelledby="headingThree" data-parent="#eventDetails" class="collapse">
+                                <div class="card-body p-5">
+                                    <p class="font-weight-light m-0">Entrez les questions à l'ordre du jour ; elles seront présentées selon l'ordre de leur numéro.</p>
+                                    <p class="font-weight-light m-0 comments">(Pour supprimer une question, effacez simplement son texte)</p>
+                                    <br>
+                                    <!-- Question formset management -->
+                                    <!-- question_set.management_form do not need to be added until question_set.as_p is used to display the formset -->
+                                    <!-- Div are used to manage "Add" button to add forms in the set -->
+                                    <div id="question_set">
+                                    {{ question_set.as_p }}
+                                    </div>
+                                    <div>
+                                    <button class="btn btn-outline-primary opt-center" id="add_question"><i class="fas fa-plus-circle"></i> Ajouter</button>
+                                    </div>
+                                    <div id="question_empty_form" style="display:none">
+                                        <!-- Empty form to be duplicated if user wants to add a row -->
+                                        <!-- Use the same display op^tions as the main form -->
+                                    {{ question_set.empty_form.as_p }}
+                                    </div>
+                                    <!-- End question formset  -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Accordion item 4 - Event's choices -->
+                        <div class="card">
+                            <div id="headingFour" class="card-header bg-white shadow-sm border-0">
+                                <h6 class="mb-0 font-weight-bold">
+                                    <a href="#" data-toggle="collapse" data-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour" class="d-block position-relative collapsed text-dark collapsible-link py-2">
+                                        Choix / Options de réponses
+                                    </a>
+                                </h6>
+                            </div>
+                            <div id="collapseFour" aria-labelledby="headingFour" data-parent="#eventDetails" class="collapse">
+                                <div class="card-body p-5">
+                                    <p class="font-weight-light m-0">Entrez les options de réponses aux questions à l'ordre du jour ; elles seront présentées selon l'ordre de leur numéro.</p>
+                                    <p class="font-weight-light m-0 comments">(Pour supprimer un choix, effacez simplement son texte)</p>
+                                    <br>
+                                    <!-- Choice formset management -->
+                                    <!-- choice_set.management_form mandatory here to manage the formset as field are set separately -->
+                                    <!-- Div are used to manage "Add" button to add forms in the set -->
+                                    {{ choice_set.management_form }}
+                                    <div id="choice_set">
+                                        {% for form in choice_set.forms %}
+                                            <p>N° : {{ form.choice_no }} &nbsp &nbsp &nbsp Libellé :  {{form.choice_text }}</p>
+                                        {% endfor %}
+                                    </div>
+                                    <div>
+                                    <button class="btn btn-outline-primary opt-center" id="add_choice"><i class="fas fa-plus-circle"></i> Ajouter</button>
+                                    </div>
+                                    <div id="choice_empty_form" style="display:none">
+                                        <p>N° : {{choice_set.empty_form.choice_no }} &nbsp &nbsp &nbsp Libellé :  {{choice_set.empty_form.choice_text }}</p>
+                                    </div>
+                                    <!-- End choice formset  -->
+                                </div>
+                            </div>
+                        </div>
+
+                    </div> <!-- Accordion end -->
+
+                    <div class="opt-center">
+                    <button class="btn btn-success mt-5" type="submit">{% if evt_id %}Mettre à jour{% else %}Créer{% endif %}</button>
+                    &nbsp &nbsp &nbsp
+                    <a class="btn btn-secondary back_btn mt-5" href="*">Annuler</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

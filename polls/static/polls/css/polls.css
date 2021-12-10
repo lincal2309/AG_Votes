@@ -1,3 +1,36 @@
+.modal {
+  margin-top: 20%;
+}
+
+.navbar-brand {
+  vertical-align: middle;
+}
+
+select {
+  width: 100%;
+  min-height: 300px;
+}
+
+ul.list_msg {
+  list-style: none;
+}
+
+li.error::before {
+  content: "\2022";
+  color: red;
+  display: inline-block;
+  width: 1em;
+  margin-left: 1em;
+}
+
+li.warning::before {
+  content: "\2022";
+  color: orange;
+  display: inline-block;
+  width: 1em;
+  margin-left: 1em;
+}
+
 .user-menu {
     list-style: none;
 }
@@ -24,11 +57,26 @@
 }
 
 .bg-light {
-    background-color: lightgrey !important;
+  background-color: lightgrey !important;
+}
+
+.btn-success {
+    background-color: rgb(116, 177, 75) !important;
+    border-color: #7EB559 !important;
   }
 
+.btn-secondary {
+  background-color: #BFBFBF !important;
+  border-color: #BFBFBF !important;
+}
+
+.btn-primary {
+  background-color: rgb(73, 130, 230) !important;
+  border-color: rgb(73, 130, 230) !important;
+}
+
 .btn {
-    border-radius: 20px;
+    border-radius: 15px;
 }
 
 .btn-grey {
@@ -154,4 +202,63 @@ a .btn-secondary.disabled, a .btn-secondary:disabled {
 
 .event_title {
   color: aqua;
+}
+
+.underlined {
+  text-decoration: underline;
+}
+
+.is_admin {
+  /* color: green; */
+  font-weight: bold;
+}
+
+.hidden {
+  display: none;
+}
+
+.card-header {
+  text-align: left;
+  margin-left: 20px;
+}
+
+
+#toggle_mail_mdp {
+  cursor: default;
+}
+
+.comments {
+  font-style: italic;
+  font-size: 0.75em;
+}
+
+/* ===== Events details ===== */
+
+/* Remove bullets from list */
+#id_groups {
+  list-style-type: none;
+}
+
+/* Define inputs and text areas size */
+#question_set > p > textarea {
+  height: 80px;
+  width: 100%;
+}
+
+#question_set > p > input {
+  width: 3em;
+}
+
+#choice_set > p > input[type="number"] {
+  width: 3em;
+}
+
+#choice_set > p > input[type="text"] {
+  width: 60%;
+}
+
+.opt-center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }

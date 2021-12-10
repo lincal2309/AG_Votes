@@ -5,14 +5,8 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('polls', '0039_remove_choice_votes'),
-    ]
+    dependencies = [("polls", "0039_remove_choice_votes")]
 
     operations = [
-        migrations.AlterField(
-            model_name='event',
-            name='slug',
-            field=models.SlugField(),
-        ),
+        migrations.AlterField(model_name="event", name="slug", field=models.SlugField())
     ]
