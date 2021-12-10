@@ -19,4 +19,4 @@ production.py
 travis.py
 
 # To be removed once the problem of images management will be solved
-media/img/
+# media/img/
