@@ -29,6 +29,7 @@ import re
 
 from .forms import (
     ChoiceDetail,
+    CreateUserForm,
     UserForm,
     UserBaseForm,
     UserCompForm,
@@ -74,14 +75,15 @@ def new_user(request):
     error = False
 
     if request.method == "POST":
-        form = UserForm(request.POST)
+        form = CreateUserForm(request.POST)
         if form.is_valid():
             username = form.cleaned_data["username"]
             password = form.cleaned_data["password"]
             if 'comp_slug' in request.session:
                 comp_slug = request.session['comp_slug']
             else:
-                comp_slug = ''
+                comp_slug = form.cleaned_data["company"]
+
             if User.objects.filter(username=username):
                 user_exists = True
             else:
