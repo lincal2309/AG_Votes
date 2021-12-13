@@ -14,6 +14,14 @@ from .models import (
 )
 
 
+# Admin create user form
+class CreateUserForm(forms.Form):
+    username = forms.CharField(label="Nom d'utilisateur", max_length=30)
+    password = forms.CharField(label="Mot de passe", widget=forms.PasswordInput)
+    # company=forms.ModelChoiceField(label="Société",
+    #     queryset=Company.objects.all())
+
+
 # Login view
 class UserForm(forms.Form):
     username = forms.CharField(label="Nom d'utilisateur", max_length=30)
