@@ -717,7 +717,7 @@ class Procuration(models.Model):
             id_list = [
                 int(proxy["user__id"]) for proxy in cls.objects.all().values("user__id")
             ]
-            user_group = UserGroup.objects.get(event=event, users=user)
+            user_group = UserGroup.objects.get(event=event, users=user, hidden=False)
             proxy_list = (
                 UserComp.objects.filter(usergroup=user_group)
                 .exclude(id=user.id)

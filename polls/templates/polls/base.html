@@ -16,7 +16,9 @@
         <title>Votes</title>
 
         <!-- Favicon -->
-        {% if user.usercomp.company.logo and not user.is_supervisor %}
+        {% if user.is_supervisor %}
+            <link rel="icon" type="image/png" href="{% static 'polls/img/votes_favicon.png' %}" />
+        {% elif user.usercomp.company.logo is not NULL %}
             <link rel="icon" type="image/png" href="{{ user.usercomp.company.logo.url }}" />
         {% else %}
             <link rel="icon" type="image/png" href="{% static 'polls/img/votes_favicon.png' %}" />
