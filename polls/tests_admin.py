@@ -77,8 +77,9 @@ class TestOptions(TestCase):
             del comp_data['logo']
 
         response = self.client.post(
-            reverse("polls:adm_options", args=[self.company.comp_slug]),
-            comp_data
+            reverse("polls:adm_update_options", args=[self.company.comp_slug]),
+            comp_data,
+            follow=True
         )
         self.company.refresh_from_db()
         self.assertEqual(response.status_code, 200)
