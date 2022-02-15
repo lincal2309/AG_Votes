@@ -35,6 +35,7 @@ urlpatterns = [
     path("<slug:comp_slug>/admin_delete_group/<int:grp_id>", views.adm_delete_group, name="adm_delete_group"),
 
     path("<slug:comp_slug>/admin_options/", views.adm_options, name="adm_options"),
+    path("<slug:comp_slug>/admin_update_options/", views.adm_update_options, name="adm_update_options"),
 
     path("<slug:comp_slug>/<slug:event_slug>/", views.event, name="event"),
     path("<slug:comp_slug>/<slug:event_slug>/<int:question_no>", views.question, name="question"),

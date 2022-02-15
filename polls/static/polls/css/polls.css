@@ -6,8 +6,9 @@
   vertical-align: middle;
 }
 
-select {
-  width: 100%;
+select:not(#id_rule) {
+    /* select widgets except dropdowns identified by ids */
+    width: 100%;
   min-height: 300px;
 }
 

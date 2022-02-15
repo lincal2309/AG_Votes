@@ -337,14 +337,30 @@ def adm_options(request, comp_slug):
         Manage Company options
     '''
     company = Company.get_company(comp_slug)
-    comp_form = CompanyForm(request.POST or None, instance=company)
+    comp_form = CompanyForm(instance=company)
+
+    # context = {
+    #     'comp_slug': comp_slug,
+    #     'comp_form': comp_form,
+    # }
+
+    return render(request, "polls/adm_options.html", locals())
+
+
+@user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
+def adm_update_options(request, comp_slug):
+    '''
+        Update Company options
+    '''
+    company = Company.get_company(comp_slug)
+    comp_form = CompanyForm(request.POST, instance=company)
 
     if request.method == "POST":
 
         if comp_form.is_valid():
             comp_form.save()
 
-    return render(request, "polls/adm_options.html", locals())
+    return redirect("polls:adm_options", comp_slug=comp_slug)
 
 
 # Users management
