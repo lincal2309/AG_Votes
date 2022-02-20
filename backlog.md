@@ -5,6 +5,7 @@ If you would like to propose an update, please contact me.
 
 ## To Do
 
+- all companies need to have their own logo (bug on home page for site admin)
 - manage models constraints: event name's unicity (per company)
 - add comments in .js and .css to identify html pages
 - Upgrade Django and take advantage of ASGI (might come with Python and PostgreSQL version upgrades too)

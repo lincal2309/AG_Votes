@@ -2,7 +2,7 @@
 
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, reverse
-# from django.template.loader import render_to_string
+from django.template.loader import render_to_string
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -236,6 +236,34 @@ def results(request, comp_slug, event_slug):
 # =======================
 #      Action views
 # =======================
+
+
+def get_group_detail(request):
+    """ Gather and send information related to groups """
+
+    comp_slug = request.GET["comp_slug"]
+    grp_id = int(request.GET["grp_id"])   # comes as string when 0
+    company = Company.get_company(comp_slug)
+
+    if grp_id > 0:
+        current_group = UserGroup.objects.get(id=grp_id)
+        group_form = GroupDetail(instance=current_group)
+    else:
+        group_form = GroupDetail()
+        group_form.fields['all_users'].queryset = UserComp.objects.\
+                                                    filter(company=company).\
+                                                    order_by('user__last_name', 'user__first_name')
+
+    context = {
+        "comp_slug": comp_slug,
+        "company": company,
+        "grp_id": grp_id,
+        "group_form": group_form,
+    }
+
+    template = render_to_string('polls/adm_group_detail.html', context=context, request=request)
+
+    return JsonResponse({"group_form": template})
 
 
 def get_chart_data(request):
@@ -612,24 +640,31 @@ def adm_groups(request, comp_slug):
     # group_list = []
     group_list = UserGroup.objects.filter(company__comp_slug=comp_slug, hidden=False).order_by('group_name')
 
+    # Initialize an empty form to create a new group (to be displayed in a modal)
+    group_form = GroupDetail()
+    group_form.fields['all_users'].queryset = UserComp.objects.\
+                                                filter(company=company).\
+                                                order_by('user__last_name', 'user__first_name')
+
+
     return render(request, "polls/adm_groups.html", locals())
 
 
 @user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
 def adm_group_detail(request, comp_slug, grp_id=0):
+
     company = Company.get_company(comp_slug)
 
-
-    if grp_id > 0:
-        current_group = UserGroup.objects.get(id=grp_id)
-        group_form = GroupDetail(request.POST or None, instance=current_group)
-    else:
-        group_form = GroupDetail(request.POST or None)
-        group_form.fields['all_users'].queryset = UserComp.objects.\
-                                                    filter(company=company).\
-                                                    order_by('user__last_name', 'user__first_name')
-
     if request.method == 'POST':
+        if grp_id > 0:
+            current_group = UserGroup.objects.get(id=grp_id)
+            group_form = GroupDetail(request.POST, instance=current_group)
+        else:
+            group_form = GroupDetail(request.POST)
+            group_form.fields['all_users'].queryset = UserComp.objects.\
+                                                        filter(company=company).\
+                                                        order_by('user__last_name', 'user__first_name')
+
         # Test if the list contains values and convert the string in a list of user IDs
         usr_list = []
         if request.POST.get('users_in_group', False):
@@ -670,7 +705,7 @@ def adm_group_detail(request, comp_slug, grp_id=0):
             print("****** FORMULAIRE NON VALIDE *******")
             print(group_form.errors)
 
-    return render(request, "polls/adm_group_detail.html", locals())
+    return redirect("polls:adm_groups", comp_slug=comp_slug)
 
 
 @user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))

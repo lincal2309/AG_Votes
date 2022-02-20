@@ -43,9 +43,9 @@ a .btn-secondary.disabled, a .btn-secondary:disabled {
     border-color: lightgrey;
   }
   
-.bg-modal {
+/* .bg-modal {
     background-color: rgba(102, 185, 102, 0.8);
-}
+} */
 
 
 /* Switch button */

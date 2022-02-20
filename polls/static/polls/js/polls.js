@@ -491,7 +491,6 @@ $(document).ready(function() {
 
     // Sort list function
     function sortlist(mylist) {
-        // let lb = $(mylist);
         let elts = $(mylist).children('option');
 
         elts.sort(function(a,b) {
@@ -502,18 +501,6 @@ $(document).ready(function() {
 
         $(mylist).empty().append( elts );
 
-        // arrTexts = new Array();
-        
-        // for(i=0; i<lb.length; i++)  {
-        //     arrTexts[i] = lb.options[i].text;
-        // }
-        
-        // arrTexts.sort();
-        
-        // for(i=0; i<lb.length; i++)  {
-        //     lb.options[i].text = arrTexts[i];
-        //     lb.options[i].value = arrTexts[i];
-        // }
     }
 
     // Send an value from a select box to another
@@ -528,7 +515,7 @@ $(document).ready(function() {
     }
 
     // Add all (from source to destination)
-    $('#add_all').on("click", function(e) {
+    $(".form_content").on("click", '#add_all', function(e) {
         e.preventDefault();
         $('#id_users').find('option').removeAttr('selected');
         $('#id_all_users option').each(function() {
@@ -538,7 +525,7 @@ $(document).ready(function() {
     })
 
     // Add selected (from source to destination)
-    $('#add_selected').on("click", function(e) {
+    $(".form_content").on("click", '#add_selected', function(e) {
         e.preventDefault();
         $('#id_users').find('option').removeAttr('selected');
         let values = $('#id_all_users').val();
@@ -552,7 +539,7 @@ $(document).ready(function() {
     })
 
     // Add selected by double click
-    $("#id_all_users option").dblclick(function(e) {
+    $(".form_content").on("dblclick", '#id_all_users option', function(e) {
         e.preventDefault();
         $('#id_users').find('option').removeAttr('selected');
         add_option('#id_all_users', '#id_users', $(this));
@@ -560,7 +547,7 @@ $(document).ready(function() {
     })
 
     // Remove all (empty list, back to global list)
-    $('#remove_all').on("click", function(e) {
+    $(".form_content").on("click", '#remove_all', function(e) {
         e.preventDefault();
         $('#id_all_users').find('option').removeAttr('selected');
         $('#id_users option').each(function() {
@@ -570,7 +557,7 @@ $(document).ready(function() {
     })
 
     // Remove selected (from source to destination)
-    $('#remove_selected').on("click", function(e) {
+    $(".form_content").on("click", '#remove_selected', function(e) {
         e.preventDefault();
         $('#id_all_users').find('option').removeAttr('selected');
         let values = $('#id_users').val();
@@ -584,13 +571,37 @@ $(document).ready(function() {
     })
 
     // Remove selected by double click
-    $("#id_users option").dblclick(function(e) {
+    $(".form_content").on("dblclick", '#id_users option', function(e) {
         e.preventDefault();
         $('#id_all_users').find('option').removeAttr('selected');
         add_option('#id_users', '#id_all_users', $(this));
         $('#id_users_in_group').val($('#id_users_in_group').val().replace(String($(this).val()), ""))
     })
 
+
+    // Create / update group - get data from related group to populate modal form
+    $('.update-grp').click(function() {
+        console.log("Get group data");
+        $.ajax({
+            method: 'GET',
+            url: $(this).attr('url-endpoint'),
+            data: {
+                comp_slug: $(this).attr('comp-slug'),
+                grp_id: $(this).attr('grp-id'),
+            },
+            success: handleSuccess,
+            error: handleError,
+        });
+
+        function handleSuccess(data) {
+            $(".form_content").html(data.group_form);
+        };
+
+        function handleError(error_data) {
+            console.log("error");
+            console.log(error_data);
+        };
+    })
 
 
     // Add a question in question formset
@@ -611,25 +622,6 @@ $(document).ready(function() {
     });
 
 
-    // On submit, select all elements to ensure they are sent to the view
-    // $('#upd_grp').on("click", function() {
-    //     $('#id_all_users option').removeAttr('selected');
-    //     $('#id_all_users option').each(function() {
-    //         if ($(this).attr('has_changed') && $(this).attr('has_changed') == "True" ) {
-    //             $(this).attr('selected', 'selected');
-    //         }
-    //     });
-
-    //     console.log("Group users")
-    //     $('#id_users option').attr('selected', 'selected');
-    //     $('#id_users option').each(function() {
-    //         if ($(this).attr('has_changed') && $(this).attr('has_changed') == "True" ) {
-    //             // $(this).attr('selected', 'selected');
-    //         }
-    //     })
-    // })
-
-
     // Expand / Collapse blocks
     $('.collapse-group').on("click", function(e) {
         e.preventDefault();
@@ -645,20 +637,9 @@ $(document).ready(function() {
         }
     })
 
-    // $('.collapse-group').on("click", function(e) {
-    //     e.preventDefault();
-    //     console.log("Masquer");
-    //     $('.grp-content').addClass("hidden");
-    //     // $('.grp-content').hide();
-    //     $('#btn_grp').addClass("fa-chevron-down").removeClass("fa-chevron-up");
-    //     $(this).addClass("expand-group").removeClass("collapse-group");
-    // })
-
-
     // Delete user modal display
     $('.delete-user').on("click", function() {
         dlte_usr = $(this).attr("data-usr-name") + " " + $(this).attr("data-usr-first-name");
-        // mdl_action = $('#form_dlt_usr').attr("action");
         $('#dlte-confirm').html("Voulez-vous supprimer l'utilisateur <strong>" + dlte_usr + "</strong> ?");
         $('#form_dlt_usr').attr("action", $('#form_dlt_usr').attr("action").replace("0", $(this).attr("data-usr-id")));
     })
@@ -672,8 +653,6 @@ $(document).ready(function() {
 
     // Delete event modal display
     $('.delete-evt').on("click", function() {
-        // dlte_usr = $(this).attr("data-usr-name") + " " + $(this).attr("data-usr-first-name");
-        // mdl_action = $('#form_dlt_grp').attr("action");
         $('#dlte-evt-confirm').html("Voulez-vous supprimer l'événement' <strong>" + $(this).attr("data-evt-name") + "</strong> ?");
         $('#form_dlt_evt').attr("action", $('#form_dlt_evt').attr("action").replace("0", $(this).attr("data-evt-id")));
     })
@@ -687,8 +666,6 @@ $(document).ready(function() {
 
     // Delete group modal display
     $('.delete-grp').on("click", function() {
-        // dlte_usr = $(this).attr("data-usr-name") + " " + $(this).attr("data-usr-first-name");
-        // mdl_action = $('#form_dlt_grp').attr("action");
         $('#dlte-grp-confirm').html("Voulez-vous supprimer le groupe <strong>" + $(this).attr("data-grp-name") + "</strong> ?");
         $('#form_dlt_grp').attr("action", $('#form_dlt_grp').attr("action").replace("0", $(this).attr("data-grp-id")));
     })

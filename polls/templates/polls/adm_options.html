@@ -12,9 +12,9 @@
     {% include "./adm_head.html" %}
 
     <div class="col-md-9">
-        <!-- Right panel : admin actions
-                1 bloc for each menu item, diplayed or hidden according to user's choice -->
-        <input type="hidden" id="menu_id" value="4" /> <!-- Hidden value to store the current selected menu -->
+        {# Right panel : admin actions #}
+        {#         1 bloc for each menu item, diplayed or hidden according to user's choice #}
+        <input type="hidden" id="menu_id" value="4" /> {# Hidden value to store the current selected menu #}
 
         <div class="row">
             <div class="col-sm-12 align-items-center text-center">
@@ -26,7 +26,7 @@
             <div class="col-sm-12">
                 <form action="{% url 'polls:adm_update_options' comp_slug %}" method="post" enctype="multipart/form-data">
                     {% csrf_token %}
-                    <!-- Hidden field where the referer is identified to go back to the related page after validation -->
+                    {# Hidden field where the referer is identified to go back to the related page after validation #}
                     <input type="hidden" name="url_dest" value="{{ url_dest }}" />
                     <br>
                     <div class="row border mt-4">
@@ -109,7 +109,7 @@
                                     <p>{{comp_form.host}}</p>
                                     <p>{{comp_form.port}}</p>
                                 </div>
-                                <!-- <div class="col-sm-1"></div> -->
+                                {# <div class="col-sm-1"></div> #}
                                 <div class="col-sm-2 mt-2 ml-5">
                                     <p><label for="{{comp_form.hname.label}}">{{comp_form.hname.label}}</p>
                                         <p><label for="{{comp_form.fax.label}}">{{comp_form.fax.label}} </p>
@@ -118,10 +118,12 @@
                                     <p>{{comp_form.hname}}</p>
                                     <p>{{comp_form.fax}} </p>
                                 </div>
-                                <!-- <div class="col-sm-1">
+                                {# comment #}
+                                <div class="col-sm-1">
                                     <p></p>
                                     <span class="fa fa-eye fa-xs" style="color: black;" data-toggle="tooltip" title="Afficher"></span>
-                                </div> -->
+                                </div>
+                                {# endcomment #}
                             </div>
 
                             <div class="row align-item-center">

@@ -15,7 +15,7 @@
 
         <title>Votes</title>
 
-        <!-- Favicon -->
+        {# Favicon #}
         {% if user.is_supervisor %}
             <link rel="icon" type="image/png" href="{% static 'polls/img/votes_favicon.png' %}" />
         {% elif user.usercomp.company.logo is not NULL %}
@@ -24,13 +24,13 @@
             <link rel="icon" type="image/png" href="{% static 'polls/img/votes_favicon.png' %}" />
         {% endif %}
 
-        <!-- Theme CSS - Includes Bootstrap -->
+        {# Theme CSS - Includes Bootstrap #}
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 
-        <!-- Font Awesome -->
+        {# Font Awesome #}
         <script src="https://kit.fontawesome.com/8b3b9f4776.js" crossorigin="anonymous"></script>
 
-        <!-- Custom CSS -->
+        {# Custom CSS #}
         <link href="{% static 'polls/css/polls.css' %}" rel="stylesheet">
 
     </head>
@@ -38,7 +38,7 @@
     <body class="d-flex flex-column vh-100">
 
         <header class="main-header">
-            <!-- Header Navbar -->
+            {# Header Navbar #}
             {% block nav_bar %}
             <nav class="navbar navbar-expand-md navbar-light fixed-top bg-light align-items-center">
                 {% block logo %}
@@ -88,7 +88,7 @@
         </header>
 
 
-        <!-- Main content -->
+        {# Main content #}
         <main class="flex-shrink-0 main-content" role="main">
             <div class="container">
                 {% block content %}{% endblock %}
@@ -96,7 +96,7 @@
 
             <div>
                 {% if messages %}
-                    <!-- Popup d'affichage de messages -->
+                    {# Popup d'affichage de messages #}
                     <div id="display_msg" class="modal fade show" role="dialog" tabindex='-1'>
                         <div class="modal-dialog">
                             <div class="modal-content">
@@ -122,16 +122,13 @@
         </main>
         
 
-        <!-- Footer -->
+        {# Footer #}
         <footer class="footer mt-auto py-3">
             {% block footer %} {% endblock %}
-            <!-- <div class="container">
-                <span class="text-muted">Place sticky footer content here.</span>
-            </div> -->
         </footer>
 
 
-        <!-- js scripts-->
+        {# js scripts#}
         <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
         <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
@@ -139,7 +136,7 @@
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
 
-        <!-- Custom scripts for this template -->
+        {# Custom scripts for this template #}
         <script src="{% static 'polls/js/polls.js' %}"></script>
 
     </body>

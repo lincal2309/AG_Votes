@@ -11,10 +11,10 @@
 <div class="row">
     {% include "./adm_head.html" %}
 
-    <div class="col-md-9">
-        <!-- Right panel : admin actions
-                1 bloc for each menu item, diplayed or hidden according to user's choice -->
-        <input type="hidden" id="menu_id" value="3" /> <!-- Hidden value to store the current selected menu -->
+    <div class="form_buttons col-md-9">
+        {# Right panel : admin actions  #}
+        {#         1 bloc for each menu item, diplayed or hidden according to user's choice #}
+        <input type="hidden" id="menu_id" value="3" /> {# Hidden value to store the current selected menu #}
 
         <div class="row">
             <div class="col-sm-12 align-items-center text-center">
@@ -26,14 +26,14 @@
                     <ul class="mt-30">
                     {% for grp in group_list %}
                         <li>
-                            {{ grp.group_name }} &nbsp &nbsp &nbsp {{ grp.weight }} &nbsp &nbsp &nbsp
+                            {{ grp }}
 
-                            <!-- Update buttons -->
-                            <a type="button" class="update-grp btn btn-sm" href="{% url 'polls:adm_group_detail' company.comp_slug grp.id %}">
+                            {# Update buttons #}
+                            <a type="button" class="update-grp btn btn-sm" data-toggle="modal" data-target="#grp_detail" url-endpoint="{% url 'polls:get_group_detail' %}" comp-slug="{{ company.comp_slug }}" grp-id="{{ grp.id }}">
                                 <span class="fa fa-pencil" style="color: #339af0;" data-toggle="tooltip" title="Modifier"></span>
                             </a>
 
-                            <!-- Delete buttons -->
+                            {# Delete buttons #}
                             <button type="button" class="delete-grp btn btn-sm" data-toggle="modal" data-target="#delete_grp" data-grp-id="{{ grp.id }}" data-grp-name="{{ grp.group_name }}">
                                 <span class="fa fa-trash" style="color: #ff6b6b;" data-toggle="tooltip" title="Supprimer"></span>
                             </button>
@@ -46,13 +46,22 @@
                 </div>
 
                 <div class="text-center">
-                    <!-- Create button -->
-                    <a type="button" class="create-grp btn btn-primary" href="{% url 'polls:adm_create_group' company.comp_slug %}">Nouveau groupe</a>
+                    {# Create button #}
+                    <a type="button" id="new_grp" class="update-grp btn btn-primary" data-toggle="modal" data-target="#grp_detail" url-endpoint="{% url 'polls:get_group_detail' %}" comp-slug="{{ company.comp_slug }}" grp-id=0>Nouveau groupe</a>
+                </div>
+
+                {# Modal opened to update a group #}
+                <div id="grp_detail" class="modal fade hide" role="dialog" tabindex='-1'>
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content form_content">
+                            {% include './adm_group_detail.html' %}
+                        </div>
+                    </div>
                 </div>
 
                 <div>
-                    <!-- Popup de suppression d'un groupe -->
-                    <!-- tabindex property added to allow closing the modal with ESC key -->
+                    {# Popup de suppression d'un groupe #}
+                    {# tabindex property added to allow closing the modal with ESC key #}
                     <div id="delete_grp" class="modal fade hide" role="dialog" tabindex='-1'>
                         <div class="modal-dialog">
                             <div class="modal-content">
@@ -63,7 +72,7 @@
                                         {% csrf_token %}
                                         <button class="btn btn-primary" type="submit">Supprimer</button>
                                         &nbsp &nbsp &nbsp
-                                        <button id="close_dlte_grp" class="btn btn-secondary close-btn">Annuler</button>
+                                        <button id="close_dlte_grp" class="btn btn-secondary close-btn" data-dismiss="modal">Annuler</button>
                                     </form>
                                 </div>
                             </div>
