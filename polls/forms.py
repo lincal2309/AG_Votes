@@ -56,7 +56,7 @@ class CompanyForm(forms.ModelForm):
         exclude = []
 
     def __init__(self, *args, **kwags):
-        # Disable two mandatory fields to avoid updating them in the form and allo form validation
+        # Disable two mandatory fields to avoid updating them in the form and allow form validation
         super().__init__(*args, **kwags)
         self.fields['company_name'].disabled = True
         self.fields['comp_slug'].disabled = True

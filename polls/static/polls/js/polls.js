@@ -579,9 +579,67 @@ $(document).ready(function() {
     })
 
 
+    // Create / update user - get data from related user to populate modal form
+    $('.update-user').click(function() {
+        $.ajax({
+            method: 'GET',
+            url: $(this).attr('url-endpoint'),
+            data: {
+                comp_slug: $(this).attr('comp-slug'),
+                usr_id: $(this).attr('usr-id'),
+            },
+            success: handleSuccess,
+            error: handleError,
+        });
+
+        function handleSuccess(data) {
+            // let user_form = data.context["user_form"]
+            $(".usr_form_content").html(data.user_template);
+        };
+
+        function handleError(error_data) {
+            console.log("error");
+            console.log(error_data);
+        };
+    })
+
+
+    // POST user profilte update / create data
+    // Event delegation from modal container to button to ensure js access event after updating HTML to display modal form
+    $(".usr_form_content").on("submit", "#upd-user", function(event) {
+        event.preventDefault();
+        console.log("Post user data");
+        console.log($(this).attr('comp-slug'));
+        console.log($('#id_username').val())
+        $.ajax({
+            method: 'POST',
+            url: $(this).attr('url-endpoint'),
+            data: {
+                comp_slug: $(this).attr('comp-slug'),
+                usr_id: $(this).attr('usr-id'),
+                user_form: user_form.serialize(),
+                usercomp_form: usercomp_form.serialize()
+                // username: $('#id_username').val(),
+            },
+            success: handleSuccess,
+            error: handleError,
+        });
+
+        function handleSuccess(data) {
+            $("#usr_detail").modal("hide");
+        };
+
+        function handleError(jqXHR, textStatus, errorThrown){
+            console.log(jqXHR);
+            console.log(textStatus);
+            console.log(errorThrown);
+        }
+
+    })
+
+
     // Create / update group - get data from related group to populate modal form
     $('.update-grp').click(function() {
-        console.log("Get group data");
         $.ajax({
             method: 'GET',
             url: $(this).attr('url-endpoint'),

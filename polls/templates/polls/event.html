@@ -42,7 +42,7 @@
                             <p class="mt-4 pl-2 proxy_list">En cas d'absence, vous pouvez donner pouvoir à l'une des personnes suivantes :</p>
                             <div class="row align-items-center proxy_list">
                                 <div class="offset-sm-1 col-sm-10">
-                                    <form id="proxy" action='.' method="post" data-url='{% url 'polls:set_proxy' %}' comp-slug="{{ event.company.slug }}" data-event="{{ event.slug }}" data-user="{{ user.id }}">
+                                    <form id="proxy" action='.' method="post" data-url="{% url 'polls:set_proxy' %}" comp-slug="{{ event.company.slug }}" data-event="{{ event.slug }}" data-user="{{ user.id }}">
                                         {% csrf_token %}
                                         {% for proxy in proxy_list %}
                                             <input type="radio" name="proxy" id="proxy{{ forloop.counter }}" value="{{ proxy.id }}" />

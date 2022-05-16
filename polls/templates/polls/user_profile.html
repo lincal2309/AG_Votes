@@ -1,0 +1,101 @@
+<div class="row modal-content">
+    <div class="modal-body">
+        <div class="col-lg-12 align-items-center text-center">
+            <!-- {% if usr_id %}
+                <form action="{% url 'polls:adm_user_profile' comp_slug usr_id %}" method="post">
+            {% else %}
+                <form action="{% url 'polls:adm_create_user' comp_slug %}" method="post">
+            {% endif %} -->
+            <form id="upd-user" action="." method="post" url-endpoint="{% url 'polls:upd_user_detail' %}" 
+                    comp-slug="{{ comp_slug }}" usr-id="{% if usr_id %} {{ usr_id }} {% else %} 0 {% endif %}">
+                {% csrf_token %}
+
+                {# Hidden field where the referer is identified to go back to the related page after validation #}
+                <input type="hidden" name="url_dest" value="{{ url_dest }}" />
+
+                <div class="row">
+                    <div class="col-sm-3"></div>
+                    <div class="col-sm-3">
+                        <br>
+                        <p><label for="{{user_form.username.label}}">{{user_form.username.label}} :</label></p>
+                    </div>
+                    <div class="col-sm-2">
+                        <br>
+                        <p>{{user_form.username}}</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-sm-2"></div>
+                    <div class="col-sm-8">
+                        {% if not usr_id %}
+                            <p>{{user_form.username.help_text}}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-2">
+                        <br>
+                        <p><label for="{{user_form.last_name.label}}">{{user_form.last_name.label}} :</label></p>
+                    </div>
+                    <div class="col-sm-2">
+                        <br>
+                        <p>{{user_form.last_name}}</p>
+                    </div>
+
+                    <div class="col-sm-2"></div>
+
+                    <div class="col-sm-2">
+                        <br>
+                        <p><label for="{{user_form.first_name.label}}">{{user_form.first_name.label}} :</label></p>
+                    </div>
+                    <div class="col-sm-2">
+                        <br>
+                        <p>{{user_form.first_name}}</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+
+                    <div class="col-sm-2"></div>
+
+                    <div class="col-sm-4">
+                        <br>
+                        <p><label for="{{user_form.email.label}}">{{user_form.email.label}} :</label></p>
+                        <p><label for="{{usercomp_form.phone_num.label}}">{{usercomp_form.phone_num.label}} :</label></p>
+                    </div>
+                    <div class="col-sm-4">
+                        <br>
+                        <p>{{user_form.email}}</p>
+                        <p>{{usercomp_form.phone_num}}</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-sm-2"></div>
+                    <div class="col-sm-8">
+                        {% if user.usercomp.is_admin %}
+                            <br>
+                            <p><label for="{{usercomp_form.is_admin.label}}">{{usercomp_form.is_admin.label}}</label> {{usercomp_form.is_admin}}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <br>
+                {# If a user edits his own profile, give access to change password page #}
+                {% if usr_id and user.id == usr_id %}
+                <a class="chg_pwd btn btn-primary" href="{% url 'polls:change_password' comp_slug %}">
+                    Modifier le mot de passe
+                </a>
+                <br>
+                <br>
+                {% endif %}
+
+                <button class="btn btn-success" type="submit">{% if usr_id %}Mettre à jour{% else %}Créer{% endif %}</button>
+                &nbsp &nbsp &nbsp
+                <a class="btn btn-secondary back_btn"  data-dismiss="modal">Annuler</a>
+            </form>
+        </div>
+    </div>
+</div>

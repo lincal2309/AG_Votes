@@ -15,6 +15,8 @@ urlpatterns = [
     path("login/", views.login_user, name="login"),
     path("logout/", views.logout_user, name="logout"),
     path("get_group_detail/", views.get_group_detail, name="get_group_detail"),
+    path("get_user_detail/", views.get_user_detail, name="get_user_detail"),
+    path("upd_user_detail/", views.upd_user_detail, name="upd_user_detail"),
 
     path("<slug:comp_slug>/", views.company_home, name="company_home"),
 

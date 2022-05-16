@@ -27,6 +27,7 @@ If you would like to propose an update, please contact me.
 - Ability to send emails to groups / related to an event
 - Access to some admin pages (at least event details) directly from the app (once modal pages are implemented)
 - Password management: new password, recovery process, etc.
+- consider using django-widget-tweaks module to enhance forms rendering
 - Cross company deep tests
 - Multi language app
 - Define a mobile application

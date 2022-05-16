@@ -19,10 +19,9 @@
                         <div class="row justify-content-center">
                             <div class="control-group {%if group_form.group_name.errors %}error{%endif%}"></div>
                             <div class="control-group {%if group_form.weight.errors %}error{%endif%}"></div>
-                            {{ group_form.group_name}} {{ group_form.weight }}
-                            <a type="button" id="disp_detail" class="collapse-group btn btn-sm" href="">
-                                <span id="btn_grp" class="fas fa-chevron-up" data-toggle="tooltip" title="Masquer/Afficher détails"></span>
-                            </a>
+                            <p><label for="{{user_form.username.label}}">{{group_form.group_name.label}} : </label> &nbsp; {{ group_form.group_name}}</p>
+                            &nbsp; &nbsp;
+                            <p><label for="{{user_form.username.label}}">{{group_form.weight.label}} : </label> &nbsp; {{ group_form.weight}}</p>
                         </div>
                         <div class="row mt-30 grp-content" id="grp_content">
                             <div class="col-md-5 d-flex justify-content-center">

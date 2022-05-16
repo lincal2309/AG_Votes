@@ -12,9 +12,9 @@
     {% include "./adm_head.html" %}
 
     <div class="col-md-9">
-        <!-- Right panel : admin actions
-                1 bloc for each menu item, diplayed or hidden according to user's choice -->
-        <input type="hidden" id="menu_id" value="2" /> <!-- Hidden value to store the current selected menu -->
+        {# Right panel : admin actions #}
+        {#         1 bloc for each menu item, diplayed or hidden according to user's choice #}
+        <input type="hidden" id="menu_id" value="2" /> {# Hidden value to store the current selected menu #}
 
         <div class="row">
             <div class="col-sm-12 text-center">
@@ -30,13 +30,14 @@
                             <td width="40%" class="mt-10 {% if usr.is_admin %}is_admin{% endif %}">{{ usr.user.last_name }}</td>
                             <td width="40%" class="mt-10 {% if usr.is_admin %}is_admin{% endif %}">{{ usr.user.first_name }}</td>
                             <td width="30px">
-                                <!-- Update buttons -->
-                                <a type="button" class="update-user btn btn-sm" href="{% url 'polls:adm_user_profile' company.comp_slug usr.user.id %}">
+                                {# Update buttons #}
+                                <a type="button" class="update-user btn btn-sm" data-toggle="modal" data-target="#usr_detail" url-endpoint="{% url 'polls:get_user_detail' %}" comp-slug="{{ company.comp_slug }}" usr-id="{{ usr.user.id }}">
+                                <!-- <a type="button" class="update-user btn btn-sm" href="{% url 'polls:adm_user_profile' company.comp_slug usr.user.id %}"> -->
                                     <span class="fa fa-pencil" style="color: #339af0;" data-toggle="tooltip" title="Modifier"></span>
                                 </a>
                             </td>
                             <td width="30px">
-                                <!-- Delete buttons (except for the connected used himself) -->
+                                {# Delete buttons (except for the connected user himself) #}
                                 {% if user.id != usr.user.id %}
                                 <button type="button" class="delete-user btn btn-sm" data-toggle="modal" data-target="#delete_usr" data-usr-id="{{ usr.user.id }}" data-usr-name="{{ usr.user.last_name }}" data-usr-first-name="{{ usr.user.first_name }}">
                                     <span class="fa fa-trash" style="color: #ff6b6b;" data-toggle="tooltip" title="Supprimer"></span>
@@ -51,15 +52,25 @@
 
             <div class="row mt-4 align-items-center">
                 <div class="col-sm-12 text-center">
-                    <!-- Create button -->
-                    <a type="button" class="create-user btn btn-primary" href="{% url 'polls:adm_create_user' company.comp_slug %}">Nouvel utilisateur</a>
+                    {# Create button #}
+                    <a type="button" class="update-user btn btn-primary" data-toggle="modal" data-target="#usr_detail" url-endpoint="{% url 'polls:get_user_detail' %}" comp-slug="{{ company.comp_slug }}" usr-id=0>Nouvel utilisateur</a>
+                    <!-- <a type="button" class="update-user btn btn-primary" href="{% url 'polls:adm_create_user' company.comp_slug %}">Nouvel utilisateur</a> -->
                     &nbsp &nbsp &nbsp
                     <button type="button" class="load-users btn btn-primary" data-toggle="modal" data-target="#load_usrs" >Charger un fichier</button>
                 </div>
-    
+
+                {# Modal opened to update or create a user #}
+                <div id="usr_detail" class="modal fade hide" role="dialog" tabindex='-1'>
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content usr_form_content">
+                            {% include './user_profile.html' %}
+                        </div>
+                    </div>
+                </div>
+
                 <div>
-                    <!-- Popup de suppression d'un utilisateur -->
-                    <!-- tabindex property added to allow closing the modal with ESC key -->
+                    {# Popup de suppression d'un utilisateur #}
+                    {# tabindex property added to allow closing the modal with ESC key #}
                     <div id="delete_usr" class="modal fade hide" role="dialog" tabindex='-1'>
                         <div class="modal-dialog">
                             <div class="modal-content">
@@ -79,8 +90,8 @@
                 </div>
     
                 <div>
-                    <!-- Popup de chargement d'un fichier XL pour uploader des utilisateurs en masse -->
-                    <!-- tabindex property added to allow closing the modal with ESC key -->
+                    {# Popup de chargement d'un fichier XL pour uploader des utilisateurs en masse #}
+                    {# tabindex property added to allow closing the modal with ESC key #}
                     <div id="load_usrs" class="modal fade hide" role="dialog" tabindex='-1'>
                         <div class="modal-dialog">
                             <div class="modal-content">

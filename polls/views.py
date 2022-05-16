@@ -237,6 +237,109 @@ def results(request, comp_slug, event_slug):
 #      Action views
 # =======================
 
+def get_user_detail(request):
+    '''Gather user profile data'''
+
+    comp_slug = request.GET["comp_slug"]
+    company = Company.get_company(comp_slug)
+    usr_id = int(request.GET["usr_id"])   # comes as string when 0
+
+    access_admin = user_is_admin(comp_slug, request.user)
+
+    if usr_id > 0:
+        # A user exists : access only for the user himself of company admins
+        profile_user = User.objects.get(pk=usr_id)
+        if access_admin or profile_user == request.user:
+            user_form = UserBaseForm(instance=profile_user)
+            usercomp_form = UserCompForm(instance=profile_user.usercomp)
+            user_form.fields['username'].disabled = True   # Disable updates of the field
+
+        else:
+            return redirect("polls:index")
+    else:
+        # User creation : company admins only
+        if access_admin:
+            user_form = UserBaseForm()
+            usercomp_form = UserCompForm()
+        else:
+            return redirect("polls:index")
+
+    context = {
+        "comp_slug": comp_slug,
+        "company": company,
+        "usr_id": usr_id,
+        "user_form": user_form,
+        "usercomp_form": usercomp_form,
+    }
+
+    template = render_to_string('polls/user_profile.html', context=context, request=request)
+
+    # context = {
+    #     **context,
+    #     "user_template": template,
+    # }
+
+    return JsonResponse({"user_template": template})
+
+
+def upd_user_detail(request):
+    '''Update user profile'''
+
+    if request.method == 'POST':
+        print("#######################################")
+        print("Try to POST!")
+        # print(request.POST["username"])
+        comp_slug = request.POST["comp_slug"]
+        company = Company.get_company(comp_slug)
+        usr_id = int(request.POST["usr_id"])   # comes as string when 0
+
+        if usr_id > 0:
+            profile_user = User.objects.get(pk=usr_id)
+            print(profile_user)
+            user_form = UserBaseForm(request.POST, instance=profile_user)
+            usercomp_form = UserCompForm(request.POST, instance=profile_user.usercomp)
+        else:
+            user_form = UserBaseForm(request.POST)
+            usercomp_form = UserCompForm(request.POST)
+        
+        if user_form.is_valid() and usercomp_form.is_valid():
+            print("Form is valid")
+            if usr_id == 0:
+                # New user
+                user_data = {
+                    'username':  user_form.cleaned_data["username"],
+                    'last_name': user_form.cleaned_data["last_name"],
+                    'first_name': user_form.cleaned_data["first_name"],
+                    'email': user_form.cleaned_data["email"],
+                    'phone_num': usercomp_form.cleaned_data["phone_num"],
+                    'is_admin': usercomp_form.cleaned_data["is_admin"],
+                }
+                new_user, usr_comp = create_new_user(comp_slug, user_data)
+                msg = "Utilisateur {0} {1} créé avec succès".\
+                    format(new_user.last_name, new_user.first_name)
+                messages.success(request, msg)
+            else:
+                # Update user
+                upd_user = user_form.save()
+                usercomp_form.save()
+
+                if upd_user == request.user:
+                    msg = ("Votre profil a été modifié avec succès.")
+                else:
+                    msg = "Utilisateur {0} {1} modifié avec succès.".\
+                        format(upd_user.last_name, upd_user.first_name)
+        
+                messages.success(request, msg)
+
+        else:
+            print("****** FORMULAIRE NON VALIDE *******")
+            print('user_form')
+            print(user_form.errors)
+            print('usercomp_form')
+            print(usercomp_form.errors)
+
+        return redirect('polls:adm_users', comp_slug=comp_slug)
+
 
 def get_group_detail(request):
     """ Gather and send information related to groups """
@@ -402,15 +505,18 @@ def adm_users(request, comp_slug):
     company = Company.get_company(comp_slug)
     user_list = UserComp.objects.order_by('user__last_name').filter(company=company)
 
-    # Prepare form to upload users from file
+    user_form = UserBaseForm()
+    usercomp_form = UserCompForm()
+
+    # Initialize form to upload users from file
     
     if company.use_groups: upload_form = UploadFileForm(initial={'use_groups': True})
     else: upload_form = UploadFileForm()
 
-    data = {
-        'user_list': user_list,
-        'upload_form': upload_form
-    }
+    # data = {
+    #     'user_list': user_list,
+    #     'upload_form': upload_form
+    # }
     return render(request, "polls/adm_users.html", locals())
 
 
@@ -632,26 +738,21 @@ def adm_load_users(request, comp_slug):
 @user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
 def adm_groups(request, comp_slug):
     '''
-        Manage users groups
+        Displays users groups list
     '''
     # Variables set to be integrated in locals()
     company = Company.get_company(comp_slug)
     # user_list = UserComp.get_users_in_comp(comp_slug)
-    # group_list = []
     group_list = UserGroup.objects.filter(company__comp_slug=comp_slug, hidden=False).order_by('group_name')
-
-    # Initialize an empty form to create a new group (to be displayed in a modal)
-    group_form = GroupDetail()
-    group_form.fields['all_users'].queryset = UserComp.objects.\
-                                                filter(company=company).\
-                                                order_by('user__last_name', 'user__first_name')
-
 
     return render(request, "polls/adm_groups.html", locals())
 
 
 @user_passes_test(lambda u: u.is_superuser or (u.id is not None and u.usercomp.is_admin))
 def adm_group_detail(request, comp_slug, grp_id=0):
+    '''
+        Manage group creation / update POST request
+    '''
 
     company = Company.get_company(comp_slug)
 

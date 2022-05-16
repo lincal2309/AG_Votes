@@ -13,7 +13,7 @@
         {% endif %}
             {% csrf_token %}
 
-            <!-- Hidden field where the referer is identified to go back to the related page after validation -->
+            {# Hidden field where the referer is identified to go back to the related page after validation #}
             <input type="hidden" name="url_dest" value="{{ url_dest }}" />
 
             <div class="row">
@@ -38,7 +38,7 @@
             </div>
 
             <div class="row">
-                <!-- <div class="col-sm-2"></div> -->
+                {# <div class="col-sm-2"></div> #}
                 <div class="col-sm-2">
                     <br>
                     <p><label for="{{user_form.last_name.label}}">{{user_form.last_name.label}} :</label></p>
@@ -75,7 +75,7 @@
 
             <br>
             <br>
-            <!-- If a user edits his profile, give access to change password page -->
+            {# If a user edits his profile, give access to change password page #}
             {% if usr_id and user.id == usr_id %}
             <a type="button" class="chg_pwd btn btn-primary" href="{% url 'polls:change_password' comp_slug %}">
                 Modifier le mot de passe
